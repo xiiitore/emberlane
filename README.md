@@ -19,7 +19,7 @@ python -m emberlane --help
 ## Local worker
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
-`write_file`, `read_file`, `list_files`, and `run_tests`. It does not accept
+`write_file`, `write_files`, `read_file`, `list_files`, `run_tests`, `git_status`, `git_diff`, and `diagnostics`. It does not accept
 arbitrary shell commands.
 
 ```sh
@@ -27,6 +27,10 @@ arbitrary shell commands.
 python -m emberlane submit write_file --payload '{"path":"src/example.py","content":"VALUE = 42\\n"}'
 
 # Execute one queued task
+python -m emberlane run-one
+
+# Queue several related source/test files in one coding task
+python -m emberlane submit write_files --payload '{"files":[{"path":"src/example.py","content":"VALUE = 42\\n"},{"path":"tests/test_example.py","content":"from src.example import VALUE\\n"}]}'
 python -m emberlane run-one
 
 # Queue and execute the fixed unittest command
@@ -44,8 +48,11 @@ result is persisted with its status. Tasks are processed one at a time; the
 queue is not safe for concurrent writers.
 
 File operations are confined to the configured workspace and enforce a size
-limit. The worker blocks writes to common Git metadata, virtual-environment,
-queue-state, and environment-secret paths. Test execution uses a fixed command
+limit. `write_files` accepts up to 50 distinct path/content entries and validates
+the batch before writing; each file replacement is atomic, but the whole batch
+is not atomic, so a later filesystem error can leave earlier files written. The
+worker blocks writes to common Git metadata, virtual-environment, queue-state,
+and environment-secret paths. Test execution uses a fixed command
 (`python -m unittest discover -s tests -v`) with no shell and a timeout.
 Project tests are still executable code: run the worker only in a repository
 you trust.
