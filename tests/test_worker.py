@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from emberlane.worker import LocalWorker
+from emberlane.workspace import WorkspaceError
 
 
 class LocalWorkerTests(unittest.TestCase):
@@ -30,7 +31,7 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(result.result["content"], "VALUE = 42\n")
 
     def test_blocks_git_metadata_before_enqueue(self):
-        with self.assertRaisesRegex(Exception, "protected paths"):
+        with self.assertRaisesRegex(WorkspaceError, "protected paths"):
             self.worker.submit("write_file", {
                 "path": ".git/config", "content": "overwrite"
             })
