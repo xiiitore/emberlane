@@ -19,8 +19,9 @@ python -m emberlane --help
 ## Local worker
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
-`write_file`, `read_file`, `list_files`, and `run_tests`. It does not accept
-arbitrary shell commands.
+`write_file`, `write_files`, `read_file`, `list_files`, `run_tests`,
+`git_status`, `git_diff`, and `diagnostics`. It does not accept arbitrary shell
+commands.
 
 ```sh
 # Queue a file-writing task (quote the JSON as one argument)
@@ -28,6 +29,15 @@ python -m emberlane submit write_file --payload '{"path":"src/example.py","conte
 
 # Execute one queued task
 python -m emberlane run-one
+
+# Queue multiple related files in one task (up to 50 files)
+python -m emberlane submit write_files --payload '{"files":[{"path":"src/example.py","content":"VALUE = 42\\n"},{"path":"tests/test_example.py","content":"from src.example import VALUE\\n"}]}'
+python -m emberlane run-one
+
+# Inspect repository state and diff metadata (source patches are not returned)
+python -m emberlane submit git_status
+python -m emberlane submit git_diff
+python -m emberlane submit diagnostics
 
 # Queue and execute the fixed unittest command
 python -m emberlane submit run_tests
@@ -44,8 +54,12 @@ result is persisted with its status. Tasks are processed one at a time; the
 queue is not safe for concurrent writers.
 
 File operations are confined to the configured workspace and enforce a size
-limit. The worker blocks writes to common Git metadata, virtual-environment,
-queue-state, and environment-secret paths. Test execution uses a fixed command
+limit. `write_files` accepts up to 50 distinct workspace-relative paths, checks
+all targets before writing, and rejects oversized content before queueing. Each
+individual file replacement is atomic; the batch as a whole is not atomic, so a
+filesystem failure during the write phase can leave earlier files changed. The
+worker blocks writes to common Git metadata, virtual-environment, queue-state,
+and environment-secret paths. Test execution uses a fixed command
 (`python -m unittest discover -s tests -v`) with no shell and a timeout.
 Project tests are still executable code: run the worker only in a repository
 you trust.
