@@ -59,6 +59,7 @@ class LocalWorker:
             "list_files": self._list_files,
             "run_tests": self._run_tests,
             "git_status": self._git_status,
+            "git_diff": self._git_diff,
             "diagnostics": self._diagnostics,
         }
 
@@ -135,6 +136,16 @@ class LocalWorker:
             "head": self._run_git_readonly(["log", "-1", "--oneline"]),
         }
 
+    def _git_diff(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Return diff metadata only; never publish source patches to the mailbox."""
+        path = payload.get("path")
+        suffix: list[str] = []
+        if path is not None:
+            suffix = [_checked_path(path)]
+        names = self._run_git_readonly(["diff", "--name-only", "--", *suffix])
+        stat = self._run_git_readonly(["diff", "--stat", "--", *suffix])
+        return {"files": names, "stat": stat, "patch_included": False}
+
     def _diagnostics(self, payload: dict[str, Any]) -> dict[str, Any]:
         del payload
         return {
@@ -152,6 +163,8 @@ class LocalWorker:
             raise ValueError("payload must be a dictionary")
         # Reject protected file targets before they enter the retry queue.
         if kind in {"write_file", "read_file"}:
+            _checked_path(payload.get("path"))
+        if kind == "git_diff" and payload.get("path") is not None:
             _checked_path(payload.get("path"))
         return self.queue.submit(kind, payload)
 
@@ -180,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "read_file", "list_files", "run_tests", "git_status", "diagnostics"))
+    submit_parser.add_argument("kind", choices=("write_file", "read_file", "list_files", "run_tests", "git_status", "git_diff", "diagnostics"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
