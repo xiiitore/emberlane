@@ -147,5 +147,40 @@ class MailboxRejectionTests(unittest.TestCase):
             self.assertNotIn("\\nREJECTED:", replies[0])
 
 
+    def test_mailbox_result_allowlists_scalars_and_redacts_nested_data_and_errors(self):
+        with tempfile.TemporaryDirectory() as temp:
+            worker = LocalWorker(Path(temp))
+            task = worker.submit("git_diff", {})
+            task.status = "completed"
+            task.result = {
+                "returncode": 0,
+                "passed": True,
+                "nested": {
+                    "output": "PRIVATE_OUTPUT",
+                    "content": "PRIVATE_CONTENT",
+                    "stdout": "PRIVATE_STDOUT",
+                    "stderr": "PRIVATE_STDERR",
+                    "raw": "PRIVATE_RAW",
+                    "local_path": "/private/path",
+                },
+            }
+            task.last_error = "PRIVATE_ERROR_WITH_PATH /private/path"
+            mailbox = GitHubIssueMailbox(worker, "owner/repo", 6, "authorized")
+            mailbox.state["active"]["123"] = task.task_id
+            replies = []
+            mailbox._reply = replies.append
+
+            self.assertTrue(mailbox._finish_if_terminal("123", task.task_id))
+            reply = replies[0]
+            for secret in (
+                "PRIVATE_OUTPUT", "PRIVATE_CONTENT", "PRIVATE_STDOUT",
+                "PRIVATE_STDERR", "PRIVATE_RAW", "/private/path",
+                "PRIVATE_ERROR_WITH_PATH",
+            ):
+                self.assertNotIn(secret, reply)
+            self.assertIn('"returncode": 0', reply)
+            self.assertIn('"passed": true', reply)
+            self.assertIn('"error_present": true', reply)
+
 if __name__ == "__main__":
     unittest.main()
