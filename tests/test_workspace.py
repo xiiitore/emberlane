@@ -34,6 +34,17 @@ class WorkspaceTests(unittest.TestCase):
         with self.assertRaises(WorkspaceError):
             self.ws.read_text("large.txt")
 
+    def test_list_excludes_protected_runtime_and_git_paths(self):
+        (self.root / ".git").mkdir()
+        (self.root / ".git" / "config").write_text("private")
+        (self.root / ".emberlane").mkdir()
+        (self.root / ".emberlane" / "queue.json").write_text("{}")
+        (self.root / "__pycache__").mkdir()
+        (self.root / "__pycache__" / "module.pyc").write_bytes(b"private")
+        (self.root / ".env").write_text("SECRET=value")
+        (self.root / "visible.py").write_text("VALUE=1")
+        self.assertEqual(self.ws.list_files(), ["visible.py"])
+
     def test_rejects_symlink(self):
         outside = Path(self.temp.name) / "outside.txt"
         outside.write_text("private")
