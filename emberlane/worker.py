@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 import subprocess
 import sys
 import time
@@ -19,6 +20,7 @@ from .queue import Task, TaskQueue
 from .workspace import Workspace, WorkspaceError
 
 MAX_OUTPUT_CHARS = 20_000
+GIT_COMMAND_TIMEOUT = 10
 PROTECTED_PARTS = {".git", ".venv", ".emberlane", "__pycache__"}
 PROTECTED_NAMES = {".env", ".env.local", ".env.production", "id_rsa", "id_ed25519"}
 
@@ -56,6 +58,8 @@ class LocalWorker:
             "read_file": self._read_file,
             "list_files": self._list_files,
             "run_tests": self._run_tests,
+            "git_status": self._git_status,
+            "diagnostics": self._diagnostics,
         }
 
     def _write_file(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -98,6 +102,49 @@ class LocalWorker:
             "output": output,
         }
 
+    def _run_git_readonly(self, args: list[str]) -> dict[str, Any]:
+        command = ["git", *args]
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=self.root,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=10,
+                check=False,
+                shell=False,
+            )
+            return {
+                "command": command,
+                "returncode": completed.returncode,
+                "output": (completed.stdout or "")[-MAX_OUTPUT_CHARS:],
+            }
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return {
+                "command": command,
+                "returncode": None,
+                "error": type(exc).__name__,
+            }
+
+    def _git_status(self, payload: dict[str, Any]) -> dict[str, Any]:
+        del payload
+        return {
+            "status": self._run_git_readonly(["status", "--short", "--branch"]),
+            "head": self._run_git_readonly(["log", "-1", "--oneline"]),
+        }
+
+    def _diagnostics(self, payload: dict[str, Any]) -> dict[str, Any]:
+        del payload
+        return {
+            "root": str(self.root),
+            "python_version": sys.version,
+            "platform": platform.platform(),
+            "git_status": self._run_git_readonly(["status", "--short", "--branch"]),
+            "latest_commit": self._run_git_readonly(["log", "-1", "--oneline"]),
+        }
+
     def submit(self, kind: str, payload: dict[str, Any]) -> Task:
         if kind not in self.handlers:
             raise ValueError(f"unsupported task kind: {kind}")
@@ -133,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "read_file", "list_files", "run_tests"))
+    submit_parser.add_argument("kind", choices=("write_file", "read_file", "list_files", "run_tests", "git_status", "diagnostics"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
