@@ -71,6 +71,42 @@ class Workspace:
             raise WorkspaceError("path escapes workspace root")
         return current
 
+    def validate_write_path(self, relative: str | Path) -> Path:
+        """Validate a write target without creating directories or changing files."""
+        raw = str(relative)
+        if not raw or "\\x00" in raw or "\\\\" in raw:
+            raise WorkspaceError("invalid relative path")
+        candidate_rel = PurePosixPath(raw)
+        if candidate_rel.is_absolute() or any(p in ("", ".", "..") for p in candidate_rel.parts):
+            raise WorkspaceError("path must be a clean relative path")
+        if not candidate_rel.parts:
+            raise WorkspaceError("path must name a file")
+
+        current = self.root
+        for part in candidate_rel.parts:
+            current = current / part
+            if current.is_symlink():
+                raise WorkspaceError("symlinks are not allowed in workspace paths")
+
+        parent = current.parent
+        probe = parent
+        while not probe.exists() and probe != self.root:
+            probe = probe.parent
+        try:
+            probe.resolve(strict=True).relative_to(self.root)
+        except (FileNotFoundError, ValueError) as exc:
+            raise WorkspaceError("path escapes workspace root") from exc
+        if not probe.is_dir():
+            raise WorkspaceError("parent path is not a directory")
+        if parent.exists():
+            try:
+                parent.resolve(strict=True).relative_to(self.root)
+            except (FileNotFoundError, ValueError) as exc:
+                raise WorkspaceError("path escapes workspace root") from exc
+        if current.exists() and not current.is_file():
+            raise WorkspaceError("target is not a regular file")
+        return current
+
     def list_files(self) -> list[str]:
         found: list[str] = []
         for base, dirs, files in os.walk(self.root, followlinks=False):
