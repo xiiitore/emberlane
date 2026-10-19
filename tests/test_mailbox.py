@@ -1,9 +1,13 @@
 import json
 import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
+from emberlane.worker import LocalWorker
 from emberlane.mailbox import (
+    GitHubIssueMailbox,
     MAX_GH_ATTEMPTS,
     MailboxError,
     _gh,
@@ -88,6 +92,35 @@ class GitHubRetryTests(unittest.TestCase):
             _gh(["api", "endpoint"])
         self.assertEqual(run.call_count, MAX_GH_ATTEMPTS)
         self.assertEqual(sleep.call_count, MAX_GH_ATTEMPTS - 1)
+
+class MailboxIdempotencyTests(unittest.TestCase):
+    def test_recovers_crash_after_queue_submit_without_duplicate_task(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            worker = LocalWorker(root)
+            payload = {"path": "src/generated.py", "content": "VALUE = 7\\n"}
+            original = worker.submit("write_file", payload, idempotency_key="comment-123")
+            worker.run_one()
+            self.assertEqual((root / "src/generated.py").read_text(), "VALUE = 7\\n")
+
+            mailbox = GitHubIssueMailbox(worker, "owner/repo", 6, "authorized")
+            mailbox._comments = lambda: [{
+                "id": 123,
+                "user": {"login": "authorized"},
+                "body": 'EMBERLANE_TASK_JSON\\n' + json.dumps({
+                    "kind": "write_file",
+                    "payload": payload,
+                }),
+            }]
+            replies = []
+            mailbox._reply = replies.append
+            result = mailbox.run_once()
+
+            self.assertEqual(result["status"], "finished")
+            self.assertEqual(result["task_id"], original.task_id)
+            self.assertEqual(len(worker.queue.list_tasks()), 1)
+            self.assertEqual((root / "src/generated.py").read_text(), "VALUE = 7\\n")
+            self.assertEqual(len(replies), 1)
 
 
 if __name__ == "__main__":
