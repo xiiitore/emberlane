@@ -192,7 +192,13 @@ class LocalWorker:
             "latest_commit": self._run_git_readonly(["log", "-1", "--oneline"]),
         }
 
-    def submit(self, kind: str, payload: dict[str, Any]) -> Task:
+    def submit(
+        self,
+        kind: str,
+        payload: dict[str, Any],
+        *,
+        idempotency_key: str | None = None,
+    ) -> Task:
         if kind not in self.handlers:
             raise ValueError(f"unsupported task kind: {kind}")
         if not isinstance(payload, dict):
@@ -221,7 +227,7 @@ class LocalWorker:
                 seen.add(path)
         if kind == "git_diff" and payload.get("path") is not None:
             _checked_path(payload.get("path"))
-        return self.queue.submit(kind, payload)
+        return self.queue.submit(kind, payload, idempotency_key=idempotency_key)
 
     def run_one(self) -> Task | None:
         return self.queue.run_one(self.handlers)
