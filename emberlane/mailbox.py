@@ -172,23 +172,29 @@ class GitHubIssueMailbox:
             return True
         if task.status not in {"completed", "failed"}:
             return False
-        safe_result = task.result
-        if isinstance(safe_result, dict):
-            # The mailbox issue may be public: never echo file contents or raw
-            # test output into GitHub comments.
-            safe_result = {
-                key: value for key, value in safe_result.items()
-                if key not in {"content", "output"}
+        # The mailbox issue may be public. Never serialize arbitrary task
+        # results or exception messages: nested/future schemas can contain file
+        # contents, command output, credentials, local paths, or test traces.
+        # Expose only a small allow-list of non-sensitive scalar status fields.
+        safe_result: dict[str, Any] = {"result_available": task.result is not None}
+        if isinstance(task.result, dict):
+            allowed_scalar_fields = {
+                "ok", "passed", "returncode", "exit_code",
+                "replacements", "bytes_written", "count",
+                "files_changed", "patch_included",
             }
-            if task.kind == "read_file":
-                safe_result["content_returned_to_mailbox"] = False
+            for key in allowed_scalar_fields:
+                value = task.result.get(key)
+                if isinstance(value, (bool, int, float)):
+                    safe_result[key] = value
         result = {
             "source_comment_id": comment_id,
             "task_id": task.task_id,
             "kind": task.kind,
             "status": task.status,
             "attempts": task.attempts,
-            "last_error": task.last_error,
+            # Do not expose last_error; exception text can contain sensitive data.
+            "error_present": task.last_error is not None,
             "result": safe_result,
         }
         self._reply("EMBERLANE_RESULT\n" + json.dumps(result, ensure_ascii=False, indent=2)[:MAX_COMMENT_CHARS])
