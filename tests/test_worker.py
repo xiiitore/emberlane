@@ -29,13 +29,12 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(result.status, "completed")
         self.assertEqual(result.result["content"], "VALUE = 42\n")
 
-    def test_blocks_git_metadata(self):
-        task = self.worker.submit("write_file", {
-            "path": ".git/config", "content": "overwrite"
-        })
-        result = self.worker.run_one()
-        self.assertEqual(result.status, "failed")
-        self.assertIn("protected paths", result.last_error)
+    def test_blocks_git_metadata_before_enqueue(self):
+        with self.assertRaisesRegex(Exception, "protected paths"):
+            self.worker.submit("write_file", {
+                "path": ".git/config", "content": "overwrite"
+            })
+        self.assertEqual(self.worker.queue.list_tasks(), [])
 
     def test_unknown_task_kind_rejected_before_enqueue(self):
         with self.assertRaises(ValueError):
