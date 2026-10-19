@@ -251,6 +251,8 @@ class LocalWorker:
                 raise ValueError("old must be a non-empty string")
             if not isinstance(new, str):
                 raise ValueError("new must be a string")
+            if len(new.encode("utf-8")) > self.workspace.max_file_bytes:
+                raise WorkspaceError("replacement text exceeds configured size limit")
             if (
                 isinstance(expected_count, bool)
                 or not isinstance(expected_count, int)
