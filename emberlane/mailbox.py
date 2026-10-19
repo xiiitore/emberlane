@@ -110,6 +110,16 @@ class GitHubIssueMailbox:
             return True
         if task.status not in {"completed", "failed"}:
             return False
+        safe_result = task.result
+        if isinstance(safe_result, dict):
+            # The mailbox issue may be public: never echo file contents or raw
+            # test output into GitHub comments.
+            safe_result = {
+                key: value for key, value in safe_result.items()
+                if key not in {"content", "output"}
+            }
+            if task.kind == "read_file":
+                safe_result["content_returned_to_mailbox"] = False
         result = {
             "source_comment_id": comment_id,
             "task_id": task.task_id,
@@ -117,7 +127,7 @@ class GitHubIssueMailbox:
             "status": task.status,
             "attempts": task.attempts,
             "last_error": task.last_error,
-            "result": task.result,
+            "result": safe_result,
         }
         self._reply("EMBERLANE_RESULT\n" + json.dumps(result, ensure_ascii=False, indent=2)[:MAX_COMMENT_CHARS])
         self.state["handled"].append(comment_id)
