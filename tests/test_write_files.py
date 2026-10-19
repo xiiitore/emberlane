@@ -54,7 +54,10 @@ class WriteFilesTests(unittest.TestCase):
     def test_invalid_later_target_does_not_create_earlier_directories(self):
         (self.root / "not_a_directory").write_text("file")
         with self.assertRaisesRegex(ValueError, "parent path is not a directory"):
-            self.worker.workspace.validate_write_path("not_a_directory/child.py")
+            self.worker._write_files({"files": [
+                {"path": "would_create/nested/file.py", "content": "A = 1\\n"},
+                {"path": "not_a_directory/child.py", "content": "B = 2\\n"},
+            ]})
         self.assertFalse((self.root / "would_create").exists())
 
     def test_protected_paths_rejected(self):
