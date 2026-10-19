@@ -96,10 +96,10 @@ class LocalWorker:
             seen.add(path)
             validated.append((path, content))
 
-        # Validate all path shapes before writing any file. The workspace
-        # revalidates paths at write time to catch symlink changes.
+        # Preflight all targets without creating directories or changing files.
+        # Workspace.write_text revalidates each target immediately before writing.
         for path, _content in validated:
-            self.workspace._resolve(path, for_write=True)
+            self.workspace.validate_write_path(path)
 
         written = []
         for path, content in validated:
@@ -213,8 +213,11 @@ class LocalWorker:
                 path = _checked_path(item.get("path"))
                 if path in seen:
                     raise ValueError(f"duplicate path in files batch: {path}")
-                if not isinstance(item.get("content"), str):
+                content = item.get("content")
+                if not isinstance(content, str):
                     raise ValueError("each files entry must have string content")
+                if len(content.encode("utf-8")) > self.workspace.max_file_bytes:
+                    raise WorkspaceError(f"content exceeds configured size limit: {path}")
                 seen.add(path)
         if kind == "git_diff" and payload.get("path") is not None:
             _checked_path(payload.get("path"))
