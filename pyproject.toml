@@ -4,9 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "emberlane"
-version = "0.1.0"
-description = "A minimal durable task runner"
+version = "0.2.0"
+description = "A minimal durable task runner with a local coding worker"
 requires-python = ">=3.11"
+
+[project.scripts]
+emberlane = "emberlane.worker:main"
 
 [tool.setuptools]
 packages = ["emberlane"]
