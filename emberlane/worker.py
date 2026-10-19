@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .mailbox import GitHubIssueMailbox
 from .queue import Task, TaskQueue
 from .workspace import Workspace, WorkspaceError
 
@@ -136,6 +137,12 @@ def main(argv: list[str] | None = None) -> int:
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
+    mailbox_parser = sub.add_parser(
+        "mailbox-once", help="poll one GitHub issue for one authorized task"
+    )
+    mailbox_parser.add_argument("--repo", required=True, help="GitHub owner/repository")
+    mailbox_parser.add_argument("--issue", required=True, type=int, help="mailbox issue number")
+    mailbox_parser.add_argument("--author", required=True, help="only accept tasks from this GitHub login")
     sub.add_parser("status", help="show queued tasks")
 
     args = parser.parse_args(argv)
@@ -156,6 +163,13 @@ def main(argv: list[str] | None = None) -> int:
         task = worker.run_one()
         _print_task(task)
         return 1 if task is not None and task.status == "failed" else 0
+
+    if args.command == "mailbox-once":
+        mailbox = GitHubIssueMailbox(
+            worker, args.repo, args.issue, args.author
+        )
+        print(json.dumps(mailbox.run_once(), ensure_ascii=False, indent=2))
+        return 0
 
     tasks = worker.queue.list_tasks()
     print(json.dumps([{
