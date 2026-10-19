@@ -56,6 +56,7 @@ class LocalWorker:
         self.handlers = {
             "write_file": self._write_file,
             "write_files": self._write_files,
+            "replace_text": self._replace_text,
             "read_file": self._read_file,
             "list_files": self._list_files,
             "run_tests": self._run_tests,
@@ -106,6 +107,41 @@ class LocalWorker:
             self.workspace.write_text(path, content)
             written.append({"path": path, "bytes_written": len(content.encode("utf-8"))})
         return {"files_written": written, "count": len(written), "batch_atomic": False}
+
+    def _replace_text(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Replace an exact text fragment only when its expected count matches."""
+        path = _checked_path(payload.get("path"))
+        old = payload.get("old")
+        new = payload.get("new")
+        expected_count = payload.get("expected_count", 1)
+        if not isinstance(old, str) or not old:
+            raise ValueError("old must be a non-empty string")
+        if not isinstance(new, str):
+            raise ValueError("new must be a string")
+        if (
+            isinstance(expected_count, bool)
+            or not isinstance(expected_count, int)
+            or expected_count < 1
+            or expected_count > 1000
+        ):
+            raise ValueError("expected_count must be an integer from 1 to 1000")
+
+        current = self.workspace.read_text(path)
+        actual_count = current.count(old)
+        if actual_count != expected_count:
+            raise ValueError(
+                f"expected {expected_count} occurrence(s) of old text, found {actual_count}; file unchanged"
+            )
+        updated = current.replace(old, new)
+        size = len(updated.encode("utf-8"))
+        if size > self.workspace.max_file_bytes:
+            raise WorkspaceError("updated content exceeds configured size limit")
+        self.workspace.write_text(path, updated)
+        return {
+            "path": path,
+            "replacements": expected_count,
+            "bytes_written": size,
+        }
 
     def _read_file(self, payload: dict[str, Any]) -> dict[str, Any]:
         path = _checked_path(payload.get("path"))
@@ -206,6 +242,24 @@ class LocalWorker:
         # Reject protected file targets before they enter the retry queue.
         if kind in {"write_file", "read_file"}:
             _checked_path(payload.get("path"))
+        if kind == "replace_text":
+            _checked_path(payload.get("path"))
+            old = payload.get("old")
+            new = payload.get("new")
+            expected_count = payload.get("expected_count", 1)
+            if not isinstance(old, str) or not old:
+                raise ValueError("old must be a non-empty string")
+            if not isinstance(new, str):
+                raise ValueError("new must be a string")
+            if len(new.encode("utf-8")) > self.workspace.max_file_bytes:
+                raise WorkspaceError("replacement text exceeds configured size limit")
+            if (
+                isinstance(expected_count, bool)
+                or not isinstance(expected_count, int)
+                or expected_count < 1
+                or expected_count > 1000
+            ):
+                raise ValueError("expected_count must be an integer from 1 to 1000")
         if kind == "write_files":
             files = payload.get("files")
             if not isinstance(files, list) or not files:
@@ -254,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "write_files", "read_file", "list_files", "run_tests", "git_status", "git_diff", "diagnostics"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "diagnostics"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
