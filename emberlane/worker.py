@@ -100,6 +100,11 @@ class LocalWorker:
     def submit(self, kind: str, payload: dict[str, Any]) -> Task:
         if kind not in self.handlers:
             raise ValueError(f"unsupported task kind: {kind}")
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a dictionary")
+        # Reject protected file targets before they enter the retry queue.
+        if kind in {"write_file", "read_file"}:
+            _checked_path(payload.get("path"))
         return self.queue.submit(kind, payload)
 
     def run_one(self) -> Task | None:
