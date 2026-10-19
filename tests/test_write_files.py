@@ -42,6 +42,21 @@ class WriteFilesTests(unittest.TestCase):
             ]})
         self.assertFalse((self.root / "valid.py").exists())
 
+    def test_oversized_file_rejected_before_queueing(self):
+        worker = LocalWorker(self.root, max_file_bytes=4)
+        with self.assertRaisesRegex(ValueError, "configured size limit"):
+            worker.submit("write_files", {"files": [
+                {"path": "too_large.py", "content": "12345"},
+            ]})
+        self.assertEqual(worker.queue.list_tasks(), [])
+        self.assertFalse((self.root / "too_large.py").exists())
+
+    def test_invalid_later_target_does_not_create_earlier_directories(self):
+        (self.root / "not_a_directory").write_text("file")
+        with self.assertRaisesRegex(ValueError, "parent path is not a directory"):
+            self.worker.workspace.validate_write_path("not_a_directory/child.py")
+        self.assertFalse((self.root / "would_create").exists())
+
     def test_protected_paths_rejected(self):
         with self.assertRaisesRegex(ValueError, "protected paths"):
             self.worker.submit("write_files", {"files": [
