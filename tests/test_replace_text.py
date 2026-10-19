@@ -63,6 +63,16 @@ class ReplaceTextTests(unittest.TestCase):
             })
         self.assertEqual(target.read_text(encoding="utf-8"), "A=1\n")
 
+    def test_rejects_oversized_replacement_before_queueing(self):
+        worker = LocalWorker(self.root, max_file_bytes=4)
+        with self.assertRaisesRegex(WorkspaceError, "replacement text exceeds"):
+            worker.submit("replace_text", {
+                "path": "module.py",
+                "old": "x",
+                "new": "12345",
+            })
+        self.assertEqual(worker.queue.list_tasks(), [])
+
     def test_rejects_protected_path_before_queueing(self):
         with self.assertRaisesRegex(WorkspaceError, "protected paths"):
             self.worker.submit("replace_text", {
