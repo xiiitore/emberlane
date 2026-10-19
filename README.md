@@ -1,45 +1,61 @@
 # Emberlane
 
-A small, standalone Python task runner built from scratch.
-
-## Goals
-- Explicit task handlers; no arbitrary shell execution.
-- Durable JSON state written atomically.
-- Retry with bounded attempts.
-- Clear separation between task execution and policy.
-- Standard-library-only runtime.
+A small, standalone Python task runner with a local coding-workflow worker.
 
 ## Requirements
-- Python 3.11+
 
-## Run tests
+- Python 3.11+
+- Standard-library-only runtime
+
+## Install and test
+
+From the repository root:
+
 ```sh
 python -m unittest discover -s tests -v
+python -m emberlane --help
 ```
 
-## Current scope
-This is a minimal foundation, not a production-ready distributed worker. It has no network listener, credentials, or GitHub integration.
+## Local worker
 
+The worker processes a durable JSON queue. It supports only explicit task kinds:
+`write_file`, `read_file`, `list_files`, and `run_tests`. It does not accept
+arbitrary shell commands.
 
-## Worker workspace (v3)
+```sh
+# Queue a file-writing task (quote the JSON as one argument)
+python -m emberlane submit write_file --payload '{"path":"src/example.py","content":"VALUE = 42\\n"}'
 
-`Workspace` confines file reads/writes/listing to a configured root, rejects
-absolute paths, parent traversal, symlink paths, and files over a configurable
-byte limit. Writes use a temporary file and atomic replacement.
+# Execute one queued task
+python -m emberlane run-one
 
-Example:
+# Queue and execute the fixed unittest command
+python -m emberlane submit run_tests
+python -m emberlane run-one
 
-```python
-from emberlane import Workspace
-
-workspace = Workspace("./worker-workspace", max_file_bytes=200_000)
-workspace.write_text("notes/result.txt", "task completed")
-print(workspace.list_files())
+# Inspect queue state and task results
+python -m emberlane status
 ```
 
-**Security boundary:** this is application-level path validation, not an OS
-sandbox. It does not stop hostile code or another process running under the
-same OS user. The worker must not execute arbitrary shell commands. For stronger
-isolation, run it under a separate OS account or a container with a restricted
-filesystem and no secrets mounted into it. Concurrent queue writers are still
-unsupported.
+By default, the queue state is stored in `.emberlane/queue.json` under the
+project root. Use `--root PATH` to select a project directory and
+`--state PATH` to override the queue location. Each task's JSON-compatible
+result is persisted with its status. Tasks are processed one at a time; the
+queue is not safe for concurrent writers.
+
+File operations are confined to the configured workspace and enforce a size
+limit. The worker blocks writes to common Git metadata, virtual-environment,
+queue-state, and environment-secret paths. Test execution uses a fixed command
+(`python -m unittest discover -s tests -v`) with no shell and a timeout.
+Project tests are still executable code: run the worker only in a repository
+you trust.
+
+## Security boundary
+
+Workspace path checks protect against accidental path escape and common
+symlink traversal; they are not an OS sandbox. The worker runs with the same
+OS permissions as its owner. It does not provide a network listener, remote
+task submission, automatic Git commits/pushes, or an LLM that independently
+writes code from natural-language specifications. File-writing tasks must
+include the exact file path and content in their payload. Use a separate OS
+account or container for stronger isolation.
