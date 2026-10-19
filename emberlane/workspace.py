@@ -10,6 +10,10 @@ class WorkspaceError(ValueError):
     """Raised when an operation falls outside workspace policy."""
 
 
+PROTECTED_DIRS = {".git", ".venv", ".emberlane", "__pycache__"}
+PROTECTED_FILES = {".env", ".env.local", ".env.production", "id_rsa", "id_ed25519"}
+
+
 class Workspace:
     """Restrict worker file operations to one root directory.
 
@@ -71,8 +75,13 @@ class Workspace:
         found: list[str] = []
         for base, dirs, files in os.walk(self.root, followlinks=False):
             base_path = Path(base)
-            dirs[:] = sorted(d for d in dirs if not (base_path / d).is_symlink())
+            dirs[:] = sorted(
+                d for d in dirs
+                if d not in PROTECTED_DIRS and not (base_path / d).is_symlink()
+            )
             for name in sorted(files):
+                if name in PROTECTED_FILES:
+                    continue
                 item = base_path / name
                 if item.is_symlink():
                     continue

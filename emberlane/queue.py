@@ -21,6 +21,7 @@ class Task:
     last_error: str | None = None
     created_at: float = 0.0
     updated_at: float = 0.0
+    result: Any = None
 
 
 class TaskQueue:
@@ -114,8 +115,10 @@ class TaskQueue:
         task.updated_at = time.time()
         self._save()
         try:
-            handler(task.payload)
+            # Persist only JSON-compatible results so task state remains portable.
+            task.result = json.loads(json.dumps(handler(task.payload), ensure_ascii=False))
         except Exception as exc:
+            task.result = None
             task.last_error = f"{type(exc).__name__}: {exc}"
             task.status = "pending" if task.attempts < self.max_attempts else "failed"
         else:
