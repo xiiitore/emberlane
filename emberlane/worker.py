@@ -55,6 +55,7 @@ class LocalWorker:
         self.test_timeout = test_timeout
         self.handlers = {
             "write_file": self._write_file,
+            "write_files": self._write_files,
             "read_file": self._read_file,
             "list_files": self._list_files,
             "run_tests": self._run_tests,
@@ -70,6 +71,41 @@ class LocalWorker:
             raise ValueError("content must be a string")
         self.workspace.write_text(path, content)
         return {"path": path, "bytes_written": len(content.encode("utf-8"))}
+
+    def _write_files(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Write a validated batch of files; each file replacement is atomic, the batch is not."""
+        files = payload.get("files")
+        if not isinstance(files, list) or not files:
+            raise ValueError("files must be a non-empty list")
+        if len(files) > 50:
+            raise ValueError("a write_files task may contain at most 50 files")
+
+        validated: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for item in files:
+            if not isinstance(item, dict):
+                raise ValueError("each files entry must be an object")
+            path = _checked_path(item.get("path"))
+            content = item.get("content")
+            if not isinstance(content, str):
+                raise ValueError("each files entry must have string content")
+            if path in seen:
+                raise ValueError(f"duplicate path in files batch: {path}")
+            if len(content.encode("utf-8")) > self.workspace.max_file_bytes:
+                raise WorkspaceError(f"content exceeds configured size limit: {path}")
+            seen.add(path)
+            validated.append((path, content))
+
+        # Validate all path shapes before writing any file. The workspace
+        # revalidates paths at write time to catch symlink changes.
+        for path, _content in validated:
+            self.workspace._resolve(path, for_write=True)
+
+        written = []
+        for path, content in validated:
+            self.workspace.write_text(path, content)
+            written.append({"path": path, "bytes_written": len(content.encode("utf-8"))})
+        return {"files_written": written, "count": len(written), "batch_atomic": False}
 
     def _read_file(self, payload: dict[str, Any]) -> dict[str, Any]:
         path = _checked_path(payload.get("path"))
@@ -164,6 +200,22 @@ class LocalWorker:
         # Reject protected file targets before they enter the retry queue.
         if kind in {"write_file", "read_file"}:
             _checked_path(payload.get("path"))
+        if kind == "write_files":
+            files = payload.get("files")
+            if not isinstance(files, list) or not files:
+                raise ValueError("files must be a non-empty list")
+            if len(files) > 50:
+                raise ValueError("a write_files task may contain at most 50 files")
+            seen: set[str] = set()
+            for item in files:
+                if not isinstance(item, dict):
+                    raise ValueError("each files entry must be an object")
+                path = _checked_path(item.get("path"))
+                if path in seen:
+                    raise ValueError(f"duplicate path in files batch: {path}")
+                if not isinstance(item.get("content"), str):
+                    raise ValueError("each files entry must have string content")
+                seen.add(path)
         if kind == "git_diff" and payload.get("path") is not None:
             _checked_path(payload.get("path"))
         return self.queue.submit(kind, payload)
@@ -193,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "read_file", "list_files", "run_tests", "git_status", "git_diff", "diagnostics"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "read_file", "list_files", "run_tests", "git_status", "git_diff", "diagnostics"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
