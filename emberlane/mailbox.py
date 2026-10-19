@@ -176,9 +176,12 @@ class GitHubIssueMailbox:
         if isinstance(safe_result, dict):
             # The mailbox issue may be public: never echo file contents or raw
             # test output into GitHub comments.
+            # Keep test-runner output visible for debugging. File contents remain
+            # excluded from issue comments because the mailbox issue can be public.
+            # Other task output remains structured-only unless explicitly reviewed.
             safe_result = {
                 key: value for key, value in safe_result.items()
-                if key not in {"content", "output"}
+                if key != "content" and (key != "output" or task.kind == "run_tests")
             }
             if task.kind == "read_file":
                 safe_result["content_returned_to_mailbox"] = False
