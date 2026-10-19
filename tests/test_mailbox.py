@@ -99,7 +99,7 @@ class MailboxIdempotencyTests(unittest.TestCase):
             root = Path(temp)
             worker = LocalWorker(root)
             payload = {"path": "src/generated.py", "content": "VALUE = 7\\n"}
-            original = worker.submit("write_file", payload, idempotency_key="comment-123")
+            original = worker.submit("write_file", payload, idempotency_key="123")
             worker.run_one()
             self.assertEqual((root / "src/generated.py").read_text(), "VALUE = 7\\n")
 
@@ -107,7 +107,7 @@ class MailboxIdempotencyTests(unittest.TestCase):
             mailbox._comments = lambda: [{
                 "id": 123,
                 "user": {"login": "authorized"},
-                "body": 'EMBERLANE_TASK_JSON\\n' + json.dumps({
+                "body": 'EMBERLANE_TASK_JSON\n' + json.dumps({
                     "kind": "write_file",
                     "payload": payload,
                 }),
