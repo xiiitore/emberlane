@@ -7,36 +7,98 @@ Requires the GitHub CLI (gh) to be installed and authenticated locally.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
 TASK_MARKER = "EMBERLANE_TASK_JSON"
 MAX_COMMENT_CHARS = 20_000
+MAX_GH_ATTEMPTS = 4
+BASE_RETRY_DELAY_SECONDS = 1.0
+MAX_RETRY_DELAY_SECONDS = 30.0
+
+_RETRYABLE_ERRORS = (
+    "rate limit",
+    "secondary rate limit",
+    "abuse detection",
+    "http 429",
+    "http 502",
+    "http 503",
+    "http 504",
+    "bad gateway",
+    "service unavailable",
+    "gateway timeout",
+    "connection reset",
+    "connection refused",
+    "temporary failure",
+    "timed out",
+)
 
 
 class MailboxError(RuntimeError):
     pass
 
 
-def _gh(args: list[str], *, input_text: str | None = None) -> str:
+def _retry_after_seconds(message: str) -> float | None:
+    """Return a bounded Retry-After delay if a CLI error exposes that header."""
+    match = re.search(r"(?im)^\s*retry-after\s*:\s*(\d+(?:\.\d+)?)\s*$", message)
+    if not match:
+        return None
     try:
-        result = subprocess.run(
-            ["gh", *args],
-            input=input_text,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30,
-            check=False,
-            shell=False,
+        seconds = float(match.group(1))
+    except ValueError:
+        return None
+    return min(MAX_RETRY_DELAY_SECONDS, max(0.0, seconds))
+
+
+def _is_retryable_error(message: str) -> bool:
+    lowered = message.casefold()
+    # A generic 403 can indicate missing permissions; retry only when GitHub
+    # explicitly identifies a rate limit.
+    return any(marker in lowered for marker in _RETRYABLE_ERRORS)
+
+
+def _gh(args: list[str], *, input_text: str | None = None) -> str:
+    """Run gh with bounded retries for transient API/network failures only."""
+    for attempt in range(MAX_GH_ATTEMPTS):
+        try:
+            result = subprocess.run(
+                ["gh", *args],
+                input=input_text,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=30,
+                check=False,
+                shell=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            message = f"GitHub CLI timed out: {exc}"
+            if attempt + 1 >= MAX_GH_ATTEMPTS:
+                raise MailboxError(message[:2000]) from exc
+            time.sleep(min(BASE_RETRY_DELAY_SECONDS * (2 ** attempt), MAX_RETRY_DELAY_SECONDS))
+            continue
+        except OSError as exc:
+            # Missing executable and local process errors will not improve by retrying.
+            raise MailboxError(f"GitHub CLI failed: {exc}") from exc
+
+        if result.returncode == 0:
+            return result.stdout
+
+        message = result.stderr.strip() or result.stdout.strip() or f"gh exited {result.returncode}"
+        if attempt + 1 >= MAX_GH_ATTEMPTS or not _is_retryable_error(message):
+            raise MailboxError(message[:2000])
+
+        retry_after = _retry_after_seconds(message)
+        delay = retry_after if retry_after is not None else min(
+            BASE_RETRY_DELAY_SECONDS * (2 ** attempt),
+            MAX_RETRY_DELAY_SECONDS,
         )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise MailboxError(f"GitHub CLI failed: {exc}") from exc
-    if result.returncode:
-        message = result.stderr.strip() or f"gh exited {result.returncode}"
-        raise MailboxError(message[:2000])
-    return result.stdout
+        time.sleep(delay)
+
+    raise MailboxError("GitHub CLI failed after bounded retries")
 
 
 def _task_from_comment(body: str) -> dict[str, Any] | None:
