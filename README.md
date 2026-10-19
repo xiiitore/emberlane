@@ -59,3 +59,33 @@ task submission, automatic Git commits/pushes, or an LLM that independently
 writes code from natural-language specifications. File-writing tasks must
 include the exact file path and content in their payload. Use a separate OS
 account or container for stronger isolation.
+
+## Optional GitHub issue mailbox
+
+The mailbox lets a local worker receive exact, allow-listed task payloads through
+comments on one GitHub issue. It requires the `gh` CLI, a local authenticated
+GitHub session with permission to read and comment on the selected repository,
+and a dedicated issue. The worker accepts task comments only from the explicitly
+configured GitHub login.
+
+A task comment must begin with `EMBERLANE_TASK_JSON`, followed by one JSON
+object with exactly `kind` and `payload`, for example:
+
+```text
+EMBERLANE_TASK_JSON
+{"kind":"write_file","payload":{"path":"src/example.py","content":"VALUE = 42\\n"}}
+```
+
+One-shot polling:
+
+```sh
+python -m emberlane mailbox-once --repo OWNER/REPO --issue ISSUE_NUMBER --author YOUR_GITHUB_LOGIN
+```
+
+Repeat that command to process tasks and retries. A result comment is posted to
+the same issue when the task reaches a terminal state. Keep the mailbox issue
+dedicated to worker requests; issue comments are visible to people with access
+to the repository. Do not send secrets or private data through it. This is a
+polling bridge, not a process started or controlled directly by ChatGPT; a
+local machine must be running the poller for new tasks to execute. Only the
+worker's registered task types are supported.
