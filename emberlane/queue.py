@@ -21,6 +21,7 @@ class Task:
     last_error: str | None = None
     created_at: float = 0.0
     updated_at: float = 0.0
+    idempotency_key: str | None = None
     result: Any = None
 
 
@@ -82,13 +83,31 @@ class TaskQueue:
                 pass
             raise
 
-    def submit(self, kind: str, payload: dict[str, Any]) -> Task:
+    def submit(
+        self,
+        kind: str,
+        payload: dict[str, Any],
+        *,
+        idempotency_key: str | None = None,
+    ) -> Task:
         if not kind or not isinstance(kind, str):
             raise ValueError("kind must be a non-empty string")
         if not isinstance(payload, dict):
             raise ValueError("payload must be a dictionary")
+        if idempotency_key is not None:
+            if not isinstance(idempotency_key, str) or not idempotency_key:
+                raise ValueError("idempotency_key must be a non-empty string")
+            for existing in self._tasks.values():
+                if existing.idempotency_key == idempotency_key:
+                    if existing.kind != kind or existing.payload != payload:
+                        raise ValueError("idempotency key already used for a different task")
+                    return existing
         now = time.time()
-        task = Task(str(uuid.uuid4()), kind, payload, created_at=now, updated_at=now)
+        task = Task(
+            str(uuid.uuid4()), kind, payload,
+            created_at=now, updated_at=now,
+            idempotency_key=idempotency_key,
+        )
         self._tasks[task.task_id] = task
         self._save()
         return task

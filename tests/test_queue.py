@@ -35,6 +35,34 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(result.status, "completed")
         self.assertEqual(result.attempts, 2)
 
+    def test_idempotent_submit_returns_existing_task(self):
+        queue = TaskQueue(self.state)
+        first = queue.submit("write_file", {"path": "x.py", "content": "X = 1"},
+                             idempotency_key="github-comment-123")
+        duplicate = queue.submit("write_file", {"path": "x.py", "content": "X = 1"},
+                                 idempotency_key="github-comment-123")
+        self.assertEqual(duplicate.task_id, first.task_id)
+        self.assertEqual(len(queue.list_tasks()), 1)
+
+    def test_idempotency_key_cannot_be_reused_for_different_task(self):
+        queue = TaskQueue(self.state)
+        queue.submit("write_file", {"path": "x.py", "content": "X = 1"},
+                     idempotency_key="github-comment-123")
+        with self.assertRaisesRegex(ValueError, "different task"):
+            queue.submit("write_file", {"path": "x.py", "content": "X = 2"},
+                         idempotency_key="github-comment-123")
+        self.assertEqual(len(queue.list_tasks()), 1)
+
+    def test_idempotency_survives_restart(self):
+        queue = TaskQueue(self.state)
+        first = queue.submit("write_file", {"path": "x.py", "content": "X = 1"},
+                             idempotency_key="github-comment-123")
+        restored = TaskQueue(self.state)
+        duplicate = restored.submit("write_file", {"path": "x.py", "content": "X = 1"},
+                                    idempotency_key="github-comment-123")
+        self.assertEqual(duplicate.task_id, first.task_id)
+        self.assertEqual(len(restored.list_tasks()), 1)
+
     def test_registered_handler_completes_task(self):
         queue = TaskQueue(self.state)
         task = queue.submit("echo", {"value": 7})
