@@ -1,6 +1,8 @@
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from emberlane.worker import LocalWorker
 from emberlane.workspace import WorkspaceError
@@ -51,6 +53,56 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(result.status, "completed")
         self.assertTrue(result.result["passed"])
         self.assertEqual(result.result["returncode"], 0)
+
+    def test_git_status_uses_only_fixed_read_only_commands(self):
+        self.worker.submit("git_status", {})
+        with patch(
+            "emberlane.worker.platform.platform",
+            return_value="test-platform",
+        ), patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(
+                    ["git", "status", "--short", "--branch"], 0, "## test\n"
+                ),
+                subprocess.CompletedProcess(
+                    ["git", "log", "-1", "--oneline"], 0, "abc123 test commit\n"
+                ),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.result["status"]["returncode"], 0)
+        self.assertIn("## test", result.result["status"]["output"])
+        self.assertEqual(result.result["head"]["returncode"], 0)
+        self.assertEqual(run.call_count, 2)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+        self.assertEqual(run.call_args_list[0].args[0], ["git", "status", "--short", "--branch"])
+        self.assertEqual(run.call_args_list[1].args[0], ["git", "log", "-1", "--oneline"])
+
+    def test_diagnostics_returns_runtime_and_git_information(self):
+        self.worker.submit("diagnostics", {})
+        with patch(
+            "emberlane.worker.platform.platform",
+            return_value="test-platform",
+        ), patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(
+                    ["git", "status", "--short", "--branch"], 0, "## test\n"
+                ),
+                subprocess.CompletedProcess(
+                    ["git", "log", "-1", "--oneline"], 0, "abc123 test commit\n"
+                ),
+            ],
+        ):
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.result["root"], str(self.root))
+        self.assertTrue(result.result["python_version"])
+        self.assertTrue(result.result["platform"])
+        self.assertEqual(result.result["git_status"]["returncode"], 0)
+        self.assertEqual(result.result["latest_commit"]["returncode"], 0)
 
 
 if __name__ == "__main__":
