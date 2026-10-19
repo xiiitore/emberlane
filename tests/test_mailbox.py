@@ -123,5 +123,29 @@ class MailboxIdempotencyTests(unittest.TestCase):
             self.assertEqual(len(replies), 1)
 
 
+
+class MailboxRejectionTests(unittest.TestCase):
+    def test_invalid_task_kind_reply_uses_real_newline(self):
+        with tempfile.TemporaryDirectory() as temp:
+            worker = LocalWorker(Path(temp))
+            mailbox = GitHubIssueMailbox(worker, "owner/repo", 6, "authorized")
+            mailbox._comments = lambda: [{
+                "id": 123,
+                "user": {"login": "authorized"},
+                "body": 'EMBERLANE_TASK_JSON\n' + json.dumps({
+                    "kind": "unsupported_kind",
+                    "payload": {},
+                }),
+            }]
+            replies = []
+            mailbox._reply = replies.append
+
+            result = mailbox.run_once()
+
+            self.assertEqual(result["status"], "rejected")
+            self.assertIn("EMBERLANE_RESULT 123\nREJECTED: ValueError:", replies[0])
+            self.assertNotIn("\\nREJECTED:", replies[0])
+
+
 if __name__ == "__main__":
     unittest.main()

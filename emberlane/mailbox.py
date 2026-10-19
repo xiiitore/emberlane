@@ -232,7 +232,7 @@ class GitHubIssueMailbox:
                     idempotency_key=comment_id,
                 )
             except Exception as exc:
-                self._reply(f"EMBERLANE_RESULT {comment_id}\\nREJECTED: {type(exc).__name__}: {exc}")
+                self._reply(f"EMBERLANE_RESULT {comment_id}\nREJECTED: {type(exc).__name__}: {exc}")
                 self.state["handled"].append(comment_id)
                 self._save_state()
                 return {"status": "rejected", "comment_id": comment_id, "error": str(exc)}
