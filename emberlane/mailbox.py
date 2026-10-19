@@ -90,11 +90,11 @@ class GitHubIssueMailbox:
 
     def _comments(self) -> list[dict[str, Any]]:
         endpoint = f"repos/{self.repository}/issues/{self.issue_number}/comments"
-        raw = _gh(["api", endpoint, "--paginate"])
-        value = json.loads(raw)
-        if not isinstance(value, list):
+        raw = _gh(["api", endpoint, "--paginate", "--slurp"])
+        pages = json.loads(raw)
+        if not isinstance(pages, list) or any(not isinstance(page, list) for page in pages):
             raise MailboxError("GitHub returned an unexpected comments response")
-        return value
+        return [comment for page in pages for comment in page]
 
     def _reply(self, body: str) -> None:
         endpoint = f"repos/{self.repository}/issues/{self.issue_number}/comments"
@@ -154,7 +154,13 @@ class GitHubIssueMailbox:
                 return {"status": "rejected", "comment_id": comment_id, "error": str(exc)}
             if task_data is None:
                 continue
-            task = self.worker.submit(task_data["kind"], task_data["payload"])
+            try:
+                task = self.worker.submit(task_data["kind"], task_data["payload"])
+            except Exception as exc:
+                self._reply(f"EMBERLANE_RESULT {comment_id}\\nREJECTED: {type(exc).__name__}: {exc}")
+                self.state["handled"].append(comment_id)
+                self._save_state()
+                return {"status": "rejected", "comment_id": comment_id, "error": str(exc)}
             self.state["active"][comment_id] = task.task_id
             self._save_state()
             self.worker.run_one()
