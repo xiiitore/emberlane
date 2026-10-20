@@ -639,3 +639,19 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task 75f7ca47-fb5a-4c8c-a694-d722e7aa6400
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:41:55.324481+00:00",
+  "source_comment_id": "6289061381",
+  "task_id": "75f7ca47-fb5a-4c8c-a694-d722e7aa6400",
+  "kind": "replace_text",
+  "status": "failed",
+  "attempts": 3,
+  "error_present": true,
+  "summary": {}
+}
+```
