@@ -1535,3 +1535,28 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 37802217-6637-4b92-882b-07c07b1a2aff
+
+[Full task output](worker-logs/37802217-6637-4b92-882b-07c07b1a2aff.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T12:58:09.179913+00:00",
+  "source_comment_id": "6291383574",
+  "task_id": "37802217-6637-4b92-882b-07c07b1a2aff",
+  "kind": "write_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/37802217-6637-4b92-882b-07c07b1a2aff.md"
+  },
+  "summary": {
+    "path": "tests/test_worker.py",
+    "bytes_written": 15782
+  }
+}
+```
