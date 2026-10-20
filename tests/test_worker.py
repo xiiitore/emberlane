@@ -134,6 +134,71 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(run.call_args_list[3].args[0], ["git", "merge", "--ff-only", "FETCH_HEAD"])
         self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
 
+    def test_git_sync_refuses_matching_worktree_mode_for_staged_or_untracked_changes(self):
+        self.worker.submit("git_sync", {"expected_branch": "feature", "allow_matching_worktree": True})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, "?? extra.py\n"),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--quiet"], 0, ""),
+                subprocess.CompletedProcess(["git", "ls-files", "--others", "--exclude-standard"], 0, "extra.py\n"),
+                subprocess.CompletedProcess(["git", "diff", "--name-only"], 0, ""),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertFalse(result.result["synced"])
+        self.assertEqual(result.result["stage"], "matching_worktree_preflight")
+        self.assertEqual(run.call_count, 6)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+    def test_git_sync_matching_worktree_uses_reset_keep_only_after_exact_match(self):
+        self.worker.submit("git_sync", {"expected_branch": "feature", "allow_matching_worktree": True})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, " M emberlane/worker.py\n"),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--quiet"], 0, ""),
+                subprocess.CompletedProcess(["git", "ls-files", "--others", "--exclude-standard"], 0, ""),
+                subprocess.CompletedProcess(["git", "diff", "--name-only"], 0, "emberlane/worker.py\n"),
+                subprocess.CompletedProcess(["git", "diff", "--quiet", "FETCH_HEAD", "--", "emberlane/worker.py"], 0, ""),
+                subprocess.CompletedProcess(["git", "reset", "--keep", "FETCH_HEAD"], 0, "HEAD is now at abc123\n"),
+                subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+                subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertTrue(result.result["synced"])
+        self.assertTrue(result.result["bootstrap_matching_worktree"])
+        self.assertEqual(result.result["sync"]["command"], ["git", "reset", "--keep", "FETCH_HEAD"])
+        self.assertEqual(run.call_count, 10)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+    def test_git_sync_matching_worktree_rejects_content_not_equal_to_target(self):
+        self.worker.submit("git_sync", {"expected_branch": "feature", "allow_matching_worktree": True})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, " M emberlane/worker.py\n"),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--quiet"], 0, ""),
+                subprocess.CompletedProcess(["git", "ls-files", "--others", "--exclude-standard"], 0, ""),
+                subprocess.CompletedProcess(["git", "diff", "--name-only"], 0, "emberlane/worker.py\n"),
+                subprocess.CompletedProcess(["git", "diff", "--quiet", "FETCH_HEAD", "--", "emberlane/worker.py"], 1, ""),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertFalse(result.result["synced"])
+        self.assertEqual(result.result["stage"], "matching_worktree_mismatch")
+        self.assertEqual(run.call_count, 7)
+
     def test_git_sync_rejects_invalid_expected_branch_before_enqueue(self):
         with self.assertRaisesRegex(ValueError, "expected_branch"):
             self.worker.submit("git_sync", {"expected_branch": "-c"})
