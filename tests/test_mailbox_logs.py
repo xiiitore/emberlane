@@ -5,7 +5,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from emberlane.mailbox import GitHubIssueMailbox, MailboxError
+from emberlane.mailbox import GitHubIssueMailbox, MailboxError, _redact_sensitive_text
 
 
 class TaskLogPublishingTests(unittest.TestCase):
@@ -74,6 +74,23 @@ class TaskLogPublishingTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(MailboxError, "1 MB"):
             self.mailbox._publish_task_log(task, "comment-7")
+
+
+    def test_shared_redactor_removes_tokens_authorization_and_secret_values(self):
+        raw = (
+            "ghp_" + "A" * 35
+            + " Authorization: Bearer bearer-value"
+            + " api_key=private-value password:secret-value"
+        )
+        cleaned = _redact_sensitive_text(raw)
+        self.assertNotIn("ghp_" + "A" * 35, cleaned)
+        self.assertNotIn("bearer-value", cleaned)
+        self.assertNotIn("private-value", cleaned)
+        self.assertNotIn("secret-value", cleaned)
+        self.assertIn("[REDACTED_GITHUB_TOKEN]", cleaned)
+        self.assertIn("Authorization: Bearer [REDACTED]", cleaned)
+        self.assertIn("api_key=[REDACTED]", cleaned)
+        self.assertIn("password:[REDACTED]", cleaned)
 
 
 if __name__ == "__main__":
