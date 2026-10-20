@@ -173,18 +173,18 @@ class GitHubIssueMailbox:
         safe_result = {key: value for key, value in result.items() if key != "content"}
         def redact(value: str) -> str:
             value = re.sub(r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})", "[REDACTED_GITHUB_TOKEN]", value)
-            value = re.sub(r"(?i)(authorization\\s*[:=]\\s*(?:bearer\\s+)?)[^\\s,;]+", r"\\1[REDACTED]", value)
-            value = re.sub(r"(?im)\\b(password|passwd|secret|api[_-]?key|access[_-]?token)\\b(\\s*[:=]\\s*)[^\\s,;]+", r"\\1\\2[REDACTED]", value)
+            value = re.sub(r"(?i)(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+", r"\1[REDACTED]", value)
+            value = re.sub(r"(?im)\b(password|passwd|secret|api[_-]?key|access[_-]?token)\b(\s*[:=]\s*)[^\s,;]+", r"\1\2[REDACTED]", value)
             return value
         if isinstance(safe_result.get("output"), str):
             safe_result["output"] = redact(safe_result["output"])
         record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "source_comment_id": str(comment_id), "task_id": task_id, "kind": str(task.kind), "status": str(task.status), "attempts": int(task.attempts), "last_error": redact(str(task.last_error)) if task.last_error else None, "result": safe_result}
-        content = "# Emberlane task output\\n\\nFull output retained by the worker; common credential patterns redacted.\\n\\n" + "```json\\n" + json.dumps(record, ensure_ascii=False, indent=2) + "\\n```\\n"
+        content = "# Emberlane task output\n\nFull output retained by the worker; common credential patterns redacted.\n\n" + "```json\n" + json.dumps(record, ensure_ascii=False, indent=2) + "\n```\n"
         if len(content.encode("utf-8")) > 1_000_000:
             raise MailboxError("task log exceeds 1 MB")
         path = f"worker-logs/{task_id}.md"
         endpoint = f"repos/{self.repository}/contents/{path}"
-        branch = "feat/full-worker-output-logs"
+        branch = "feat/local-coding-worker"
         existing = subprocess.run(["gh", "api", f"{endpoint}?ref={branch}"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, check=False, shell=False)
         if existing.returncode == 0:
             try:
