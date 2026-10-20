@@ -252,9 +252,8 @@ class GitHubIssueMailbox:
             handoff_result = self._publish_handoff_record(task, comment_id)
         except Exception as exc:
             handoff_result = {"handoff_status": "failed", "handoff_error": f"{type(exc).__name__}: {exc}"[:500]}
-        if not isinstance(safe_result, dict):
-            safe_result = {"result_available": safe_result is not None}
-        safe_result.update(handoff_result)
+        if isinstance(safe_result, dict):
+            safe_result.update(handoff_result)
         result = {
             "source_comment_id": comment_id,
             "task_id": task.task_id,
