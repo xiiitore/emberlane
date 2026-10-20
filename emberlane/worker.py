@@ -214,7 +214,19 @@ class LocalWorker:
             suffix = [_checked_path(path)]
         names = self._run_git_readonly(["diff", "--name-only", "--", *suffix])
         stat = self._run_git_readonly(["diff", "--stat", "--", *suffix])
-        return {"files": names, "stat": stat, "patch_included": False}
+        staged_names = self._run_git_readonly(
+            ["diff", "--cached", "--name-only", "--", *suffix]
+        )
+        staged_stat = self._run_git_readonly(
+            ["diff", "--cached", "--stat", "--", *suffix]
+        )
+        return {
+            "files": names,
+            "stat": stat,
+            "staged_files": staged_names,
+            "staged_stat": staged_stat,
+            "patch_included": False,
+        }
 
     def _diagnostics(self, payload: dict[str, Any]) -> dict[str, Any]:
         del payload
