@@ -115,6 +115,28 @@ def _gh(args: list[str], *, input_text: str | None = None) -> str:
     raise MailboxError("GitHub CLI failed after bounded retries")
 
 
+def _gh_json(args: list[str]) -> Any:
+    """Fetch and parse JSON with bounded retries for truncated successful responses.
+
+    Use only for read-only API calls: retrying a malformed response must not
+    repeat a write operation.
+    """
+    for attempt in range(MAX_GH_ATTEMPTS):
+        raw = _gh(args)
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as exc:
+            if attempt + 1 >= MAX_GH_ATTEMPTS:
+                raise MailboxError(
+                    f"GitHub returned invalid JSON after {MAX_GH_ATTEMPTS} attempts: {exc}"
+                ) from exc
+            time.sleep(min(
+                BASE_RETRY_DELAY_SECONDS * (2 ** attempt),
+                MAX_RETRY_DELAY_SECONDS,
+            ))
+    raise MailboxError("GitHub returned invalid JSON after bounded retries")
+
+
 def _task_from_comment(body: str) -> dict[str, Any] | None:
     lines = body.splitlines()
     if not lines or lines[0].strip() != TASK_MARKER:
@@ -177,7 +199,7 @@ class GitHubIssueMailbox:
             page = 1
             while True:
                 query = f"{endpoint}?per_page=100&sort=created&direction=desc&page={page}"
-                batch = json.loads(_gh(["api", query]))
+                batch = _gh_json(["api", query])
                 if not isinstance(batch, list) or any(not isinstance(item, dict) for item in batch):
                     raise MailboxError("GitHub returned an unexpected comments response")
                 reached_cursor = False
@@ -192,8 +214,7 @@ class GitHubIssueMailbox:
                 page += 1
             return sorted(collected, key=lambda item: int(item.get("id", 0)))
 
-        raw = _gh(["api", endpoint, "--paginate", "--slurp"])
-        pages = json.loads(raw)
+        pages = _gh_json(["api", endpoint, "--paginate", "--slurp"])
         if not isinstance(pages, list) or any(not isinstance(page, list) for page in pages):
             raise MailboxError("GitHub returned an unexpected comments response")
         return [comment for page in pages for comment in page]
@@ -299,9 +320,8 @@ class GitHubIssueMailbox:
             raise MailboxError("handoff record exceeded 6000 characters")
 
         for attempt in range(3):
-            raw = _gh(["api", f"{endpoint}?ref={branch}"])
             try:
-                current_file = json.loads(raw)
+                current_file = _gh_json(["api", f"{endpoint}?ref={branch}"])
                 current = base64.b64decode(current_file["content"]).decode("utf-8")
                 sha = current_file["sha"]
             except (json.JSONDecodeError, KeyError, ValueError, UnicodeDecodeError) as exc:
