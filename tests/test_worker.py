@@ -85,7 +85,7 @@ class LocalWorkerTests(unittest.TestCase):
         with patch(
             "emberlane.worker.subprocess.run",
             return_value=subprocess.CompletedProcess(
-                ["git", "status", "--porcelain"], 0, " M tracked.py\\n"
+                ["git", "status", "--porcelain"], 0, " M tracked.py\n"
             ),
         ) as run:
             result = self.worker.run_one()
@@ -102,7 +102,7 @@ class LocalWorkerTests(unittest.TestCase):
             "emberlane.worker.subprocess.run",
             side_effect=[
                 subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
-                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\\n"),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
             ],
         ) as run:
             result = self.worker.run_one()
@@ -118,11 +118,11 @@ class LocalWorkerTests(unittest.TestCase):
             "emberlane.worker.subprocess.run",
             side_effect=[
                 subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
-                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\\n"),
-                subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\\n"),
-                subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Already up to date.\\n"),
-                subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\\n"),
-                subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\\n"),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
+                subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Already up to date.\n"),
+                subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+                subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
             ],
         ) as run:
             result = self.worker.run_one()
