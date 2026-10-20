@@ -166,8 +166,6 @@ class LocalWorker:
             shell=False,
         )
         output = completed.stdout or ""
-        if len(output) > MAX_OUTPUT_CHARS:
-            output = output[-MAX_OUTPUT_CHARS:] + "\n[output truncated]"
         return {
             "command": "python -m unittest discover -s tests -v",
             "returncode": completed.returncode,
