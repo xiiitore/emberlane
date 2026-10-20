@@ -1,6 +1,6 @@
 # Emberlane Worker Handoff
 
-Status: protocol specification; automatic file publishing is not yet implemented.
+Status: automatic publishing implemented and verified by live worker tasks on 2026-10-20.
 
 ## Purpose
 Provide a compact, auditable handoff from the local Termux worker to the reviewing assistant without requiring the user to copy terminal output.
@@ -27,7 +27,7 @@ Each completed task should produce one newest-first record containing:
 - Never discard unrelated working-tree changes or run destructive cleanup as part of handoff.
 
 ## Current transport
-Until automatic publication of this file is implemented and verified, GitHub Issue #6 is the working result transport:
+GitHub Issue #6 remains the task intake and fallback result transport; completed task summaries are also published automatically to this file:
 https://github.com/xiiitore/emberlane/issues/6
 
 The assistant must fetch the relevant Issue #6 comments or published file directly. The user should not need to copy terminal output.
