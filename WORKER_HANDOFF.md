@@ -1369,3 +1369,28 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task bb311d81-5541-47f3-b6f2-bf6a983c5870
+
+[Full task output](worker-logs/bb311d81-5541-47f3-b6f2-bf6a983c5870.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T11:48:10.753744+00:00",
+  "source_comment_id": "6290143541",
+  "task_id": "bb311d81-5541-47f3-b6f2-bf6a983c5870",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/bb311d81-5541-47f3-b6f2-bf6a983c5870.md"
+  },
+  "summary": {
+    "passed": true,
+    "returncode": 0
+  }
+}
+```
