@@ -687,3 +687,19 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task cae562b1-5455-4d7e-9134-4013bf91aa4c
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:43:25.425089+00:00",
+  "source_comment_id": "6289065081",
+  "task_id": "cae562b1-5455-4d7e-9134-4013bf91aa4c",
+  "kind": "replace_text",
+  "status": "failed",
+  "attempts": 3,
+  "error_present": true,
+  "summary": {}
+}
+```
