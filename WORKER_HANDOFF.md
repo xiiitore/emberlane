@@ -3704,3 +3704,59 @@ FAILED (failures=1)
 acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 
 ~~~
+
+
+### Worker task a6397b49-6241-4415-8930-2a47e377f194
+
+[Full task output](worker-logs/a6397b49-6241-4415-8930-2a47e377f194.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T18:59:59.732678+00:00",
+  "source_comment_id": "6298769207",
+  "task_id": "a6397b49-6241-4415-8930-2a47e377f194",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/a6397b49-6241-4415-8930-2a47e377f194.md"
+  },
+  "summary": {
+    "platform": "Android-14-aarch64-64bit-ELF",
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 631,
+    "full_log_path": "worker-logs/a6397b49-6241-4415-8930-2a47e377f194.md"
+  }
+}
+```
+
+#### Output: `result.git_status.output`
+
+~~~text
+## feat/local-coding-worker...origin/feat/local-coding-worker
+ M .github/workflows/tests.yml
+ M WORKER_HANDOFF.md
+ M emberlane/mailbox.py
+ M tests/test_mailbox.py
+ M tests/test_mailbox_logs.py
+?? activate-termux-worker-loop.sh
+?? emberlane/mailbox.py.bak-20261020T151505Z
+?? status-short.txt
+?? termux-worker-loop.sh
+?? worker-logs/full-tests-20261020T173033.log
+?? worker-logs/termux-check-20261020T150908Z.md
+?? worker-logs/worker-loop.log
+
+~~~
+
+#### Output: `result.latest_commit.output`
+
+~~~text
+acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
+
+~~~
