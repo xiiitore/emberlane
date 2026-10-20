@@ -168,6 +168,38 @@ class MailboxIdempotencyTests(unittest.TestCase):
 
 
 
+class MailboxPublicationRetryTests(unittest.TestCase):
+    def test_terminal_task_stays_active_when_full_log_publication_fails(self):
+        from types import SimpleNamespace
+
+        task = SimpleNamespace(
+            task_id="task-1",
+            kind="run_tests",
+            status="completed",
+            attempts=1,
+            last_error=None,
+            result={"passed": 3},
+        )
+        mailbox = GitHubIssueMailbox.__new__(GitHubIssueMailbox)
+        mailbox.worker = SimpleNamespace(queue=SimpleNamespace(get=lambda task_id: task))
+        mailbox.state = {"handled": [], "active": {"123": "task-1"}}
+        mailbox._publish_task_log = lambda *_: {
+            "task_log_status": "failed",
+            "task_log_error": "temporary API failure",
+        }
+        mailbox._publish_handoff_record = lambda *args: {"handoff_status": "published"}
+        mailbox._save_state = lambda: None
+        replies = []
+        mailbox._reply = replies.append
+
+        finished = mailbox._finish_if_terminal("123", "task-1")
+
+        self.assertFalse(finished)
+        self.assertEqual(mailbox.state["handled"], [])
+        self.assertEqual(mailbox.state["active"], {"123": "task-1"})
+        self.assertEqual(replies, [])
+
+
 class MailboxRejectionTests(unittest.TestCase):
     def test_invalid_task_kind_reply_uses_real_newline(self):
         with tempfile.TemporaryDirectory() as temp:
