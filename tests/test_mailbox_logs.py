@@ -35,7 +35,7 @@ class TaskLogPublishingTests(unittest.TestCase):
             "task_log_path": "worker-logs/task-123.md",
         })
         args = run.call_args_list[1].args[0]
-        encoded = next(value.split("=", 1)[1] for value in args if value.startswith("-f content="))
+        encoded = next(value[len("content="):] for value in args if value.startswith("content="))
         document = base64.b64decode(encoded).decode("utf-8")
         self.assertIn("test_alpha ... ok", document)
         self.assertIn("test_beta ... FAIL", document)
