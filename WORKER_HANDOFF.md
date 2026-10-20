@@ -623,3 +623,19 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 078c2411-381a-47b2-85a0-ae60665a3e08
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:40:40.336782+00:00",
+  "source_comment_id": "6289043797",
+  "task_id": "078c2411-381a-47b2-85a0-ae60665a3e08",
+  "kind": "replace_text",
+  "status": "failed",
+  "attempts": 3,
+  "error_present": true,
+  "summary": {}
+}
+```
