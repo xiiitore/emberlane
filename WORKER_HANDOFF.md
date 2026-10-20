@@ -1945,3 +1945,36 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task 67db4bcf-0a9a-4ce9-b107-04c56dca1a12
+
+[Full task output](worker-logs/67db4bcf-0a9a-4ce9-b107-04c56dca1a12.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T13:23:20.392787+00:00",
+  "source_comment_id": "6291873845",
+  "task_id": "67db4bcf-0a9a-4ce9-b107-04c56dca1a12",
+  "kind": "write_files",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/67db4bcf-0a9a-4ce9-b107-04c56dca1a12.md"
+  },
+  "summary": {
+    "files_written": [
+      {
+        "path": "emberlane/worker.py",
+        "bytes_written": 25631
+      },
+      {
+        "path": "tests/test_worker.py",
+        "bytes_written": 20249
+      }
+    ]
+  }
+}
+```
