@@ -62,6 +62,7 @@ class LocalWorker:
             "run_tests": self._run_tests,
             "git_status": self._git_status,
             "git_diff": self._git_diff,
+            "git_sync": self._git_sync,
             "diagnostics": self._diagnostics,
         }
 
@@ -173,7 +174,9 @@ class LocalWorker:
             "output": output,
         }
 
-    def _run_git_readonly(self, args: list[str]) -> dict[str, Any]:
+    def _run_git_readonly(
+        self, args: list[str], *, timeout: int = GIT_COMMAND_TIMEOUT
+    ) -> dict[str, Any]:
         command = ["git", *args]
         try:
             completed = subprocess.run(
@@ -183,7 +186,7 @@ class LocalWorker:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                timeout=10,
+                timeout=timeout,
                 check=False,
                 shell=False,
             )
@@ -230,6 +233,76 @@ class LocalWorker:
             "staged_stat": staged_stat,
             "untracked_files": untracked,
             "patch_included": False,
+        }
+
+    def _git_sync(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Fast-forward the current branch from origin only when the worktree is clean."""
+        expected_branch = payload.get("expected_branch")
+        if expected_branch is not None and (
+            not isinstance(expected_branch, str)
+            or not expected_branch
+            or expected_branch.startswith("-")
+            or any(ch.isspace() for ch in expected_branch)
+        ):
+            raise ValueError("expected_branch must be a valid branch name")
+
+        status = self._run_git_readonly(["status", "--porcelain"])
+        if status["returncode"] != 0:
+            return {"synced": False, "stage": "preflight_status", "status": status}
+        if status["output"].strip():
+            return {
+                "synced": False,
+                "stage": "preflight_dirty",
+                "error": "working tree is not clean; no fetch or merge was attempted",
+                "status": status,
+            }
+
+        branch = self._run_git_readonly(["branch", "--show-current"])
+        if branch["returncode"] != 0 or not branch["output"].strip():
+            return {"synced": False, "stage": "current_branch", "branch": branch}
+        current_branch = branch["output"].strip()
+        if current_branch.startswith("-") or any(ch.isspace() for ch in current_branch):
+            return {
+                "synced": False,
+                "stage": "current_branch",
+                "error": "current branch name failed validation",
+                "branch": branch,
+            }
+        if expected_branch is not None and current_branch != expected_branch:
+            return {
+                "synced": False,
+                "stage": "branch_mismatch",
+                "expected_branch": expected_branch,
+                "current_branch": current_branch,
+            }
+
+        fetch = self._run_git_readonly(["fetch", "origin", current_branch], timeout=60)
+        if fetch["returncode"] != 0:
+            return {
+                "synced": False,
+                "stage": "fetch",
+                "branch": current_branch,
+                "fetch": fetch,
+            }
+        merge = self._run_git_readonly(["merge", "--ff-only", "FETCH_HEAD"], timeout=30)
+        if merge["returncode"] != 0:
+            return {
+                "synced": False,
+                "stage": "fast_forward",
+                "branch": current_branch,
+                "fetch": fetch,
+                "merge": merge,
+            }
+        final_status = self._run_git_readonly(["status", "--short", "--branch"])
+        head = self._run_git_readonly(["log", "-1", "--oneline"])
+        return {
+            "synced": final_status["returncode"] == 0 and head["returncode"] == 0,
+            "stage": "complete",
+            "branch": current_branch,
+            "fetch": fetch,
+            "merge": merge,
+            "status": final_status,
+            "head": head,
         }
 
     def _diagnostics(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -295,6 +368,15 @@ class LocalWorker:
                 seen.add(path)
         if kind == "git_diff" and payload.get("path") is not None:
             _checked_path(payload.get("path"))
+        if kind == "git_sync":
+            expected_branch = payload.get("expected_branch")
+            if expected_branch is not None and (
+                not isinstance(expected_branch, str)
+                or not expected_branch
+                or expected_branch.startswith("-")
+                or any(ch.isspace() for ch in expected_branch)
+            ):
+                raise ValueError("expected_branch must be a valid branch name")
         return self.queue.submit(kind, payload, idempotency_key=idempotency_key)
 
     def run_one(self) -> Task | None:
@@ -322,7 +404,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "diagnostics"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "diagnostics"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")

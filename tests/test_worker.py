@@ -80,6 +80,65 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(run.call_args_list[0].args[0], ["git", "status", "--short", "--branch"])
         self.assertEqual(run.call_args_list[1].args[0], ["git", "log", "-1", "--oneline"])
 
+    def test_git_sync_refuses_dirty_worktree_before_fetch(self):
+        self.worker.submit("git_sync", {"expected_branch": "main"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            return_value=subprocess.CompletedProcess(
+                ["git", "status", "--porcelain"], 0, " M tracked.py\n"
+            ),
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertFalse(result.result["synced"])
+        self.assertEqual(result.result["stage"], "preflight_dirty")
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.args[0], ["git", "status", "--porcelain"])
+        self.assertFalse(run.call_args.kwargs["shell"])
+
+    def test_git_sync_requires_expected_branch_to_match(self):
+        self.worker.submit("git_sync", {"expected_branch": "main"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertFalse(result.result["synced"])
+        self.assertEqual(result.result["stage"], "branch_mismatch")
+        self.assertEqual(run.call_count, 2)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+    def test_git_sync_uses_fixed_fetch_and_fast_forward_commands(self):
+        self.worker.submit("git_sync", {"expected_branch": "feature"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
+                subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Already up to date.\n"),
+                subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+                subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertTrue(result.result["synced"])
+        self.assertEqual(result.result["stage"], "complete")
+        self.assertEqual(run.call_count, 6)
+        self.assertEqual(run.call_args_list[2].args[0], ["git", "fetch", "origin", "feature"])
+        self.assertEqual(run.call_args_list[3].args[0], ["git", "merge", "--ff-only", "FETCH_HEAD"])
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+    def test_git_sync_rejects_invalid_expected_branch_before_enqueue(self):
+        with self.assertRaisesRegex(ValueError, "expected_branch"):
+            self.worker.submit("git_sync", {"expected_branch": "-c"})
+        self.assertEqual(self.worker.queue.list_tasks(), [])
+
     def test_diagnostics_returns_runtime_and_git_information(self):
         self.worker.submit("diagnostics", {})
         with patch(
