@@ -202,7 +202,7 @@ class GitHubIssueMailbox:
         encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
         _gh(["api", "--method", "PUT", endpoint, "-f", f"message=Publish full task output {task_id}", "-f", f"content={encoded}", "-f", f"branch={branch}"])
         return {"task_log_status": "published", "task_log_path": path}
-    def _publish_handoff_record(self, task: Any, comment_id: str) -> dict[str, str]:
+    def _publish_handoff_record(self, task: Any, comment_id: str, task_log_result: dict[str, str] | None = None) -> dict[str, str]:
         """Append a bounded, sanitized task summary to the handoff file on GitHub."""
         handoff_path = "WORKER_HANDOFF.md"
         branch = "feat/local-coding-worker"
@@ -229,10 +229,18 @@ class GitHubIssueMailbox:
             "status": str(task.status),
             "attempts": int(task.attempts),
             "error_present": bool(task.last_error),
+            "task_log": task_log_result or {"task_log_status": "not_reported"},
             "summary": summary,
         }
+        task_log_status = (task_log_result or {}).get("task_log_status")
+        task_log_link = (
+            f"[Full task output](worker-logs/{task.task_id}.md)"
+            if task_log_status in {"published", "already_present"}
+            else "Full task output log was not published."
+        )
         section = (
             "\n\n### Worker task " + str(task.task_id) + "\n\n"
+            + task_log_link + "\n\n"
             + "```json\n"
             + json.dumps(record, ensure_ascii=False, indent=2)[:5000]
             + "\n```\n"
@@ -291,7 +299,7 @@ class GitHubIssueMailbox:
         except Exception as exc:
             task_log_result = {"task_log_status": "failed", "task_log_error": f"{type(exc).__name__}: {exc}"[:500]}
         try:
-            handoff_result = self._publish_handoff_record(task, comment_id)
+            handoff_result = self._publish_handoff_record(task, comment_id, task_log_result)
         except Exception as exc:
             handoff_result = {"handoff_status": "failed", "handoff_error": f"{type(exc).__name__}: {exc}"[:500]}
         if isinstance(safe_result, dict):
