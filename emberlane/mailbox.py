@@ -164,7 +164,59 @@ class GitHubIssueMailbox:
         endpoint = f"repos/{self.repository}/issues/{self.issue_number}/comments"
         _gh(["api", "--method", "POST", endpoint, "-f", f"body={body[:MAX_COMMENT_CHARS]}"])
 
-    def _publish_handoff_record(self, task: Any, comment_id: str) -> dict[str, str]:
+    def _publish_task_log(self, task: Any, comment_id: str) -> dict[str, str]:
+        """Publish complete retained output in readable, per-task Markdown."""
+        task_id = str(task.task_id)
+        if not re.fullmatch(r"[A-Za-z0-9-]{1,100}", task_id):
+            raise MailboxError("task id is not safe for a log path")
+        result = task.result if isinstance(task.result, dict) else {}
+        outputs: list[tuple[str, str]] = []
+        def redact(value: str) -> str:
+            value = re.sub(r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})", "[REDACTED_GITHUB_TOKEN]", value)
+            value = re.sub(r"(?i)(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+", r"\1[REDACTED]", value)
+            value = re.sub(r"(?im)\b(password|passwd|secret|api[_-]?key|access[_-]?token)\b(\s*[:=]\s*)[^\s,;]+", r"\1\2[REDACTED]", value)
+            return value
+        def sanitize(value: Any, path: str) -> Any:
+            if isinstance(value, str):
+                return redact(value)
+            if isinstance(value, list):
+                return [sanitize(item, f"{path}[{index}]") for index, item in enumerate(value)]
+            if isinstance(value, dict):
+                cleaned = {}
+                for key, item in value.items():
+                    child_path = f"{path}.{key}"
+                    if key == "content":
+                        cleaned[key] = "[OMITTED_FILE_CONTENT]"
+                    elif key == "output" and isinstance(item, str):
+                        outputs.append((child_path, redact(item)))
+                        cleaned[key] = f"[FULL OUTPUT IN SECTION: {child_path}]"
+                    else:
+                        cleaned[key] = sanitize(item, child_path)
+                return cleaned
+            return value
+        record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "source_comment_id": str(comment_id), "task_id": task_id, "kind": str(task.kind), "status": str(task.status), "attempts": int(task.attempts), "last_error": redact(str(task.last_error)) if task.last_error else None, "result": sanitize(result, "result")}
+        content = "# Emberlane task output\n\n" + f"- Task ID: `{task_id}`\n- Kind: `{task.kind}`\n- Status: `{task.status}`\n- Attempts: `{task.attempts}`\n- Source comment: `{comment_id}`\n\n"
+        content += "## Result metadata\n\n```json\n" + json.dumps(record, ensure_ascii=False, indent=2) + "\n```\n"
+        for label, output in outputs:
+            content += f"\n## Full output: `{label}`\n\n~~~text\n{output}\n~~~\n"
+        if len(content.encode("utf-8")) > 1_000_000:
+            raise MailboxError("task log exceeds GitHub single-file size limit (1 MB)")
+        path = f"worker-logs/{task_id}.md"
+        endpoint = f"repos/{self.repository}/contents/{path}"
+        branch = "feat/local-coding-worker"
+        existing = subprocess.run(["gh", "api", f"{endpoint}?ref={branch}"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, check=False, shell=False)
+        if existing.returncode == 0:
+            try:
+                previous = base64.b64decode(json.loads(existing.stdout)["content"]).decode("utf-8")
+            except (json.JSONDecodeError, KeyError, ValueError, UnicodeDecodeError) as exc:
+                raise MailboxError("could not inspect existing task log") from exc
+            if re.search(r'"task_id"\s*:\s*"' + re.escape(task_id) + r'"', previous):
+                return {"task_log_status": "already_present", "task_log_path": path}
+            raise MailboxError("task log path exists with unrelated content")
+        encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
+        _gh(["api", "--method", "PUT", endpoint, "-f", f"message=Publish full task output {task_id}", "-f", f"content={encoded}", "-f", f"branch={branch}"])
+        return {"task_log_status": "published", "task_log_path": path}
+    def _publish_handoff_record(self, task: Any, comment_id: str, task_log_result: dict[str, str] | None = None) -> dict[str, str]:
         """Append a bounded, sanitized task summary to the handoff file on GitHub."""
         handoff_path = "WORKER_HANDOFF.md"
         branch = "feat/local-coding-worker"
@@ -191,10 +243,18 @@ class GitHubIssueMailbox:
             "status": str(task.status),
             "attempts": int(task.attempts),
             "error_present": bool(task.last_error),
+            "task_log": task_log_result or {"task_log_status": "not_reported"},
             "summary": summary,
         }
+        task_log_status = (task_log_result or {}).get("task_log_status")
+        task_log_link = (
+            f"[Full task output](worker-logs/{task.task_id}.md)"
+            if task_log_status in {"published", "already_present"}
+            else "Full task output log was not published."
+        )
         section = (
             "\n\n### Worker task " + str(task.task_id) + "\n\n"
+            + task_log_link + "\n\n"
             + "```json\n"
             + json.dumps(record, ensure_ascii=False, indent=2)[:5000]
             + "\n```\n"
@@ -249,10 +309,15 @@ class GitHubIssueMailbox:
                 if key != "content" and key != "output"
             }
         try:
-            handoff_result = self._publish_handoff_record(task, comment_id)
+            task_log_result = self._publish_task_log(task, comment_id)
+        except Exception as exc:
+            task_log_result = {"task_log_status": "failed", "task_log_error": f"{type(exc).__name__}: {exc}"[:500]}
+        try:
+            handoff_result = self._publish_handoff_record(task, comment_id, task_log_result)
         except Exception as exc:
             handoff_result = {"handoff_status": "failed", "handoff_error": f"{type(exc).__name__}: {exc}"[:500]}
         if isinstance(safe_result, dict):
+            safe_result.update(task_log_result)
             safe_result.update(handoff_result)
         result = {
             "source_comment_id": comment_id,
