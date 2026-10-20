@@ -735,3 +735,22 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task ec6af18a-1422-45b1-8b2a-19bf123399be
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:44:40.751749+00:00",
+  "source_comment_id": "6289080418",
+  "task_id": "ec6af18a-1422-45b1-8b2a-19bf123399be",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "bytes_written": 15306,
+    "path": "tests/test_mailbox.py"
+  }
+}
+```
