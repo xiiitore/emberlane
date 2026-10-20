@@ -206,13 +206,13 @@ class LocalWorkerTests(unittest.TestCase):
             self.worker.submit("git_sync", {"expected_branch": "-c"})
         self.assertEqual(self.worker.queue.list_tasks(), [])
 
-    def test_git_commit_rejects_invalid_payload_before_enqueue(self):
+    def test_git_publish_handlers_reject_invalid_payloads_before_git_commands(self):
         with self.assertRaisesRegex(ValueError, "paths"):
-            self.worker.submit("git_commit", {"expected_branch": "feature", "paths": [], "message": "fix"})
+            self.worker._git_commit({"expected_branch": "feature", "paths": [], "message": "fix"})
         with self.assertRaisesRegex(ValueError, "paths"):
-            self.worker.submit("git_commit", {"expected_branch": "feature", "paths": ["../secret"], "message": "fix"})
+            self.worker._git_commit({"expected_branch": "feature", "paths": ["../secret"], "message": "fix"})
         with self.assertRaisesRegex(ValueError, "expected_branch"):
-            self.worker.submit("git_push", {"expected_branch": "-f"})
+            self.worker._git_push({"expected_branch": "-f"})
         self.assertEqual(self.worker.queue.list_tasks(), [])
 
     def test_git_commit_refuses_preexisting_staged_changes(self):
