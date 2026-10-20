@@ -55,6 +55,18 @@ class GitDiffTests(unittest.TestCase):
         self.assertNotIn("staged.py", result.result["files"]["output"])
         self.assertFalse(result.result["patch_included"])
 
+    def test_reports_untracked_files_without_reading_their_contents(self):
+        (self.root / "new_file.py").write_text("PRIVATE_VALUE = 'not returned'\n", encoding="utf-8")
+
+        task = self.worker.submit("git_diff", {})
+        result = self.worker.run_one()
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.result["untracked_files"]["returncode"], 0)
+        self.assertIn("new_file.py", result.result["untracked_files"]["output"])
+        self.assertNotIn("PRIVATE_VALUE", result.result["untracked_files"]["output"])
+        self.assertFalse(result.result["patch_included"])
+
 
 if __name__ == "__main__":
     unittest.main()
