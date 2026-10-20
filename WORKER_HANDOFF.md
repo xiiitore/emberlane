@@ -3931,3 +3931,59 @@ No stdout/stderr output field was retained for inline publication.
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/b7161e0c-a090-44bf-8af9-dbc53e52583e.md).
+
+
+### Worker task 5a736c14-e8f8-4f70-a2bb-e3ebbdd24a91
+
+[Full task output](worker-logs/5a736c14-e8f8-4f70-a2bb-e3ebbdd24a91.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T22:10:16.889254+00:00",
+  "source_comment_id": "6302901454",
+  "task_id": "5a736c14-e8f8-4f70-a2bb-e3ebbdd24a91",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/5a736c14-e8f8-4f70-a2bb-e3ebbdd24a91.md"
+  },
+  "summary": {
+    "platform": "Android-14-aarch64-64bit-ELF",
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 631,
+    "full_log_path": "worker-logs/5a736c14-e8f8-4f70-a2bb-e3ebbdd24a91.md"
+  }
+}
+```
+
+#### Output: `result.git_status.output`
+
+~~~text
+## feat/local-coding-worker...origin/feat/local-coding-worker
+ M .github/workflows/tests.yml
+ M WORKER_HANDOFF.md
+ M emberlane/mailbox.py
+ M tests/test_mailbox.py
+ M tests/test_mailbox_logs.py
+?? activate-termux-worker-loop.sh
+?? emberlane/mailbox.py.bak-20261020T151505Z
+?? status-short.txt
+?? termux-worker-loop.sh
+?? worker-logs/full-tests-20261020T173033.log
+?? worker-logs/termux-check-20261020T150908Z.md
+?? worker-logs/worker-loop.log
+
+~~~
+
+#### Output: `result.latest_commit.output`
+
+~~~text
+acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
+
+~~~
