@@ -524,3 +524,23 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 4c2feca5-fb60-42ff-a8aa-6028bb800e69
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:37:56.122516+00:00",
+  "source_comment_id": "6289007358",
+  "task_id": "4c2feca5-fb60-42ff-a8aa-6028bb800e69",
+  "kind": "git_diff",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "files_count": 1,
+    "diff_summary": "1 file changed, 349 insertions(+), 8 deletions(-)",
+    "patch_included": false
+  }
+}
+```
