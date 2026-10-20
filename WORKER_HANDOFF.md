@@ -1682,3 +1682,28 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 2616a5f1-4afb-4d1f-9ca4-39166e71ba3d
+
+[Full task output](worker-logs/2616a5f1-4afb-4d1f-9ca4-39166e71ba3d.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T13:06:04.064371+00:00",
+  "source_comment_id": "6291535662",
+  "task_id": "2616a5f1-4afb-4d1f-9ca4-39166e71ba3d",
+  "kind": "write_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/2616a5f1-4afb-4d1f-9ca4-39166e71ba3d.md"
+  },
+  "summary": {
+    "bytes_written": 17361,
+    "path": "tests/test_worker.py"
+  }
+}
+```
