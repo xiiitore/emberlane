@@ -38,3 +38,42 @@ The assistant must fetch the relevant Issue #6 comments or published file direct
 3. The assistant fetches the file and verifies the new record's task ID and status.
 4. A test proves the record is bounded, sanitized, appended without erasing prior entries, and recoverable after worker restart.
 5. If publication fails, the worker retains the record locally and reports the publication failure through Issue #6.
+
+
+## Test batch — 2026-10-20 (assistant-forwarded worker results)
+
+These records were fetched from Issue #6 after the local worker completed each task. They were appended to this document by the assistant; this test does **not** prove the worker can publish this file itself.
+
+### 1. diagnostics
+- Source task comment: 6288630407
+- Worker result comment: 6288632617
+- Task ID: 6e098641-fbbf-464c-863a-df302d8395ee
+- Status: completed
+- Attempts: 1
+- Return code: 0
+- Observed output: Python 3.13.13; Android 14, aarch64
+- Verification: OBSERVED
+- Output limitation: connector returned a truncated diagnostic string; no additional environment values recorded.
+
+### 2. git_status
+- Source task comment: 6288630952
+- Worker result comment: 6288636996
+- Task ID: 52b0b147-b6fb-4c1a-a624-0a6f86aec4a4
+- Status: completed
+- Attempts: 1
+- Return code: 0
+- Branch status: feat/local-coding-worker...origin/feat/local-coding-worker
+- Working tree dirty: true
+- Changed paths count: 14
+- HEAD: ac1b2ca (Fix mailbox rejection reply formatting)
+- Verification: OBSERVED
+
+### 3. list_files
+- Source task comment: 6288631600
+- Worker result comment: 6288641090
+- Task ID: 0bc36a91-0f1a-4070-a768-35cd5c3cdd61
+- Status: completed
+- Attempts: 1
+- Result available: true
+- Detailed file listing: not present in the returned result; do not infer a listing was delivered.
+- Verification: PASS for task completion; UNKNOWN for listing content.
