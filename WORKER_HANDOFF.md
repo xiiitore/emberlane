@@ -77,3 +77,22 @@ These records were fetched from Issue #6 after the local worker completed each t
 - Result available: true
 - Detailed file listing: not present in the returned result; do not infer a listing was delivered.
 - Verification: PASS for task completion; UNKNOWN for listing content.
+
+
+### Worker task 11b0518c-b9fe-44ca-8eac-2a1ba1b786ff
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:20:36.945351+00:00",
+  "source_comment_id": "6288723220",
+  "task_id": "11b0518c-b9fe-44ca-8eac-2a1ba1b786ff",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "platform": "Android-14-aarch64-64bit-ELF",
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0"
+  }
+}
+```
