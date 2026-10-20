@@ -2003,3 +2003,25 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 635b5a51-33f3-4012-ba73-4036ce21d852
+
+[Full task output](worker-logs/635b5a51-33f3-4012-ba73-4036ce21d852.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T13:24:20.951033+00:00",
+  "source_comment_id": "6291896127",
+  "task_id": "635b5a51-33f3-4012-ba73-4036ce21d852",
+  "kind": "git_stash_inspect",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/635b5a51-33f3-4012-ba73-4036ce21d852.md"
+  },
+  "summary": {}
+}
+```
