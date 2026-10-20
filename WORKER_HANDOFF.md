@@ -3795,3 +3795,36 @@ acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/2722a5d8-52b0-4eec-97dd-e034a5558772.md).
+
+
+### Worker task e3b98802-a8e1-4b1e-b4b1-fa062d318257
+
+[Full task output](worker-logs/e3b98802-a8e1-4b1e-b4b1-fa062d318257.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T19:19:45.473677+00:00",
+  "source_comment_id": "6299209280",
+  "task_id": "e3b98802-a8e1-4b1e-b4b1-fa062d318257",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/e3b98802-a8e1-4b1e-b4b1-fa062d318257.md"
+  },
+  "summary": {
+    "path": "emberlane/mailbox.py",
+    "bytes_written": 22846
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/e3b98802-a8e1-4b1e-b4b1-fa062d318257.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
