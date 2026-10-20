@@ -773,3 +773,22 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task baf54fde-89d1-420d-9ed0-93cc3bdca314
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:45:10.517406+00:00",
+  "source_comment_id": "6289094386",
+  "task_id": "baf54fde-89d1-420d-9ed0-93cc3bdca314",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "path": "tests/test_mailbox.py",
+    "bytes_written": 15876
+  }
+}
+```
