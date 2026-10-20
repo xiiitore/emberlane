@@ -190,7 +190,7 @@ class LocalWorker:
             return {
                 "command": command,
                 "returncode": completed.returncode,
-                "output": (completed.stdout or "")[-MAX_OUTPUT_CHARS:],
+                "output": completed.stdout or "",
             }
         except (OSError, subprocess.TimeoutExpired) as exc:
             return {
