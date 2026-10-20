@@ -165,26 +165,40 @@ class GitHubIssueMailbox:
         _gh(["api", "--method", "POST", endpoint, "-f", f"body={body[:MAX_COMMENT_CHARS]}"])
 
     def _publish_task_log(self, task: Any, comment_id: str) -> dict[str, str]:
-        """Publish the complete retained task output to a dedicated Markdown file."""
+        """Publish complete retained output in readable, per-task Markdown."""
         task_id = str(task.task_id)
         if not re.fullmatch(r"[A-Za-z0-9-]{1,100}", task_id):
             raise MailboxError("task id is not safe for a log path")
         result = task.result if isinstance(task.result, dict) else {}
+        outputs: list[tuple[str, str]] = []
         def redact(value: str) -> str:
             value = re.sub(r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})", "[REDACTED_GITHUB_TOKEN]", value)
             value = re.sub(r"(?i)(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+", r"\1[REDACTED]", value)
             value = re.sub(r"(?im)\b(password|passwd|secret|api[_-]?key|access[_-]?token)\b(\s*[:=]\s*)[^\s,;]+", r"\1\2[REDACTED]", value)
             return value
-        def sanitize(value: Any, key: str = "") -> Any:
+        def sanitize(value: Any, path: str) -> Any:
             if isinstance(value, str):
                 return redact(value)
             if isinstance(value, list):
-                return [sanitize(item, key) for item in value]
+                return [sanitize(item, f"{path}[{index}]") for index, item in enumerate(value)]
             if isinstance(value, dict):
-                return {k: ("[OMITTED_FILE_CONTENT]" if k == "content" else sanitize(v, k)) for k, v in value.items()}
+                cleaned = {}
+                for key, item in value.items():
+                    child_path = f"{path}.{key}"
+                    if key == "content":
+                        cleaned[key] = "[OMITTED_FILE_CONTENT]"
+                    elif key == "output" and isinstance(item, str):
+                        outputs.append((child_path, redact(item)))
+                        cleaned[key] = f"[FULL OUTPUT IN SECTION: {child_path}]"
+                    else:
+                        cleaned[key] = sanitize(item, child_path)
+                return cleaned
             return value
-        record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "source_comment_id": str(comment_id), "task_id": task_id, "kind": str(task.kind), "status": str(task.status), "attempts": int(task.attempts), "last_error": redact(str(task.last_error)) if task.last_error else None, "result": sanitize(result)}
-        content = "# Emberlane task output\n\nComplete output retained by the worker, with common credential patterns redacted. File-content fields are omitted.\n\n```json\n" + json.dumps(record, ensure_ascii=False, indent=2) + "\n```\n"
+        record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "source_comment_id": str(comment_id), "task_id": task_id, "kind": str(task.kind), "status": str(task.status), "attempts": int(task.attempts), "last_error": redact(str(task.last_error)) if task.last_error else None, "result": sanitize(result, "result")}
+        content = "# Emberlane task output\n\n" + f"- Task ID: `{task_id}`\n- Kind: `{task.kind}`\n- Status: `{task.status}`\n- Attempts: `{task.attempts}`\n- Source comment: `{comment_id}`\n\n"
+        content += "## Result metadata\n\n```json\n" + json.dumps(record, ensure_ascii=False, indent=2) + "\n```\n"
+        for label, output in outputs:
+            content += f"\n## Full output: `{label}`\n\n~~~text\n{output}\n~~~\n"
         if len(content.encode("utf-8")) > 1_000_000:
             raise MailboxError("task log exceeds GitHub single-file size limit (1 MB)")
         path = f"worker-logs/{task_id}.md"
