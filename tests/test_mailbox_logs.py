@@ -39,6 +39,7 @@ class TaskLogPublishingTests(unittest.TestCase):
         document = base64.b64decode(encoded).decode("utf-8")
         self.assertIn("test_alpha ... ok", document)
         self.assertIn("test_beta ... FAIL", document)
+        self.assertIn("test_alpha ... ok\ntest_beta ... FAIL", document)
         self.assertIn("TRACEBACK_LINE", document)
         self.assertNotIn("private file text", document)
         self.assertIn("[OMITTED_FILE_CONTENT]", document)
