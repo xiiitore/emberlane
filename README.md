@@ -20,7 +20,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `git_status`, `git_diff`, `git_sync`, and `diagnostics`. It does not accept
+`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept
 arbitrary shell commands.
 
 ```sh
@@ -47,6 +47,8 @@ python -m emberlane run-one
 python -m emberlane submit git_status
 python -m emberlane submit git_diff
 python -m emberlane submit git_sync --payload '{"expected_branch":"feat/local-coding-worker"}'
+python -m emberlane submit git_stash_inspect
+python -m emberlane run-one
 python -m emberlane submit diagnostics
 
 # Queue and execute the full unittest suite
@@ -87,7 +89,7 @@ shell and a timeout. By default it runs the full suite with
 `python -m unittest discover -s tests -v`; an optional `test_file` selects one
 exact `test_*.py` filename directly inside `tests/`. Invalid names are rejected
 before queueing, and a missing test file returns an explicit failed result
-instead of treating zero discovered tests as success. Project tests are still
+instead of treating zero discovered tests as success. `git_stash_inspect` lists up to ten recent stashes and shows file-change summaries only; it never applies or drops a stash. Project tests are still
 executable code: run the worker only in a repository you trust.
 
 ## Security boundary
