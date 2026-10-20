@@ -3557,3 +3557,36 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task d65d5390-cb06-432c-b8ab-d47405c4d686
+
+[Full task output](worker-logs/d65d5390-cb06-432c-b8ab-d47405c4d686.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T16:51:42.256455+00:00",
+  "source_comment_id": "6296241153",
+  "task_id": "d65d5390-cb06-432c-b8ab-d47405c4d686",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/d65d5390-cb06-432c-b8ab-d47405c4d686.md"
+  },
+  "summary": {
+    "bytes_written": 21978,
+    "path": "emberlane/mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/d65d5390-cb06-432c-b8ab-d47405c4d686.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
