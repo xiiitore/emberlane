@@ -6,10 +6,12 @@ Requires the GitHub CLI (gh) to be installed and authenticated locally.
 """
 from __future__ import annotations
 
+import base64
 import json
 import re
 import subprocess
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -162,6 +164,73 @@ class GitHubIssueMailbox:
         endpoint = f"repos/{self.repository}/issues/{self.issue_number}/comments"
         _gh(["api", "--method", "POST", endpoint, "-f", f"body={body[:MAX_COMMENT_CHARS]}"])
 
+    def _publish_handoff_record(self, task: Any, comment_id: str) -> dict[str, str]:
+        """Append a bounded, sanitized task summary to the handoff file on GitHub."""
+        handoff_path = "WORKER_HANDOFF.md"
+        branch = "feat/local-coding-worker"
+        endpoint = f"repos/{self.repository}/contents/{handoff_path}"
+        result = task.result if isinstance(task.result, dict) else {}
+        allowed_keys = {
+            "returncode", "passed", "failed", "tests_run", "branch_status",
+            "working_tree_dirty", "changed_paths_count", "head_commit",
+            "files_written", "path", "bytes_written", "result_available",
+            "python_version", "platform", "content_returned_to_mailbox",
+            "content_truncated",
+        }
+        summary = {key: result[key] for key in allowed_keys if key in result}
+        if isinstance(summary.get("files_written"), list):
+            summary["files_written"] = [
+                {"path": item.get("path"), "bytes_written": item.get("bytes_written")}
+                for item in summary["files_written"] if isinstance(item, dict)
+            ]
+        record = {
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "source_comment_id": str(comment_id),
+            "task_id": str(task.task_id),
+            "kind": str(task.kind),
+            "status": str(task.status),
+            "attempts": int(task.attempts),
+            "error_present": bool(task.last_error),
+            "summary": summary,
+        }
+        section = (
+            "\n\n### Worker task " + str(task.task_id) + "\n\n"
+            + "```json\n"
+            + json.dumps(record, ensure_ascii=False, indent=2)[:5000]
+            + "\n```\n"
+        )
+        if len(section) > 6000:
+            raise MailboxError("handoff record exceeded 6000 characters")
+
+        for attempt in range(3):
+            raw = _gh(["api", f"{endpoint}?ref={branch}"])
+            try:
+                current_file = json.loads(raw)
+                current = base64.b64decode(current_file["content"]).decode("utf-8")
+                sha = current_file["sha"]
+            except (json.JSONDecodeError, KeyError, ValueError, UnicodeDecodeError) as exc:
+                raise MailboxError("could not decode existing handoff document") from exc
+            if str(task.task_id) in current:
+                return {"handoff_status": "already_present"}
+            updated = current + section
+            encoded = base64.b64encode(updated.encode("utf-8")).decode("ascii")
+            try:
+                _gh([
+                    "api", "--method", "PUT", endpoint,
+                    "-f", f"message=Append Emberlane worker result {task.task_id}",
+                    "-f", f"content={encoded}",
+                    "-f", f"sha={sha}",
+                    "-f", f"branch={branch}",
+                ])
+                return {"handoff_status": "published"}
+            except MailboxError as exc:
+                message = str(exc).casefold()
+                if attempt == 2 or not any(
+                    marker in message for marker in ("409", "422", "sha", "conflict")
+                ):
+                    raise
+        raise MailboxError("handoff publish conflict after three attempts")
+
     def _finish_if_terminal(self, comment_id: str, task_id: str) -> bool:
         task = self.worker.queue.get(task_id)
         if task is None:
@@ -174,17 +243,18 @@ class GitHubIssueMailbox:
             return False
         safe_result = task.result
         if isinstance(safe_result, dict):
-            # The mailbox issue may be public: never echo file contents or raw
-            # test output into GitHub comments.
-            # Keep test-runner output visible for debugging. File contents remain
-            # excluded from issue comments because the mailbox issue can be public.
-            # Other task output remains structured-only unless explicitly reviewed.
+            # Do not publish file contents or raw command output in public comments.
             safe_result = {
                 key: value for key, value in safe_result.items()
-                if key != "content" and (key != "output" or task.kind == "run_tests")
+                if key != "content" and key != "output"
             }
-            if task.kind == "read_file":
-                safe_result["content_returned_to_mailbox"] = False
+        try:
+            handoff_result = self._publish_handoff_record(task, comment_id)
+        except Exception as exc:
+            handoff_result = {"handoff_status": "failed", "handoff_error": f"{type(exc).__name__}: {exc}"[:500]}
+        if not isinstance(safe_result, dict):
+            safe_result = {"result_available": safe_result is not None}
+        safe_result.update(handoff_result)
         result = {
             "source_comment_id": comment_id,
             "task_id": task.task_id,
