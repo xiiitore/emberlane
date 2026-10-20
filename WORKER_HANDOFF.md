@@ -1585,3 +1585,25 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 39dce846-2f61-483b-9f7b-4d0d5b8379c8
+
+[Full task output](worker-logs/39dce846-2f61-483b-9f7b-4d0d5b8379c8.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T13:00:04.991524+00:00",
+  "source_comment_id": "6291420207",
+  "task_id": "39dce846-2f61-483b-9f7b-4d0d5b8379c8",
+  "kind": "git_sync",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/39dce846-2f61-483b-9f7b-4d0d5b8379c8.md"
+  },
+  "summary": {}
+}
+```
