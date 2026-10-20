@@ -27,6 +27,7 @@ class TaskLogPublishingTests(unittest.TestCase):
                 "output": output, "returncode": 1,
                 "nested": {"output": "token=ghp_" + "A" * 35},
                 "content": "private file text",
+                "source_text": "local source\napi_key=super-secret-value\n" + "ghp_" + "B" * 35,
             },
         )
         result = self.mailbox._publish_task_log(task, "comment-7")
@@ -43,6 +44,10 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertIn("TRACEBACK_LINE", document)
         self.assertNotIn("private file text", document)
         self.assertIn("[OMITTED_FILE_CONTENT]", document)
+        self.assertIn("local source", document)
+        self.assertIn("[REDACTED]", document)
+        self.assertIn("[REDACTED_GITHUB_TOKEN]", document)
+        self.assertIn("[SOURCE TEXT IN SECTION: result.source_text]", document)
         self.assertIn("[REDACTED_GITHUB_TOKEN]", document)
         self.assertIn("worker-logs/task-123.md", args[4])
         self.assertTrue(any("feat/local-coding-worker" in value for value in args))
