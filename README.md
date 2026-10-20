@@ -20,7 +20,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `git_status`, `git_diff`, `git_sync`, and `diagnostics`. It does not accept
+`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_commit`, `git_push`, and `diagnostics`. It does not accept
 arbitrary shell commands.
 
 ```sh
@@ -42,6 +42,12 @@ python -m emberlane run-one
 python -m emberlane submit git_status
 python -m emberlane submit git_diff
 python -m emberlane submit git_sync --payload '{"expected_branch":"feat/local-coding-worker"}'
+
+# Run tests, stage only explicitly named changed paths, and commit on the expected branch
+python -m emberlane submit git_commit --payload '{"expected_branch":"feat/local-coding-worker","paths":["src/example.py","tests/test_example.py"],"message":"fix: example behavior"}'
+
+# Push a clean branch without force; the worker verifies the remote HEAD afterward
+python -m emberlane submit git_push --payload '{"expected_branch":"feat/local-coding-worker"}'
 python -m emberlane submit diagnostics
 
 # Queue and execute the fixed unittest command
@@ -76,11 +82,18 @@ you trust.
 
 Workspace path checks protect against accidental path escape and common
 symlink traversal; they are not an OS sandbox. The worker runs with the same
-OS permissions as its owner. It does not provide a network listener, remote
-task submission, automatic Git commits/pushes, or an LLM that independently
-writes code from natural-language specifications. File-writing tasks must
-include the exact file path and content in their payload. Use a separate OS
-account or container for stronger isolation.
+OS permissions as its owner. It does not provide a network listener or an LLM
+that independently writes code from natural-language specifications. File-writing
+tasks must include the exact file path and content in their payload.
+
+`git_commit` runs the fixed unit-test suite before staging, refuses pre-existing
+staged changes, stages only explicitly listed changed paths, checks the staged
+path set and whitespace, then commits. `git_push` requires a clean worktree and
+matching expected branch, fetches origin, refuses a non-fast-forward state, uses
+a normal non-force push, and verifies the remote branch SHA. These are explicit
+allow-listed Git operations, not arbitrary command execution. They still operate
+with the owner's Git permissions; use a separate OS account or container for
+stronger isolation.
 
 ## Optional GitHub issue mailbox
 
