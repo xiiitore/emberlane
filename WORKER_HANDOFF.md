@@ -719,3 +719,19 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task 99fc4a32-2012-4d45-a13f-a63d73dc3425
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:44:25.704411+00:00",
+  "source_comment_id": "6289078275",
+  "task_id": "99fc4a32-2012-4d45-a13f-a63d73dc3425",
+  "kind": "replace_text",
+  "status": "failed",
+  "attempts": 3,
+  "error_present": true,
+  "summary": {}
+}
+```
