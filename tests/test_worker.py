@@ -54,6 +54,38 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertTrue(result.result["passed"])
         self.assertEqual(result.result["returncode"], 0)
 
+    def test_run_tests_can_target_one_test_file(self):
+        (self.root / "tests" / "test_targeted.py").write_text(
+            "import unittest\nclass T(unittest.TestCase):\n"
+            " def test_targeted(self): self.assertEqual(2 * 3, 6)\n"
+        )
+        self.worker.submit("run_tests", {"test_file": "test_targeted.py"})
+        result = self.worker.run_one()
+        self.assertIsNotNone(result)
+        self.assertEqual(result.status, "completed")
+        self.assertTrue(result.result["passed"])
+        self.assertEqual(
+            result.result["command"],
+            "python -m unittest discover -s tests -p test_targeted.py -v",
+        )
+        self.assertIn("test_targeted", result.result["output"])
+
+    def test_run_tests_rejects_unsafe_test_file_before_queueing(self):
+        for value in ("../test_worker.py", "test_*.py", "other.py", "test_bad.py\n"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "test_file"):
+                    self.worker.submit("run_tests", {"test_file": value})
+        self.assertEqual(self.worker.queue.list_tasks(), [])
+
+    def test_run_tests_reports_missing_target_as_failure(self):
+        self.worker.submit("run_tests", {"test_file": "test_missing.py"})
+        result = self.worker.run_one()
+        self.assertIsNotNone(result)
+        self.assertEqual(result.status, "completed")
+        self.assertFalse(result.result["passed"])
+        self.assertEqual(result.result["returncode"], 2)
+        self.assertEqual(result.result["error"], "test_file_not_found")
+
     def test_git_status_uses_only_fixed_read_only_commands(self):
         self.worker.submit("git_status", {})
         with patch(
