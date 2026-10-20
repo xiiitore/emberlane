@@ -855,3 +855,22 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 12209bd0-cff5-43d3-8429-128bc0ccf292
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:47:10.487079+00:00",
+  "source_comment_id": "6289152189",
+  "task_id": "12209bd0-cff5-43d3-8429-128bc0ccf292",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "path": "tests/test_handoff_retry.py",
+    "bytes_written": 2026
+  }
+}
+```
