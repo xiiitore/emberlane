@@ -11,6 +11,7 @@ from emberlane.mailbox import (
     MAX_GH_ATTEMPTS,
     MailboxError,
     _gh,
+    _gh_json,
     _retry_after_seconds,
     _task_from_comment,
 )
@@ -76,14 +77,11 @@ class GitHubRetryTests(unittest.TestCase):
         self.assertIsNone(_retry_after_seconds("no retry header"))
 
     @patch("emberlane.mailbox.time.sleep")
-    @patch("emberlane.mailbox.subprocess.run")
-    def test_truncated_json_response_retries_then_succeeds(self, run, sleep):
-        run.side_effect = [
-            self.response(1, stderr="unexpected end of JSON input"),
-            self.response(0, stdout='{"ok": true}'),
-        ]
-        self.assertEqual(_gh(["api", "repos/example/repo"]), '{"ok": true}')
-        self.assertEqual(run.call_count, 2)
+    @patch("emberlane.mailbox._gh")
+    def test_truncated_successful_json_response_retries_then_succeeds(self, gh, sleep):
+        gh.side_effect = ["{\"ok\":", '{"ok": true}']
+        self.assertEqual(_gh_json(["api", "repos/example/repo"]), {"ok": True})
+        self.assertEqual(gh.call_count, 2)
         sleep.assert_called_once_with(1.0)
 
     @patch("emberlane.mailbox.time.sleep")
