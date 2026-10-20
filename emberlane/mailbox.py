@@ -39,6 +39,14 @@ _RETRYABLE_ERRORS = (
 )
 
 
+def _redact_sensitive_text(value: str) -> str:
+    """Redact common GitHub credentials and key/value secrets before publication."""
+    value = re.sub(r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})", "[REDACTED_GITHUB_TOKEN]", value)
+    value = re.sub(r"(?i)(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+", r"\1[REDACTED]", value)
+    value = re.sub(r"(?im)\b(password|passwd|secret|api[_-]?key|access[_-]?token)\b(\s*[:=]\s*)[^\s,;]+", r"\1\2[REDACTED]", value)
+    return value
+
+
 class MailboxError(RuntimeError):
     pass
 
@@ -326,7 +334,7 @@ class GitHubIssueMailbox:
             "kind": task.kind,
             "status": task.status,
             "attempts": task.attempts,
-            "last_error": task.last_error,
+            "last_error": _redact_sensitive_text(str(task.last_error)) if task.last_error else None,
             "result": safe_result,
         }
         self._reply("EMBERLANE_RESULT\n" + json.dumps(result, ensure_ascii=False, indent=2)[:MAX_COMMENT_CHARS])
