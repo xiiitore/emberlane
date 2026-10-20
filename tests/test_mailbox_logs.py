@@ -81,16 +81,22 @@ class TaskLogPublishingTests(unittest.TestCase):
             "ghp_" + "A" * 35
             + " Authorization: Bearer bearer-value"
             + " api_key=private-value password:secret-value"
+            + " refresh_token=refresh-value client_secret=client-secret-value"
+            + " token=generic-token-value"
+            + "\n-----BEGIN PRIVATE KEY-----\nsynthetic-private-key-material\n-----END PRIVATE KEY-----"
         )
         cleaned = _redact_sensitive_text(raw)
-        self.assertNotIn("ghp_" + "A" * 35, cleaned)
-        self.assertNotIn("bearer-value", cleaned)
-        self.assertNotIn("private-value", cleaned)
-        self.assertNotIn("secret-value", cleaned)
+        for sensitive in (
+            "ghp_" + "A" * 35, "bearer-value", "private-value",
+            "secret-value", "refresh-value", "client-secret-value",
+            "generic-token-value", "synthetic-private-key-material",
+        ):
+            self.assertNotIn(sensitive, cleaned)
         self.assertIn("[REDACTED_GITHUB_TOKEN]", cleaned)
         self.assertIn("Authorization: Bearer [REDACTED]", cleaned)
         self.assertIn("api_key=[REDACTED]", cleaned)
         self.assertIn("password:[REDACTED]", cleaned)
+        self.assertIn("[REDACTED_PRIVATE_KEY_BLOCK]", cleaned)
 
 
     def test_terminal_result_redacts_sensitive_last_error_before_comment(self):
