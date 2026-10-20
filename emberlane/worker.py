@@ -326,23 +326,39 @@ class LocalWorker:
                         "path": changed_path,
                         "comparison": compare,
                     }
-            sync = self._run_git_readonly(["reset", "--keep", "FETCH_HEAD"], timeout=30)
+            stash = self._run_git_readonly(
+                ["stash", "push", "-m", "emberlane-bootstrap-sync"], timeout=30
+            )
+            if stash["returncode"] != 0:
+                return {
+                    "synced": False,
+                    "stage": "bootstrap_stash",
+                    "stash": stash,
+                }
+            # Keep the verified duplicate in the stash as a recovery record.
+            # The fetched commit already contains the exact same file bytes.
+            sync = self._run_git_readonly(
+                ["merge", "--ff-only", "FETCH_HEAD"], timeout=30
+            )
             if sync["returncode"] != 0:
                 return {
                     "synced": False,
-                    "stage": "safe_reset_keep",
+                    "stage": "bootstrap_fast_forward",
+                    "stash": stash,
                     "sync": sync,
                 }
         else:
+            stash = None
             sync = self._run_git_readonly(
                 ["merge", "--ff-only", "FETCH_HEAD"], timeout=30
             )
         if sync["returncode"] != 0:
             return {
                 "synced": False,
-                "stage": "fast_forward" if not initial_status.strip() else "safe_reset_keep",
+                "stage": "fast_forward" if not initial_status.strip() else "bootstrap_fast_forward",
                 "branch": current_branch,
                 "fetch": fetch,
+                "stash": stash,
                 "sync": sync,
             }
         final_status = self._run_git_readonly(["status", "--short", "--branch"])
@@ -353,6 +369,7 @@ class LocalWorker:
             "branch": current_branch,
             "fetch": fetch,
             "sync": sync,
+            "stash": stash,
             "bootstrap_matching_worktree": bool(initial_status.strip()),
             "status": final_status,
             "head": head,
