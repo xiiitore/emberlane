@@ -196,7 +196,7 @@ class GitHubIssueMailbox:
                 previous = base64.b64decode(json.loads(existing.stdout)["content"]).decode("utf-8")
             except (json.JSONDecodeError, KeyError, ValueError, UnicodeDecodeError) as exc:
                 raise MailboxError("could not inspect existing task log") from exc
-            if re.search(r'"task_id"\\s*:\\s*"' + re.escape(task_id) + r'"', previous):
+            if re.search(r'"task_id"\s*:\s*"' + re.escape(task_id) + r'"', previous):
                 return {"task_log_status": "already_present", "task_log_path": path}
             raise MailboxError("task log path exists with unrelated content")
         encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
