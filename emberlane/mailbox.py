@@ -163,6 +163,32 @@ class GitHubIssueMailbox:
 
     def _comments(self) -> list[dict[str, Any]]:
         endpoint = f"repos/{self.repository}/issues/{self.issue_number}/comments"
+        known_ids = list(self.state.get("handled", [])) + list(self.state.get("active", {}).keys())
+        numeric_ids = [int(value) for value in known_ids if str(value).isdigit()]
+        cursor = max(numeric_ids, default=0)
+
+        # With a persisted high-water mark, fetch newest-first only until the
+        # previous frontier is reached. A fresh/empty state still scans all pages.
+        if cursor > 0:
+            collected: list[dict[str, Any]] = []
+            page = 1
+            while True:
+                query = f"{endpoint}?per_page=100&sort=created&direction=desc&page={page}"
+                batch = json.loads(_gh(["api", query]))
+                if not isinstance(batch, list) or any(not isinstance(item, dict) for item in batch):
+                    raise MailboxError("GitHub returned an unexpected comments response")
+                reached_cursor = False
+                for comment in batch:
+                    comment_id = comment.get("id")
+                    if isinstance(comment_id, int) and comment_id <= cursor:
+                        reached_cursor = True
+                        break
+                    collected.append(comment)
+                if reached_cursor or len(batch) < 100:
+                    break
+                page += 1
+            return sorted(collected, key=lambda item: int(item.get("id", 0)))
+
         raw = _gh(["api", endpoint, "--paginate", "--slurp"])
         pages = json.loads(raw)
         if not isinstance(pages, list) or any(not isinstance(page, list) for page in pages):
