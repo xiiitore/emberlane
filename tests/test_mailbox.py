@@ -93,6 +93,41 @@ class GitHubRetryTests(unittest.TestCase):
         self.assertEqual(run.call_count, MAX_GH_ATTEMPTS)
         self.assertEqual(sleep.call_count, MAX_GH_ATTEMPTS - 1)
 
+class MailboxCommentFetchTests(unittest.TestCase):
+    @patch("emberlane.mailbox._gh")
+    def test_incremental_fetch_stops_at_persisted_comment_cursor(self, gh):
+        mailbox = GitHubIssueMailbox.__new__(GitHubIssueMailbox)
+        mailbox.repository = "owner/repo"
+        mailbox.issue_number = 6
+        mailbox.state = {"handled": ["100"], "active": {}}
+        gh.return_value = json.dumps([
+            {"id": 102}, {"id": 101}, {"id": 100},
+        ])
+
+        comments = mailbox._comments()
+
+        self.assertEqual([item["id"] for item in comments], [101, 102])
+        gh.assert_called_once_with([
+            "api",
+            "repos/owner/repo/issues/6/comments?per_page=100&sort=created&direction=desc&page=1",
+        ])
+
+    @patch("emberlane.mailbox._gh")
+    def test_empty_state_preserves_full_history_recovery(self, gh):
+        mailbox = GitHubIssueMailbox.__new__(GitHubIssueMailbox)
+        mailbox.repository = "owner/repo"
+        mailbox.issue_number = 6
+        mailbox.state = {"handled": [], "active": {}}
+        gh.return_value = json.dumps([[{"id": 2}, {"id": 1}]])
+
+        comments = mailbox._comments()
+
+        self.assertEqual([item["id"] for item in comments], [2, 1])
+        gh.assert_called_once_with([
+            "api", "repos/owner/repo/issues/6/comments", "--paginate", "--slurp",
+        ])
+
+
 class MailboxIdempotencyTests(unittest.TestCase):
     def test_recovers_crash_after_queue_submit_without_duplicate_task(self):
         with tempfile.TemporaryDirectory() as temp:
