@@ -3651,3 +3651,56 @@ Ran 7 tests in 0.072s
 FAILED (failures=1)
 
 ~~~
+
+
+### Worker task d0509fcf-659c-4bff-96e2-5df169379078
+
+[Full task output](worker-logs/d0509fcf-659c-4bff-96e2-5df169379078.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T16:56:08.607103+00:00",
+  "source_comment_id": "6296304430",
+  "task_id": "d0509fcf-659c-4bff-96e2-5df169379078",
+  "kind": "git_status",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/d0509fcf-659c-4bff-96e2-5df169379078.md"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 618,
+    "full_log_path": "worker-logs/d0509fcf-659c-4bff-96e2-5df169379078.md"
+  }
+}
+```
+
+#### Output: `result.status.output`
+
+~~~text
+## feat/local-coding-worker...origin/feat/local-coding-worker
+ M .github/workflows/tests.yml
+ M WORKER_HANDOFF.md
+ M emberlane/mailbox.py
+ M tests/test_mailbox.py
+ M tests/test_mailbox_logs.py
+?? activate-termux-worker-loop.sh
+?? emberlane/mailbox.py.bak-20261020T151505Z
+?? status-short.txt
+?? termux-worker-loop.sh
+?? worker-logs/full-tests-20261020T173033.log
+?? worker-logs/termux-check-20261020T150908Z.md
+?? worker-logs/worker-loop.log
+
+~~~
+
+#### Output: `result.head.output`
+
+~~~text
+acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
+
+~~~
