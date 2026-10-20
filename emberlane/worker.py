@@ -154,9 +154,27 @@ class LocalWorker:
         return {"files": self.workspace.list_files()}
 
     def _run_tests(self, payload: dict[str, Any]) -> dict[str, Any]:
-        del payload
+        test_file = payload.get("test_file")
+        if test_file is not None:
+            target = self.root / "tests" / test_file
+            if not target.is_file():
+                return {
+                    "command": None,
+                    "returncode": 2,
+                    "passed": False,
+                    "error": "test_file_not_found",
+                    "output": f"Test file not found: tests/{test_file}",
+                }
+            command = [
+                sys.executable, "-m", "unittest", "discover",
+                "-s", "tests", "-p", test_file, "-v",
+            ]
+            command_label = f"python -m unittest discover -s tests -p {test_file} -v"
+        else:
+            command = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"]
+            command_label = "python -m unittest discover -s tests -v"
         completed = subprocess.run(
-            [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
+            command,
             cwd=self.root,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
@@ -168,7 +186,7 @@ class LocalWorker:
         )
         output = completed.stdout or ""
         return {
-            "command": "python -m unittest discover -s tests -v",
+            "command": command_label,
             "returncode": completed.returncode,
             "passed": completed.returncode == 0,
             "output": output,
@@ -448,6 +466,16 @@ class LocalWorker:
                 if len(content.encode("utf-8")) > self.workspace.max_file_bytes:
                     raise WorkspaceError(f"content exceeds configured size limit: {path}")
                 seen.add(path)
+        if kind == "run_tests":
+            test_file = payload.get("test_file")
+            if test_file is not None and (
+                not isinstance(test_file, str)
+                or not test_file.startswith("test_")
+                or not test_file.endswith(".py")
+                or Path(test_file).name != test_file
+                or any(ch in test_file for ch in "*?[]:")
+            ):
+                raise ValueError("test_file must be a test_*.py filename directly inside tests/")
         if kind == "git_diff" and payload.get("path") is not None:
             _checked_path(payload.get("path"))
         if kind == "git_sync":
