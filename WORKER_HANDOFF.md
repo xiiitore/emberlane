@@ -2813,3 +2813,28 @@ Full task output log was not published.
   }
 }
 ```
+
+
+### Worker task 41dd935d-f210-4eda-8791-aa7b3576eb33
+
+[Full task output](worker-logs/41dd935d-f210-4eda-8791-aa7b3576eb33.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T14:07:09.464068+00:00",
+  "source_comment_id": "6292777308",
+  "task_id": "41dd935d-f210-4eda-8791-aa7b3576eb33",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/41dd935d-f210-4eda-8791-aa7b3576eb33.md"
+  },
+  "summary": {
+    "bytes_written": 20019,
+    "path": "emberlane/mailbox.py"
+  }
+}
+```
