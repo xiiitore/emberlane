@@ -190,3 +190,19 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task e6fd7daa-d734-4acf-a1f5-dc53a10809f2
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:26:07.593116+00:00",
+  "source_comment_id": "6288813270",
+  "task_id": "e6fd7daa-d734-4acf-a1f5-dc53a10809f2",
+  "kind": "git_status",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {}
+}
+```
