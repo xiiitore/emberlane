@@ -375,6 +375,13 @@ class GitHubIssueMailbox:
         if isinstance(safe_result, dict):
             safe_result.update(task_log_result)
             safe_result.update(handoff_result)
+        # Keep the terminal task active until its durable records are published.
+        # Otherwise a transient GitHub failure permanently marks it handled and
+        # the full Markdown log can never be retried by the next mailbox poll.
+        if task_log_result.get("task_log_status") not in {"published", "already_present"}:
+            return False
+        if handoff_result.get("handoff_status") not in {"published", "already_present"}:
+            return False
         result = {
             "source_comment_id": comment_id,
             "task_id": task.task_id,
