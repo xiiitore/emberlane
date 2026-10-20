@@ -3760,3 +3760,38 @@ acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 
 ~~~
+
+
+### Worker task 2722a5d8-52b0-4eec-97dd-e034a5558772
+
+[Full task output](worker-logs/2722a5d8-52b0-4eec-97dd-e034a5558772.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T19:17:33.666228+00:00",
+  "source_comment_id": "6299188059",
+  "task_id": "2722a5d8-52b0-4eec-97dd-e034a5558772",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/2722a5d8-52b0-4eec-97dd-e034a5558772.md"
+  },
+  "summary": {
+    "returncode": 1,
+    "passed": false,
+    "output_publication": "full_log_only",
+    "output_note": "Full sanitized output was not copied inline"
+  },
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/2722a5d8-52b0-4eec-97dd-e034a5558772.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/2722a5d8-52b0-4eec-97dd-e034a5558772.md).
