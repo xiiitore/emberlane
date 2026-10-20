@@ -220,11 +220,15 @@ class LocalWorker:
         staged_stat = self._run_git_readonly(
             ["diff", "--cached", "--stat", "--", *suffix]
         )
+        untracked = self._run_git_readonly(
+            ["ls-files", "--others", "--exclude-standard", "--", *suffix]
+        )
         return {
             "files": names,
             "stat": stat,
             "staged_files": staged_names,
             "staged_stat": staged_stat,
+            "untracked_files": untracked,
             "patch_included": False,
         }
 
