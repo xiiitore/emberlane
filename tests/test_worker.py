@@ -59,9 +59,8 @@ class LocalWorkerTests(unittest.TestCase):
             "import unittest\nclass T(unittest.TestCase):\n"
             " def test_targeted(self): self.assertEqual(2 * 3, 6)\n"
         )
-        result = self.worker.run_one() if self.worker.submit(
-            "run_tests", {"test_file": "test_targeted.py"}
-        ) else None
+        self.worker.submit("run_tests", {"test_file": "test_targeted.py"})
+        result = self.worker.run_one()
         self.assertIsNotNone(result)
         self.assertEqual(result.status, "completed")
         self.assertTrue(result.result["passed"])
@@ -79,9 +78,8 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(self.worker.queue.list_tasks(), [])
 
     def test_run_tests_reports_missing_target_as_failure(self):
-        result = self.worker.run_one() if self.worker.submit(
-            "run_tests", {"test_file": "test_missing.py"}
-        ) else None
+        self.worker.submit("run_tests", {"test_file": "test_missing.py"})
+        result = self.worker.run_one()
         self.assertIsNotNone(result)
         self.assertEqual(result.status, "completed")
         self.assertFalse(result.result["passed"])
