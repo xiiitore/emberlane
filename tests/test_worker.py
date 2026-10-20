@@ -123,16 +123,61 @@ class LocalWorkerTests(unittest.TestCase):
                 subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Already up to date.\n"),
                 subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
                 subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
+                subprocess.CompletedProcess(["git", "rev-parse", "HEAD"], 0, "abc123\n"),
+                subprocess.CompletedProcess(["git", "rev-parse", "FETCH_HEAD"], 0, "abc123\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
             ],
         ) as run:
             result = self.worker.run_one()
         self.assertEqual(result.status, "completed")
         self.assertTrue(result.result["synced"])
         self.assertEqual(result.result["stage"], "complete")
-        self.assertEqual(run.call_count, 6)
+        self.assertEqual(run.call_count, 9)
         self.assertEqual(run.call_args_list[2].args[0], ["git", "fetch", "origin", "feature"])
         self.assertEqual(run.call_args_list[3].args[0], ["git", "merge", "--ff-only", "FETCH_HEAD"])
         self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+    def test_git_sync_rejects_postflight_head_mismatch(self):
+        self.worker.submit("git_sync", {"expected_branch": "feature"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
+                subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Already up to date.\n"),
+                subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+                subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
+                subprocess.CompletedProcess(["git", "rev-parse", "HEAD"], 0, "abc123\n"),
+                subprocess.CompletedProcess(["git", "rev-parse", "FETCH_HEAD"], 0, "def456\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
+            ],
+        ):
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertFalse(result.result["synced"])
+        self.assertEqual(result.result["stage"], "postflight_head_mismatch")
+
+    def test_git_sync_rejects_postflight_dirty_worktree(self):
+        self.worker.submit("git_sync", {"expected_branch": "feature"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
+                subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Already up to date.\n"),
+                subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+                subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
+                subprocess.CompletedProcess(["git", "rev-parse", "HEAD"], 0, "abc123\n"),
+                subprocess.CompletedProcess(["git", "rev-parse", "FETCH_HEAD"], 0, "abc123\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, " M worker.py\n"),
+            ],
+        ):
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertFalse(result.result["synced"])
+        self.assertEqual(result.result["stage"], "postflight_dirty")
 
     def test_git_sync_refuses_matching_worktree_mode_for_staged_or_untracked_changes(self):
         self.worker.submit("git_sync", {"expected_branch": "feature", "allow_matching_worktree": True})
