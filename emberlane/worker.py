@@ -147,7 +147,21 @@ class LocalWorker:
     def _read_file(self, payload: dict[str, Any]) -> dict[str, Any]:
         path = _checked_path(payload.get("path"))
         content = self.workspace.read_text(path)
-        return {"path": path, "content": content}
+        if not payload.get("include_content", False):
+            return {"path": path, "content": content}
+        if len(content) > MAX_OUTPUT_CHARS:
+            return {
+                "path": path,
+                "content_included": False,
+                "content_chars": len(content),
+                "content_omitted_reason": f"source exceeds {MAX_OUTPUT_CHARS}-character opt-in preview limit",
+            }
+        return {
+            "path": path,
+            "content_included": True,
+            "content_chars": len(content),
+            "source_text": content,
+        }
 
     def _list_files(self, payload: dict[str, Any]) -> dict[str, Any]:
         del payload
@@ -429,6 +443,8 @@ class LocalWorker:
         # Reject protected file targets before they enter the retry queue.
         if kind in {"write_file", "read_file"}:
             _checked_path(payload.get("path"))
+        if kind == "read_file" and not isinstance(payload.get("include_content", False), bool):
+            raise ValueError("include_content must be a boolean")
         if kind == "replace_text":
             _checked_path(payload.get("path"))
             old = payload.get("old")
