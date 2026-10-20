@@ -3312,3 +3312,36 @@ At the time this checkpoint was written, Issue #6 had comments through `62931997
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task edd7f22a-19fd-4752-a203-0dbd55f5d2f5
+
+[Full task output](worker-logs/edd7f22a-19fd-4752-a203-0dbd55f5d2f5.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T16:21:40.109902+00:00",
+  "source_comment_id": "6295605549",
+  "task_id": "edd7f22a-19fd-4752-a203-0dbd55f5d2f5",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/edd7f22a-19fd-4752-a203-0dbd55f5d2f5.md"
+  },
+  "summary": {
+    "returncode": 1,
+    "passed": false
+  },
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/edd7f22a-19fd-4752-a203-0dbd55f5d2f5.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/edd7f22a-19fd-4752-a203-0dbd55f5d2f5.md).
