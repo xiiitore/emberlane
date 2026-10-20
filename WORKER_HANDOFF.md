@@ -1322,3 +1322,28 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 0355e81b-4f3e-4a47-ad99-3293aa2bbe79
+
+[Full task output](worker-logs/0355e81b-4f3e-4a47-ad99-3293aa2bbe79.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T11:46:50.948418+00:00",
+  "source_comment_id": "6290123329",
+  "task_id": "0355e81b-4f3e-4a47-ad99-3293aa2bbe79",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/0355e81b-4f3e-4a47-ad99-3293aa2bbe79.md"
+  },
+  "summary": {
+    "bytes_written": 21405,
+    "path": "emberlane/worker.py"
+  }
+}
+```
