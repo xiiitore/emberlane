@@ -43,6 +43,34 @@ class LocalWorkerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.worker.submit("run_shell", {"command": "id"})
 
+    def test_read_file_content_requires_explicit_opt_in(self):
+        target = self.root / "source.py"
+        target.write_text("VALUE = 7\n")
+        self.worker.submit("read_file", {"path": "source.py"})
+        default_result = self.worker.run_one()
+        self.assertIsNotNone(default_result)
+        self.assertEqual(default_result.result["content"], "VALUE = 7\n")
+        self.assertNotIn("source_text", default_result.result)
+
+        self.worker.submit("read_file", {"path": "source.py", "include_content": True})
+        preview_result = self.worker.run_one()
+        self.assertTrue(preview_result.result["content_included"])
+        self.assertEqual(preview_result.result["source_text"], "VALUE = 7\n")
+
+    def test_read_file_rejects_non_boolean_content_opt_in(self):
+        with self.assertRaisesRegex(ValueError, "include_content"):
+            self.worker.submit("read_file", {"path": "source.py", "include_content": "yes"})
+        self.assertEqual(self.worker.queue.list_tasks(), [])
+
+    def test_read_file_preview_omits_large_source_explicitly(self):
+        (self.root / "large.py").write_text("x" * 20_001)
+        self.worker.submit("read_file", {"path": "large.py", "include_content": True})
+        result = self.worker.run_one()
+        self.assertFalse(result.result["content_included"])
+        self.assertEqual(result.result["content_chars"], 20_001)
+        self.assertIn("opt-in preview limit", result.result["content_omitted_reason"])
+        self.assertNotIn("source_text", result.result)
+
     def test_run_tests_uses_fixed_command(self):
         (self.root / "tests" / "test_ok.py").write_text(
             "import unittest\nclass T(unittest.TestCase):\n"
