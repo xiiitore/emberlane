@@ -214,7 +214,10 @@ class LocalWorkerTests(unittest.TestCase):
                 subprocess.CompletedProcess(["git", "stash", "push", "-m", "emberlane-bootstrap-sync"], 0, "Saved working directory and index state\n"),
                 subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Updating abc123..def456\n"),
                 subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
                 subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "def456 latest\n"),
+                subprocess.CompletedProcess(["git", "rev-parse", "HEAD"], 0, "def456\n"),
+                subprocess.CompletedProcess(["git", "rev-parse", "FETCH_HEAD"], 0, "def456\n"),
             ],
         ) as run:
             result = self.worker.run_one()
@@ -223,7 +226,7 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertTrue(result.result["bootstrap_matching_worktree"])
         self.assertEqual(result.result["stash"]["command"], ["git", "stash", "push", "-m", "emberlane-bootstrap-sync"])
         self.assertEqual(result.result["sync"]["command"], ["git", "merge", "--ff-only", "FETCH_HEAD"])
-        self.assertEqual(run.call_count, 11)
+        self.assertEqual(run.call_count, 14)
         self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
 
     def test_git_sync_matching_worktree_rejects_content_not_equal_to_target(self):
