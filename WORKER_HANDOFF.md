@@ -340,3 +340,26 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task d08109f9-9097-4a48-a343-2dcdb6c5af34
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:30:54.549000+00:00",
+  "source_comment_id": "6288892716",
+  "task_id": "d08109f9-9097-4a48-a343-2dcdb6c5af34",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "platform": "Android-14-aarch64-64bit-ELF",
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0",
+    "branch_status": "## feat/local-coding-worker...origin/feat/local-coding-worker",
+    "working_tree_dirty": true,
+    "changed_paths_count": 14,
+    "head_commit": "ac1b2ca Fix mailbox rejection reply formatting"
+  }
+}
+```
