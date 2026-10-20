@@ -122,10 +122,10 @@ class LocalWorkerTests(unittest.TestCase):
                 subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
                 subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Already up to date.\n"),
                 subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
                 subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
                 subprocess.CompletedProcess(["git", "rev-parse", "HEAD"], 0, "abc123\n"),
                 subprocess.CompletedProcess(["git", "rev-parse", "FETCH_HEAD"], 0, "abc123\n"),
-                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
             ],
         ) as run:
             result = self.worker.run_one()
@@ -147,10 +147,10 @@ class LocalWorkerTests(unittest.TestCase):
                 subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
                 subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Already up to date.\n"),
                 subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
                 subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
                 subprocess.CompletedProcess(["git", "rev-parse", "HEAD"], 0, "abc123\n"),
                 subprocess.CompletedProcess(["git", "rev-parse", "FETCH_HEAD"], 0, "def456\n"),
-                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
             ],
         ):
             result = self.worker.run_one()
@@ -168,10 +168,10 @@ class LocalWorkerTests(unittest.TestCase):
                 subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
                 subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Already up to date.\n"),
                 subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, " M worker.py\n"),
                 subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
                 subprocess.CompletedProcess(["git", "rev-parse", "HEAD"], 0, "abc123\n"),
                 subprocess.CompletedProcess(["git", "rev-parse", "FETCH_HEAD"], 0, "abc123\n"),
-                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, " M worker.py\n"),
             ],
         ):
             result = self.worker.run_one()
