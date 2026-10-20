@@ -206,3 +206,19 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task 914fbb2d-d954-4095-952b-5716fcee2d68
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:26:22.643047+00:00",
+  "source_comment_id": "6288813756",
+  "task_id": "914fbb2d-d954-4095-952b-5716fcee2d68",
+  "kind": "list_files",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {}
+}
+```
