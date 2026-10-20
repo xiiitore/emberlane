@@ -1416,3 +1416,25 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task 5be16bbd-1227-4e5d-beee-c5ec8c3be621
+
+[Full task output](worker-logs/5be16bbd-1227-4e5d-beee-c5ec8c3be621.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T11:49:06.066862+00:00",
+  "source_comment_id": "6290160547",
+  "task_id": "5be16bbd-1227-4e5d-beee-c5ec8c3be621",
+  "kind": "git_diff",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/5be16bbd-1227-4e5d-beee-c5ec8c3be621.md"
+  },
+  "summary": {}
+}
+```
