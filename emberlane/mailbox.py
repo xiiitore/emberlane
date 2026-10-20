@@ -187,9 +187,10 @@ class GitHubIssueMailbox:
                     child_path = f"{path}.{key}"
                     if key == "content":
                         cleaned[key] = "[OMITTED_FILE_CONTENT]"
-                    elif key == "output" and isinstance(item, str):
+                    elif key in {"output", "source_text"} and isinstance(item, str):
                         outputs.append((child_path, redact(item)))
-                        cleaned[key] = f"[FULL OUTPUT IN SECTION: {child_path}]"
+                        label = "SOURCE TEXT" if key == "source_text" else "FULL OUTPUT"
+                        cleaned[key] = f"[{label} IN SECTION: {child_path}]"
                     else:
                         cleaned[key] = sanitize(item, child_path)
                 return cleaned
@@ -306,7 +307,7 @@ class GitHubIssueMailbox:
             # Do not publish file contents or raw command output in public comments.
             safe_result = {
                 key: value for key, value in safe_result.items()
-                if key != "content" and key != "output"
+                if key not in {"content", "output", "source_text"}
             }
         try:
             task_log_result = self._publish_task_log(task, comment_id)
