@@ -302,7 +302,6 @@ class LocalWorker:
                 staged["returncode"] != 0
                 or untracked["returncode"] != 0
                 or changed["returncode"] != 0
-                or staged["returncode"] != 0
                 or untracked["output"].strip()
                 or not changed["output"].strip()
             ):
@@ -362,18 +361,31 @@ class LocalWorker:
                 "sync": sync,
             }
         final_status = self._run_git_readonly(["status", "--short", "--branch"])
+        clean_status = self._run_git_readonly(["status", "--porcelain"])
         head = self._run_git_readonly(["log", "-1", "--oneline"])
-        return {
-            "synced": final_status["returncode"] == 0 and head["returncode"] == 0,
-            "stage": "complete",
+        head_sha = self._run_git_readonly(["rev-parse", "HEAD"])
+        target_sha = self._run_git_readonly(["rev-parse", "FETCH_HEAD"])
+        common = {
             "branch": current_branch,
             "fetch": fetch,
             "sync": sync,
             "stash": stash,
             "bootstrap_matching_worktree": bool(initial_status.strip()),
             "status": final_status,
+            "clean_status": clean_status,
             "head": head,
+            "head_sha": head_sha,
+            "target_sha": target_sha,
         }
+        if final_status["returncode"] != 0 or clean_status["returncode"] != 0:
+            return {"synced": False, "stage": "postflight_status", **common}
+        if clean_status["output"].strip():
+            return {"synced": False, "stage": "postflight_dirty", **common}
+        if head["returncode"] != 0 or head_sha["returncode"] != 0 or target_sha["returncode"] != 0:
+            return {"synced": False, "stage": "postflight_head", **common}
+        if head_sha["output"].strip() != target_sha["output"].strip():
+            return {"synced": False, "stage": "postflight_head_mismatch", **common}
+        return {"synced": True, "stage": "complete", **common}
 
     def _diagnostics(self, payload: dict[str, Any]) -> dict[str, Any]:
         del payload
