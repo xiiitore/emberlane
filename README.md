@@ -24,7 +24,9 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `local_model_proposal`, `local_model_edit`, `plan_goal`, `queue_prune`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept arbitrary shell commands.
+`run_tests`, `local_model_proposal`, `local_model_edit`, `plan_goal`, `queue_prune`,
+`git_status`, `git_diff`, `git_sync`, `git_commit`, `git_push`, `git_stash_inspect`,
+and `diagnostics`. It does not accept arbitrary shell commands.
 
 ```sh
 # Queue a file-writing task (quote the JSON as one argument)
@@ -52,6 +54,12 @@ python -m emberlane submit git_diff
 python -m emberlane submit git_sync --payload '{"expected_branch":"feat/local-coding-worker"}'
 python -m emberlane submit git_stash_inspect
 python -m emberlane run-one
+
+# Run tests, stage only explicitly named changed paths, and commit on the expected branch
+python -m emberlane submit git_commit --payload '{"expected_branch":"feat/local-coding-worker","paths":["src/example.py","tests/test_example.py"],"message":"fix: example behavior"}'
+
+# Push a clean branch without force; the worker verifies the remote HEAD afterward
+python -m emberlane submit git_push --payload '{"expected_branch":"feat/local-coding-worker"}'
 python -m emberlane submit diagnostics
 
 # Queue and execute the full unittest suite
@@ -120,6 +128,15 @@ The model sees only explicitly allow-listed UTF-8 files, subject to strict conte
 ## Security boundary
 
 Workspace path checks protect against accidental path escape and common symlink traversal; they are not an OS sandbox. The worker runs with the same OS permissions as its owner. The GitHub issue mailbox is an optional remote task-submission bridge, not a network listener or remote shell. The `local_model_proposal` task returns an unapplied patch; `local_model_edit` may apply a patch only after disposable-copy tests pass and source-integrity checks succeed. Neither task commits or pushes automatically. Explicit file-writing tasks must include the exact file path and content in their payload. Use a separate OS account or container for stronger isolation.
+
+`git_commit` runs the fixed unit-test suite before staging, refuses pre-existing
+staged changes, stages only explicitly listed changed paths, checks the staged
+path set and whitespace, then commits. `git_push` requires a clean worktree and
+matching expected branch, fetches origin, refuses a non-fast-forward state, uses
+a normal non-force push, and verifies the remote branch SHA. These are explicit
+allow-listed Git operations, not arbitrary command execution. They still operate
+with the owner's Git permissions; use a separate OS account or container for
+stronger isolation.
 
 ## Optional GitHub issue mailbox
 
