@@ -3493,3 +3493,35 @@ FAILED (failures=1)
 acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 
 ~~~
+
+
+### Worker task af901ba6-5091-4641-9ab7-929872efe2c9
+
+[Full task output](worker-logs/af901ba6-5091-4641-9ab7-929872efe2c9.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T16:47:16.461534+00:00",
+  "source_comment_id": "6296168692",
+  "task_id": "af901ba6-5091-4641-9ab7-929872efe2c9",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/af901ba6-5091-4641-9ab7-929872efe2c9.md"
+  },
+  "summary": {
+    "path": "emberlane/mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/af901ba6-5091-4641-9ab7-929872efe2c9.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
