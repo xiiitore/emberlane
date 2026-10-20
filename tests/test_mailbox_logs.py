@@ -43,7 +43,7 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertNotIn("private file text", document)
         self.assertIn("[OMITTED_FILE_CONTENT]", document)
         self.assertIn("[REDACTED_GITHUB_TOKEN]", document)
-        self.assertIn("worker-logs/task-123.md", args[2])
+        self.assertIn("worker-logs/task-123.md", args[4])
         self.assertIn("feat/local-coding-worker", args)
 
     @patch("emberlane.mailbox.subprocess.run")
