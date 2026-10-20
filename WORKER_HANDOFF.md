@@ -2288,3 +2288,25 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task ca29c7dd-1cae-46b3-a328-cb996cad0900
+
+[Full task output](worker-logs/ca29c7dd-1cae-46b3-a328-cb996cad0900.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T13:47:53.774817+00:00",
+  "source_comment_id": "6292377344",
+  "task_id": "ca29c7dd-1cae-46b3-a328-cb996cad0900",
+  "kind": "git_sync",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ca29c7dd-1cae-46b3-a328-cb996cad0900.md"
+  },
+  "summary": {}
+}
+```
