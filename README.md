@@ -30,6 +30,11 @@ python -m emberlane submit write_file --payload '{"path":"src/example.py","conte
 # Execute one queued task
 python -m emberlane run-one
 
+# Opt in to publishing a redacted source preview in the task's private-to-repo Markdown log
+# Only use this for files safe to expose to people with repository access.
+python -m emberlane submit read_file --payload '{"path":"src/example.py","include_content":true}'
+python -m emberlane run-one
+
 # Queue multiple related files in one task (up to 50 files)
 python -m emberlane submit write_files --payload '{"files":[{"path":"src/example.py","content":"VALUE = 42\\n"},{"path":"tests/test_example.py","content":"from src.example import VALUE\\n"}]}'
 python -m emberlane run-one
@@ -65,7 +70,13 @@ queue is not safe for concurrent writers.
 File operations are confined to the configured workspace and enforce a size
 limit. `replace_text` edits an existing file only when the old text occurs exactly
 the requested number of times (one by default); a mismatch leaves the file
-unchanged. It rejects protected paths and oversized results. `write_files` accepts
+unchanged. It rejects protected paths and oversized results. `read_file` omits
+source text from logs by default. The explicit `include_content: true` option
+adds a source preview to the task Markdown log only when the file is at most
+20,000 characters; oversized previews are explicitly omitted. The preview is
+redacted using pattern-based rules, which are not a guarantee that every secret
+will be detected. Never opt in for files that may contain credentials or private
+data. `write_files` accepts
 up to 50 distinct workspace-relative paths, checks all targets before writing,
 and rejects oversized content before queueing. Each
 individual file replacement is atomic; the batch as a whole is not atomic, so a
