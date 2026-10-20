@@ -165,33 +165,38 @@ class GitHubIssueMailbox:
         _gh(["api", "--method", "POST", endpoint, "-f", f"body={body[:MAX_COMMENT_CHARS]}"])
 
     def _publish_task_log(self, task: Any, comment_id: str) -> dict[str, str]:
-        """Publish the complete output retained by the worker to a per-task log."""
+        """Publish the complete retained task output to a dedicated Markdown file."""
         task_id = str(task.task_id)
         if not re.fullmatch(r"[A-Za-z0-9-]{1,100}", task_id):
             raise MailboxError("task id is not safe for a log path")
         result = task.result if isinstance(task.result, dict) else {}
-        safe_result = {key: value for key, value in result.items() if key != "content"}
         def redact(value: str) -> str:
             value = re.sub(r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})", "[REDACTED_GITHUB_TOKEN]", value)
             value = re.sub(r"(?i)(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+", r"\1[REDACTED]", value)
             value = re.sub(r"(?im)\b(password|passwd|secret|api[_-]?key|access[_-]?token)\b(\s*[:=]\s*)[^\s,;]+", r"\1\2[REDACTED]", value)
             return value
-        if isinstance(safe_result.get("output"), str):
-            safe_result["output"] = redact(safe_result["output"])
-        record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "source_comment_id": str(comment_id), "task_id": task_id, "kind": str(task.kind), "status": str(task.status), "attempts": int(task.attempts), "last_error": redact(str(task.last_error)) if task.last_error else None, "result": safe_result}
-        content = "# Emberlane task output\n\nFull output retained by the worker; common credential patterns redacted.\n\n" + "```json\n" + json.dumps(record, ensure_ascii=False, indent=2) + "\n```\n"
+        def sanitize(value: Any, key: str = "") -> Any:
+            if isinstance(value, str):
+                return redact(value)
+            if isinstance(value, list):
+                return [sanitize(item, key) for item in value]
+            if isinstance(value, dict):
+                return {k: ("[OMITTED_FILE_CONTENT]" if k == "content" else sanitize(v, k)) for k, v in value.items()}
+            return value
+        record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "source_comment_id": str(comment_id), "task_id": task_id, "kind": str(task.kind), "status": str(task.status), "attempts": int(task.attempts), "last_error": redact(str(task.last_error)) if task.last_error else None, "result": sanitize(result)}
+        content = "# Emberlane task output\n\nComplete output retained by the worker, with common credential patterns redacted. File-content fields are omitted.\n\n```json\n" + json.dumps(record, ensure_ascii=False, indent=2) + "\n```\n"
         if len(content.encode("utf-8")) > 1_000_000:
-            raise MailboxError("task log exceeds 1 MB")
+            raise MailboxError("task log exceeds GitHub single-file size limit (1 MB)")
         path = f"worker-logs/{task_id}.md"
         endpoint = f"repos/{self.repository}/contents/{path}"
         branch = "feat/local-coding-worker"
         existing = subprocess.run(["gh", "api", f"{endpoint}?ref={branch}"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, check=False, shell=False)
         if existing.returncode == 0:
             try:
-                previous = base64.b64decode(json.loads(existing.stdout)["content"]).decode("utf-8")
+                previous = json.loads(base64.b64decode(json.loads(existing.stdout)["content"]).decode("utf-8"))
             except (json.JSONDecodeError, KeyError, ValueError, UnicodeDecodeError) as exc:
                 raise MailboxError("could not inspect existing task log") from exc
-            if task_id in previous:
+            if previous.get("task_id") == task_id:
                 return {"task_log_status": "already_present", "task_log_path": path}
             raise MailboxError("task log path exists with unrelated content")
         encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
