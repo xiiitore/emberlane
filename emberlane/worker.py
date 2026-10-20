@@ -174,7 +174,9 @@ class LocalWorker:
             "output": output,
         }
 
-    def _run_git_readonly(self, args: list[str]) -> dict[str, Any]:
+    def _run_git_readonly(
+        self, args: list[str], *, timeout: int = GIT_COMMAND_TIMEOUT
+    ) -> dict[str, Any]:
         command = ["git", *args]
         try:
             completed = subprocess.run(
@@ -184,7 +186,7 @@ class LocalWorker:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                timeout=10,
+                timeout=timeout,
                 check=False,
                 shell=False,
             )
@@ -274,7 +276,7 @@ class LocalWorker:
                 "current_branch": current_branch,
             }
 
-        fetch = self._run_git_readonly(["fetch", "origin", current_branch])
+        fetch = self._run_git_readonly(["fetch", "origin", current_branch], timeout=60)
         if fetch["returncode"] != 0:
             return {
                 "synced": False,
@@ -282,7 +284,7 @@ class LocalWorker:
                 "branch": current_branch,
                 "fetch": fetch,
             }
-        merge = self._run_git_readonly(["merge", "--ff-only", "FETCH_HEAD"])
+        merge = self._run_git_readonly(["merge", "--ff-only", "FETCH_HEAD"], timeout=30)
         if merge["returncode"] != 0:
             return {
                 "synced": False,
