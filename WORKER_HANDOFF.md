@@ -2476,3 +2476,28 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task 1ec2c5cc-1767-420e-9466-ff872dd9fc60
+
+[Full task output](worker-logs/1ec2c5cc-1767-420e-9466-ff872dd9fc60.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T13:56:51.553602+00:00",
+  "source_comment_id": "6292566882",
+  "task_id": "1ec2c5cc-1767-420e-9466-ff872dd9fc60",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/1ec2c5cc-1767-420e-9466-ff872dd9fc60.md"
+  },
+  "summary": {
+    "path": "emberlane/mailbox.py",
+    "bytes_written": 18369
+  }
+}
+```
