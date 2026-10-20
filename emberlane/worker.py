@@ -246,10 +246,15 @@ class LocalWorker:
         ):
             raise ValueError("expected_branch must be a valid branch name")
 
+        allow_matching_worktree = payload.get("allow_matching_worktree", False)
+        if not isinstance(allow_matching_worktree, bool):
+            raise ValueError("allow_matching_worktree must be a boolean")
+
         status = self._run_git_readonly(["status", "--porcelain"])
         if status["returncode"] != 0:
             return {"synced": False, "stage": "preflight_status", "status": status}
-        if status["output"].strip():
+        initial_status = status["output"]
+        if initial_status.strip() and not allow_matching_worktree:
             return {
                 "synced": False,
                 "stage": "preflight_dirty",
@@ -284,14 +289,61 @@ class LocalWorker:
                 "branch": current_branch,
                 "fetch": fetch,
             }
-        merge = self._run_git_readonly(["merge", "--ff-only", "FETCH_HEAD"], timeout=30)
-        if merge["returncode"] != 0:
+
+        if initial_status.strip():
+            # Bootstrap only if the sole local changes are unstaged tracked edits
+            # whose worktree bytes already match the fetched commit exactly.
+            staged = self._run_git_readonly(["diff", "--cached", "--quiet"])
+            untracked = self._run_git_readonly(
+                ["ls-files", "--others", "--exclude-standard"]
+            )
+            changed = self._run_git_readonly(["diff", "--name-only"])
+            if (
+                staged["returncode"] != 0
+                or untracked["returncode"] != 0
+                or changed["returncode"] != 0
+                or staged["returncode"] != 0
+                or untracked["output"].strip()
+                or not changed["output"].strip()
+            ):
+                return {
+                    "synced": False,
+                    "stage": "matching_worktree_preflight",
+                    "error": "bootstrap requires only unstaged tracked modifications and no untracked files",
+                    "status": status,
+                    "staged": staged,
+                    "untracked": untracked,
+                    "changed": changed,
+                }
+            for changed_path in changed["output"].splitlines():
+                compare = self._run_git_readonly(
+                    ["diff", "--quiet", "FETCH_HEAD", "--", changed_path]
+                )
+                if compare["returncode"] != 0:
+                    return {
+                        "synced": False,
+                        "stage": "matching_worktree_mismatch",
+                        "path": changed_path,
+                        "comparison": compare,
+                    }
+            sync = self._run_git_readonly(["reset", "--keep", "FETCH_HEAD"], timeout=30)
+            if sync["returncode"] != 0:
+                return {
+                    "synced": False,
+                    "stage": "safe_reset_keep",
+                    "sync": sync,
+                }
+        else:
+            sync = self._run_git_readonly(
+                ["merge", "--ff-only", "FETCH_HEAD"], timeout=30
+            )
+        if sync["returncode"] != 0:
             return {
                 "synced": False,
-                "stage": "fast_forward",
+                "stage": "fast_forward" if not initial_status.strip() else "safe_reset_keep",
                 "branch": current_branch,
                 "fetch": fetch,
-                "merge": merge,
+                "sync": sync,
             }
         final_status = self._run_git_readonly(["status", "--short", "--branch"])
         head = self._run_git_readonly(["log", "-1", "--oneline"])
@@ -300,7 +352,8 @@ class LocalWorker:
             "stage": "complete",
             "branch": current_branch,
             "fetch": fetch,
-            "merge": merge,
+            "sync": sync,
+            "bootstrap_matching_worktree": bool(initial_status.strip()),
             "status": final_status,
             "head": head,
         }
