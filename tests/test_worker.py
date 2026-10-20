@@ -206,6 +206,60 @@ class LocalWorkerTests(unittest.TestCase):
             self.worker.submit("git_sync", {"expected_branch": "-c"})
         self.assertEqual(self.worker.queue.list_tasks(), [])
 
+    def test_git_commit_rejects_invalid_payload_before_enqueue(self):
+        with self.assertRaisesRegex(ValueError, "paths"):
+            self.worker.submit("git_commit", {"expected_branch": "feature", "paths": [], "message": "fix"})
+        with self.assertRaisesRegex(ValueError, "paths"):
+            self.worker.submit("git_commit", {"expected_branch": "feature", "paths": ["../secret"], "message": "fix"})
+        with self.assertRaisesRegex(ValueError, "expected_branch"):
+            self.worker.submit("git_push", {"expected_branch": "-f"})
+        self.assertEqual(self.worker.queue.list_tasks(), [])
+
+    def test_git_commit_refuses_preexisting_staged_changes(self):
+        self.worker.submit("git_commit", {"expected_branch": "feature", "paths": ["src/a.py"], "message": "fix"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain", "--untracked-files=all"], 0, "M  src/a.py\n"),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--quiet"], 1, ""),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertFalse(result.result["committed"])
+        self.assertEqual(result.result["stage"], "preflight_staged")
+        self.assertEqual(run.call_count, 2)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+    def test_git_commit_requires_tests_to_pass_before_staging(self):
+        self.worker.submit("git_commit", {"expected_branch": "feature", "paths": ["src/a.py"], "message": "fix"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain", "--untracked-files=all"], 0, " M src/a.py\n"),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--quiet"], 0, ""),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain", "--", "src/a.py"], 0, " M src/a.py\n"),
+                subprocess.CompletedProcess(["python", "-m", "unittest", "discover", "-s", "tests", "-v"], 1, "FAIL\n"),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertFalse(result.result["committed"])
+        self.assertEqual(result.result["stage"], "tests")
+        self.assertEqual(run.call_count, 5)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+    def test_git_push_refuses_dirty_worktree_before_fetch(self):
+        self.worker.submit("git_push", {"expected_branch": "feature"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            return_value=subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, " M src/a.py\n"),
+        ) as run:
+            result = self.worker.run_one()
+        self.assertFalse(result.result["pushed"])
+        self.assertEqual(result.result["stage"], "preflight_dirty")
+        self.assertEqual(run.call_count, 1)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
     def test_diagnostics_returns_runtime_and_git_information(self):
         self.worker.submit("diagnostics", {})
         with patch(
