@@ -154,7 +154,7 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(run.call_count, 6)
         self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
 
-    def test_git_sync_matching_worktree_uses_reset_keep_only_after_exact_match(self):
+    def test_git_sync_matching_worktree_stashes_verified_duplicate_then_fast_forwards(self):
         self.worker.submit("git_sync", {"expected_branch": "feature", "allow_matching_worktree": True})
         with patch(
             "emberlane.worker.subprocess.run",
@@ -166,16 +166,18 @@ class LocalWorkerTests(unittest.TestCase):
                 subprocess.CompletedProcess(["git", "ls-files", "--others", "--exclude-standard"], 0, ""),
                 subprocess.CompletedProcess(["git", "diff", "--name-only"], 0, "emberlane/worker.py\n"),
                 subprocess.CompletedProcess(["git", "diff", "--quiet", "FETCH_HEAD", "--", "emberlane/worker.py"], 0, ""),
-                subprocess.CompletedProcess(["git", "reset", "--keep", "FETCH_HEAD"], 0, "HEAD is now at abc123\n"),
+                subprocess.CompletedProcess(["git", "stash", "push", "-m", "emberlane-bootstrap-sync"], 0, "Saved working directory and index state\n"),
+                subprocess.CompletedProcess(["git", "merge", "--ff-only", "FETCH_HEAD"], 0, "Updating abc123..def456\n"),
                 subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
-                subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "abc123 latest\n"),
+                subprocess.CompletedProcess(["git", "log", "-1", "--oneline"], 0, "def456 latest\n"),
             ],
         ) as run:
             result = self.worker.run_one()
         self.assertEqual(result.status, "completed")
         self.assertTrue(result.result["synced"])
         self.assertTrue(result.result["bootstrap_matching_worktree"])
-        self.assertEqual(result.result["sync"]["command"], ["git", "reset", "--keep", "FETCH_HEAD"])
+        self.assertEqual(result.result["stash"]["command"], ["git", "stash", "push", "-m", "emberlane-bootstrap-sync"])
+        self.assertEqual(result.result["sync"]["command"], ["git", "merge", "--ff-only", "FETCH_HEAD"])
         self.assertEqual(run.call_count, 11)
         self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
 
