@@ -368,6 +368,11 @@ class GitHubIssueMailbox:
             task_log_result = self._publish_task_log(task, comment_id)
         except Exception as exc:
             task_log_result = {"task_log_status": "failed", "task_log_error": f"{type(exc).__name__}: {exc}"[:500]}
+        # Do not publish a handoff record that permanently says the full log
+        # failed: the handoff publisher is idempotent and would not repair it
+        # after a later retry succeeds.
+        if task_log_result.get("task_log_status") not in {"published", "already_present"}:
+            return False
         try:
             handoff_result = self._publish_handoff_record(task, comment_id, task_log_result)
         except Exception as exc:
@@ -375,11 +380,7 @@ class GitHubIssueMailbox:
         if isinstance(safe_result, dict):
             safe_result.update(task_log_result)
             safe_result.update(handoff_result)
-        # Keep the terminal task active until its durable records are published.
-        # Otherwise a transient GitHub failure permanently marks it handled and
-        # the full Markdown log can never be retried by the next mailbox poll.
-        if task_log_result.get("task_log_status") not in {"published", "already_present"}:
-            return False
+        # Keep the terminal task active until both durable records are published.
         if handoff_result.get("handoff_status") not in {"published", "already_present"}:
             return False
         result = {
