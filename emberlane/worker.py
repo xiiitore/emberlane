@@ -473,6 +473,7 @@ class LocalWorker:
                 or not test_file.startswith("test_")
                 or not test_file.endswith(".py")
                 or Path(test_file).name != test_file
+                or any(ch.isspace() for ch in test_file)
                 or any(ch in test_file for ch in "*?[]:")
             ):
                 raise ValueError("test_file must be a test_*.py filename directly inside tests/")
