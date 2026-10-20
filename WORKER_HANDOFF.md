@@ -3987,3 +3987,35 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 
 ~~~
+
+
+### Worker task ed7354ee-191c-42f8-b541-09c9427873a2
+
+[Full task output](worker-logs/ed7354ee-191c-42f8-b541-09c9427873a2.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T22:12:29.324581+00:00",
+  "source_comment_id": "6302910407",
+  "task_id": "ed7354ee-191c-42f8-b541-09c9427873a2",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ed7354ee-191c-42f8-b541-09c9427873a2.md"
+  },
+  "summary": {
+    "path": "tests/test_mailbox_logs.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/ed7354ee-191c-42f8-b541-09c9427873a2.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
