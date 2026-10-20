@@ -956,3 +956,26 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task fb11b868-bcef-4450-82b8-b8cd3892c490
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:52:25.381877+00:00",
+  "source_comment_id": "6289234646",
+  "task_id": "fb11b868-bcef-4450-82b8-b8cd3892c490",
+  "kind": "write_files",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "files_written": [
+      {
+        "path": "WORKER_HANDOFF_FOLLOWUP.md",
+        "bytes_written": 923
+      }
+    ]
+  }
+}
+```
