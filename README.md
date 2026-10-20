@@ -20,7 +20,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `git_status`, `git_diff`, and `diagnostics`. It does not accept
+`run_tests`, `git_status`, `git_diff`, `git_sync`, and `diagnostics`. It does not accept
 arbitrary shell commands.
 
 ```sh
@@ -41,6 +41,7 @@ python -m emberlane run-one
 # Inspect repository state and diff metadata (source patches are not returned)
 python -m emberlane submit git_status
 python -m emberlane submit git_diff
+python -m emberlane submit git_sync --payload '{"expected_branch":"feat/local-coding-worker"}'
 python -m emberlane submit diagnostics
 
 # Queue and execute the fixed unittest command
