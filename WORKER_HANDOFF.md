@@ -2788,3 +2788,28 @@ Full task output log was not published.
   }
 }
 ```
+
+
+### Worker task 62d591ce-2815-4972-aedc-85c7ed5590b2
+
+[Full task output](worker-logs/62d591ce-2815-4972-aedc-85c7ed5590b2.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T14:06:54.273386+00:00",
+  "source_comment_id": "6292774792",
+  "task_id": "62d591ce-2815-4972-aedc-85c7ed5590b2",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/62d591ce-2815-4972-aedc-85c7ed5590b2.md"
+  },
+  "summary": {
+    "bytes_written": 653,
+    "path": ".github/workflows/tests.yml"
+  }
+}
+```
