@@ -41,6 +41,20 @@ class GitDiffTests(unittest.TestCase):
         self.assertIn("example.py", result.result["files"]["output"])
         self.assertNotIn("other.py", result.result["files"]["output"])
 
+    def test_reports_staged_changes_separately_from_unstaged_changes(self):
+        (self.root / "staged.py").write_text("VALUE = 7\n", encoding="utf-8")
+        subprocess.run(["git", "add", "staged.py"], cwd=self.root, check=True)
+
+        task = self.worker.submit("git_diff", {})
+        result = self.worker.run_one()
+
+        self.assertEqual(result.status, "completed")
+        self.assertIn("example.py", result.result["files"]["output"])
+        self.assertIn("staged.py", result.result["staged_files"]["output"])
+        self.assertIn("staged.py", result.result["staged_stat"]["output"])
+        self.assertNotIn("staged.py", result.result["files"]["output"])
+        self.assertFalse(result.result["patch_included"])
+
 
 if __name__ == "__main__":
     unittest.main()
