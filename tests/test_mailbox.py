@@ -77,6 +77,17 @@ class GitHubRetryTests(unittest.TestCase):
 
     @patch("emberlane.mailbox.time.sleep")
     @patch("emberlane.mailbox.subprocess.run")
+    def test_truncated_json_response_retries_then_succeeds(self, run, sleep):
+        run.side_effect = [
+            self.response(1, stderr="unexpected end of JSON input"),
+            self.response(0, stdout='{"ok": true}'),
+        ]
+        self.assertEqual(_gh(["api", "repos/example/repo"]), '{"ok": true}')
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(1.0)
+
+    @patch("emberlane.mailbox.time.sleep")
+    @patch("emberlane.mailbox.subprocess.run")
     def test_permission_403_fails_without_retry(self, run, sleep):
         run.return_value = self.response(1, stderr="HTTP 403: Resource not accessible by integration")
         with self.assertRaisesRegex(MailboxError, "Resource not accessible"):
