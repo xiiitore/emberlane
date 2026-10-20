@@ -176,7 +176,7 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertTrue(result.result["synced"])
         self.assertTrue(result.result["bootstrap_matching_worktree"])
         self.assertEqual(result.result["sync"]["command"], ["git", "reset", "--keep", "FETCH_HEAD"])
-        self.assertEqual(run.call_count, 10)
+        self.assertEqual(run.call_count, 11)
         self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
 
     def test_git_sync_matching_worktree_rejects_content_not_equal_to_target(self):
