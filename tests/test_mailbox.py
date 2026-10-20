@@ -187,7 +187,8 @@ class MailboxPublicationRetryTests(unittest.TestCase):
             "task_log_status": "failed",
             "task_log_error": "temporary API failure",
         }
-        mailbox._publish_handoff_record = lambda *args: {"handoff_status": "published"}
+        handoff_calls = []
+        mailbox._publish_handoff_record = lambda *args: handoff_calls.append(args) or {"handoff_status": "published"}
         mailbox._save_state = lambda: None
         replies = []
         mailbox._reply = replies.append
@@ -197,6 +198,7 @@ class MailboxPublicationRetryTests(unittest.TestCase):
         self.assertFalse(finished)
         self.assertEqual(mailbox.state["handled"], [])
         self.assertEqual(mailbox.state["active"], {"123": "task-1"})
+        self.assertEqual(handoff_calls, [])
         self.assertEqual(replies, [])
 
 
