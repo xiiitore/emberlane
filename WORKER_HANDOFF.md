@@ -792,3 +792,22 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task ad32ba3b-be78-42b5-9bad-e96c057c6920
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:45:25.788643+00:00",
+  "source_comment_id": "6289112292",
+  "task_id": "ad32ba3b-be78-42b5-9bad-e96c057c6920",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "bytes_written": 15876,
+    "path": "tests/test_mailbox.py"
+  }
+}
+```
