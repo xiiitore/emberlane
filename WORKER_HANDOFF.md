@@ -3279,3 +3279,36 @@ At the time this checkpoint was written, Issue #6 had comments through `62931997
   }
 }
 ```
+
+
+### Worker task 6876bcd7-1c42-40fa-ad64-cfea5e7c757f
+
+[Full task output](worker-logs/6876bcd7-1c42-40fa-ad64-cfea5e7c757f.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T16:19:28.443649+00:00",
+  "source_comment_id": "6295598781",
+  "task_id": "6876bcd7-1c42-40fa-ad64-cfea5e7c757f",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/6876bcd7-1c42-40fa-ad64-cfea5e7c757f.md"
+  },
+  "summary": {
+    "path": "tests/test_mailbox_logs.py",
+    "bytes_written": 8562
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/6876bcd7-1c42-40fa-ad64-cfea5e7c757f.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
