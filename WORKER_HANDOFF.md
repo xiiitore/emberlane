@@ -1274,3 +1274,27 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task fb1ea089-df53-427f-a897-2d22f6a11d31
+
+[Full task output](worker-logs/fb1ea089-df53-427f-a897-2d22f6a11d31.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T11:45:22.545010+00:00",
+  "source_comment_id": "6290097814",
+  "task_id": "fb1ea089-df53-427f-a897-2d22f6a11d31",
+  "kind": "git_sync",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/fb1ea089-df53-427f-a897-2d22f6a11d31.md"
+  },
+  "summary": {
+    "path": "emberlane/worker.py"
+  }
+}
+```
