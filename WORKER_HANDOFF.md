@@ -671,3 +671,19 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task 8b3b0ab4-52ac-4d0c-9372-0db28f629ade
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:42:55.743323+00:00",
+  "source_comment_id": "6289063771",
+  "task_id": "8b3b0ab4-52ac-4d0c-9372-0db28f629ade",
+  "kind": "replace_text",
+  "status": "failed",
+  "attempts": 3,
+  "error_present": true,
+  "summary": {}
+}
+```
