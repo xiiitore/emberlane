@@ -3345,3 +3345,36 @@ No stdout/stderr output field was retained for inline publication.
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/edd7f22a-19fd-4752-a203-0dbd55f5d2f5.md).
+
+
+### Worker task 3c5d0ca0-ff10-4428-b4d2-8e738af25fab
+
+[Full task output](worker-logs/3c5d0ca0-ff10-4428-b4d2-8e738af25fab.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T16:23:51.738117+00:00",
+  "source_comment_id": "6295711717",
+  "task_id": "3c5d0ca0-ff10-4428-b4d2-8e738af25fab",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/3c5d0ca0-ff10-4428-b4d2-8e738af25fab.md"
+  },
+  "summary": {
+    "path": "tests/test_mailbox_logs.py",
+    "bytes_written": 8954
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/3c5d0ca0-ff10-4428-b4d2-8e738af25fab.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
