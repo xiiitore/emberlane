@@ -61,6 +61,7 @@ class LocalWorker:
             "list_files": self._list_files,
             "run_tests": self._run_tests,
             "git_status": self._git_status,
+            "git_stash_inspect": self._git_stash_inspect,
             "git_diff": self._git_diff,
             "git_sync": self._git_sync,
             "diagnostics": self._diagnostics,
@@ -418,6 +419,28 @@ class LocalWorker:
         if head_sha["output"].strip() != target_sha["output"].strip():
             return {"synced": False, "stage": "postflight_head_mismatch", **common}
         return {"synced": True, "stage": "complete", **common}
+
+    def _git_stash_inspect(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """List recent stashes and inspect their file summaries without applying them."""
+        del payload
+        listing = self._run_git_readonly(["stash", "list", "--format=%gd %gs"])
+        if listing["returncode"] != 0:
+            return {"listing": listing, "entries": [], "max_entries": 10}
+
+        entries = []
+        for line in listing["output"].splitlines()[:10]:
+            ref = line.split(" ", 1)[0]
+            if not (
+                ref.startswith("stash@{")
+                and ref.endswith("}")
+                and ref[7:-1].isdigit()
+            ):
+                continue
+            stat = self._run_git_readonly(
+                ["stash", "show", "--stat", "--include-untracked", ref]
+            )
+            entries.append({"ref": ref, "summary": line, "stat": stat})
+        return {"listing": listing, "entries": entries, "max_entries": 10}
 
     def _diagnostics(self, payload: dict[str, Any]) -> dict[str, Any]:
         del payload
