@@ -18,26 +18,28 @@ Each completed task should produce one newest-first record containing:
 - verification level: OBSERVED, PASS, FAIL, or UNKNOWN
 
 ## Output and safety rules
-- Keep each published record at or below 6,000 characters.
-- Preserve full raw output locally; publish only a concise, sanitized summary.
-- Never publish tokens, credentials, environment values, private keys, or full secret-bearing configuration.
-- Do not claim tests passed unless the result includes an observed successful exit code.
-- Do not claim a local file is visible to the assistant until it has been published to GitHub and fetched back successfully.
-- Do not overwrite prior records; append new records and retain recent history.
-- Never discard unrelated working-tree changes or run destructive cleanup as part of handoff.
+- Keep each compact handoff record at or below 6,000 characters; it is an index/summary, not the authoritative full output.
+- Publish each completed task's sanitized output separately as `worker-logs/<task_id>.md` on `feat/local-coding-worker`. The worker log is the authoritative output artifact for that task.
+- The Markdown log includes task metadata, sanitized result metadata, and readable output sections. Do not silently truncate: logs over the configured 1 MiB limit must be rejected and reported as a publication failure.
+- Redact token-like values and secret key/value pairs. Omit nested file-content fields rather than publishing potentially private source contents. Never publish tokens, credentials, environment values, private keys, or full secret-bearing configuration.
+- Do not claim tests passed unless the observed result has a successful exit code and the full log supports the summary.
+- Do not claim a local file is visible to the assistant until its exact GitHub path has been fetched and inspected successfully.
+- Preserve prior task records and logs. Do not overwrite unrelated records or discard working-tree changes.
+- Do not put real credentials or private data into GitHub issue tasks, logs, or synthetic security tests.
 
 ## Current transport
-GitHub Issue #6 remains the task intake and fallback result transport; completed task summaries are also published automatically to this file:
-https://github.com/xiiitore/emberlane/issues/6
+GitHub Issue #6 is the task intake and fallback result transport. Each terminal task should have a concise result comment, a compact record in this handoff, and a separate full sanitized log at `worker-logs/<task_id>.md`.
 
-The assistant must fetch the relevant Issue #6 comments or published file directly. The user should not need to copy terminal output.
+The assistant must fetch the relevant Issue #6 comments and the exact task-log path from GitHub. The user should not need to copy terminal output. A comment that only says `published` is not sufficient proof: the assistant must retrieve and inspect the file itself.
 
-## Completion criteria for automatic file handoff
-1. The worker appends one sanitized record after each terminal task result.
-2. The record is published to the feat/local-coding-worker branch through an authenticated, conflict-aware mechanism.
-3. The assistant fetches the file and verifies the new record's task ID and status.
-4. A test proves the record is bounded, sanitized, appended without erasing prior entries, and recoverable after worker restart.
-5. If publication fails, the worker retains the record locally and reports the publication failure through Issue #6.
+## Completion criteria for full-output synchronization
+1. The worker result identifies the exact task ID, terminal status, attempt count, and `task_log_status` / `task_log_path`.
+2. The task log exists on the expected branch and is fetched by its exact path.
+3. The assistant verifies task ID/kind, command, return code, complete available output, final test summary, truncation markers, and redaction/omitted content where relevant.
+4. The handoff record links the source task comment, result comment, and full Markdown log, and distinguishes observed facts from unknowns.
+5. A missing, rejected, oversized, or unreadable log is marked BLOCKED/FAIL; inspect the error and retained local worker log before retrying.
+6. Unit tests cover output preservation, secret redaction, omission of file content, idempotency, and oversize rejection. Live publication and assistant retrieval are verified separately from unit tests.
+7. Never report that every possible output is guaranteed: the current implementation has a 1 MiB log limit and deliberately omits nested file-content fields.
 
 
 ## Test batch — 2026-10-20 (assistant-forwarded worker results)
