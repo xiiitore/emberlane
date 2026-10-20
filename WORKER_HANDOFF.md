@@ -979,3 +979,28 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 9a1d20cc-206c-4ae5-a880-71312cbd4d98
+
+[Full task output](worker-logs/9a1d20cc-206c-4ae5-a880-71312cbd4d98.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T11:15:35.708834+00:00",
+  "source_comment_id": "6289606090",
+  "task_id": "9a1d20cc-206c-4ae5-a880-71312cbd4d98",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/9a1d20cc-206c-4ae5-a880-71312cbd4d98.md"
+  },
+  "summary": {
+    "platform": "Android-14-aarch64-64bit-ELF",
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0"
+  }
+}
+```
