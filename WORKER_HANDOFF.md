@@ -3378,3 +3378,62 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task aa4e967c-7692-4c47-9fee-ffba68b9ef57
+
+[Full task output](worker-logs/aa4e967c-7692-4c47-9fee-ffba68b9ef57.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T16:26:03.936893+00:00",
+  "source_comment_id": "6295714330",
+  "task_id": "aa4e967c-7692-4c47-9fee-ffba68b9ef57",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/aa4e967c-7692-4c47-9fee-ffba68b9ef57.md"
+  },
+  "summary": {
+    "passed": false,
+    "returncode": 1
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 2796,
+    "full_log_path": "worker-logs/aa4e967c-7692-4c47-9fee-ffba68b9ef57.md"
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+test_existing_task_log_is_idempotent (test_mailbox_logs.TaskLogPublishingTests.test_existing_task_log_is_idempotent) ... ok
+test_handoff_includes_small_sanitized_output_inline (test_mailbox_logs.TaskLogPublishingTests.test_handoff_includes_small_sanitized_output_inline) ... FAIL
+test_handoff_uses_full_log_for_output_over_inline_limit (test_mailbox_logs.TaskLogPublishingTests.test_handoff_uses_full_log_for_output_over_inline_limit) ... ok
+test_publishes_full_output_redacts_secrets_and_omits_file_content (test_mailbox_logs.TaskLogPublishingTests.test_publishes_full_output_redacts_secrets_and_omits_file_content) ... ok
+test_rejects_oversized_log_instead_of_silently_truncating (test_mailbox_logs.TaskLogPublishingTests.test_rejects_oversized_log_instead_of_silently_truncating) ... ok
+test_shared_redactor_removes_tokens_authorization_and_secret_values (test_mailbox_logs.TaskLogPublishingTests.test_shared_redactor_removes_tokens_authorization_and_secret_values) ... ok
+test_terminal_result_redacts_sensitive_last_error_before_comment (test_mailbox_logs.TaskLogPublishingTests.test_terminal_result_redacts_sensitive_last_error_before_comment) ... ok
+
+======================================================================
+FAIL: test_handoff_includes_small_sanitized_output_inline (test_mailbox_logs.TaskLogPublishingTests.test_handoff_includes_small_sanitized_output_inline)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/data/data/com.termux/files/usr/lib/python3.13/unittest/mock.py", line 1432, in patched
+    return func(*newargs, **newkeywargs)
+  File "/data/data/com.termux/files/home/emberlane/emberlane-connected/tests/test_mailbox_logs.py", line 107, in test_handoff_includes_small_sanitized_output_inline
+    self.assertIn("[REDACTED]", document)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '[REDACTED]' not found in '# Existing handoff\\n\n\n### Worker task task-inline\n\n[Full task output](worker-logs/task-inline.md)\n\n```json\n{\n  "timestamp_utc": "2026-10-20T16:26:01.908689+00:00",\n  "source_comment_id": "comment-8",\n  "task_id": "task-inline",\n  "kind": "run_tests",\n  "status": "completed",\n  "attempts": 1,\n  "error_present": false,\n  "task_log": {\n    "task_log_status": "published",\n    "task_log_path": "worker-logs/task-inline.md"\n  },\n  "summary": {\n    "returncode": 0\n  },\n  "output_publication": {\n    "mode": "inline_and_full_log",\n    "inline_bytes": 71,\n    "full_log_path": "worker-logs/task-inline.md"\n  }\n}\n```\n\n#### Output: `result.output`\n\n~~~text\nPASS\\napi_key=private-value\n~~~\n'
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.058s
+
+FAILED (failures=1)
+
+~~~
