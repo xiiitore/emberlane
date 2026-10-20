@@ -1394,3 +1394,25 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task fb197516-7ff7-4bad-ade5-8dbd4fd77e4c
+
+[Full task output](worker-logs/fb197516-7ff7-4bad-ade5-8dbd4fd77e4c.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T11:48:36.048327+00:00",
+  "source_comment_id": "6290155584",
+  "task_id": "fb197516-7ff7-4bad-ade5-8dbd4fd77e4c",
+  "kind": "git_status",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/fb197516-7ff7-4bad-ade5-8dbd4fd77e4c.md"
+  },
+  "summary": {}
+}
+```
