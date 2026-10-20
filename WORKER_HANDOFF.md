@@ -874,3 +874,22 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task fe0baabd-6cde-4799-ac31-ccbf9f2eeadc
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:47:25.644546+00:00",
+  "source_comment_id": "6289153718",
+  "task_id": "fe0baabd-6cde-4799-ac31-ccbf9f2eeadc",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "path": "tests/test_handoff_retry.py",
+    "bytes_written": 2033
+  }
+}
+```
