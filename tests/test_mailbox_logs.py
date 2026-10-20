@@ -93,5 +93,29 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertIn("password:[REDACTED]", cleaned)
 
 
+    def test_terminal_result_redacts_sensitive_last_error_before_comment(self):
+        token = "ghp_" + "C" * 35
+        task = SimpleNamespace(
+            task_id="task-456", kind="write_file", status="failed",
+            attempts=1, last_error=f"request failed with {token}", result={},
+        )
+        mailbox = GitHubIssueMailbox.__new__(GitHubIssueMailbox)
+        mailbox.worker = SimpleNamespace(queue=SimpleNamespace(get=lambda task_id: task))
+        mailbox.state = {"handled": [], "active": {"comment-8": "task-456"}}
+        replies = []
+        mailbox._reply = replies.append
+        mailbox._publish_task_log = lambda task, comment_id: {
+            "task_log_status": "published", "task_log_path": "worker-logs/task-456.md"
+        }
+        mailbox._publish_handoff_record = lambda task, comment_id, log_result: {
+            "handoff_status": "published"
+        }
+        mailbox._save_state = lambda: None
+
+        self.assertTrue(mailbox._finish_if_terminal("comment-8", "task-456"))
+        self.assertEqual(len(replies), 1)
+        self.assertNotIn(token, replies[0])
+        self.assertIn("[REDACTED_GITHUB_TOKEN]", replies[0])
+
 if __name__ == "__main__":
     unittest.main()
