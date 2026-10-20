@@ -363,3 +363,26 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task b14c6454-d13d-4c94-91d4-181f675a6584
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:31:09.435139+00:00",
+  "source_comment_id": "6288894328",
+  "task_id": "b14c6454-d13d-4c94-91d4-181f675a6584",
+  "kind": "git_status",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "branch_status": "## feat/local-coding-worker...origin/feat/local-coding-worker",
+    "working_tree_dirty": true,
+    "changed_paths_count": 14,
+    "head_commit": "ac1b2ca Fix mailbox rejection reply formatting",
+    "status_returncode": 0,
+    "head_returncode": 0
+  }
+}
+```
