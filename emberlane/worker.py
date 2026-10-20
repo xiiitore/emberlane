@@ -63,6 +63,8 @@ class LocalWorker:
             "git_status": self._git_status,
             "git_diff": self._git_diff,
             "git_sync": self._git_sync,
+            "git_commit": self._git_commit,
+            "git_push": self._git_push,
             "diagnostics": self._diagnostics,
         }
 
@@ -375,6 +377,190 @@ class LocalWorker:
             "head": head,
         }
 
+    @staticmethod
+    def _valid_branch_name(value: Any) -> bool:
+        return (
+            isinstance(value, str)
+            and bool(value)
+            and not value.startswith("-")
+            and not value.startswith("/")
+            and not value.endswith(("/", "."))
+            and ".." not in value
+            and "//" not in value
+            and all(ch.isalnum() or ch in "._/-" for ch in value)
+        )
+
+    def _git_commit(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Run tests and commit only explicitly selected changed paths."""
+        expected_branch = payload.get("expected_branch")
+        if not self._valid_branch_name(expected_branch):
+            raise ValueError("expected_branch must be a valid branch name")
+        paths = payload.get("paths")
+        if not isinstance(paths, list) or not paths:
+            raise ValueError("paths must be a non-empty list")
+        if any(
+            not isinstance(path, str)
+            or not path
+            or path.startswith("-")
+            or Path(path).is_absolute()
+            or ".." in Path(path).parts
+            or any(ord(ch) < 32 for ch in path)
+            for path in paths
+        ):
+            raise ValueError("paths must be safe repository-relative paths")
+        if len(set(paths)) != len(paths):
+            raise ValueError("paths must not contain duplicates")
+        for path in paths:
+            _checked_path(path)
+        message = payload.get("message")
+        if (
+            not isinstance(message, str)
+            or not message.strip()
+            or len(message) > 200
+            or "\n" in message
+            or "\r" in message
+        ):
+            raise ValueError("message must be a non-empty single line of at most 200 characters")
+
+        status = self._run_git_readonly(["status", "--porcelain", "--untracked-files=all"])
+        if status["returncode"] != 0:
+            return {"committed": False, "stage": "preflight_status", "status": status}
+        staged = self._run_git_readonly(["diff", "--cached", "--quiet"])
+        if staged["returncode"] != 0:
+            return {
+                "committed": False,
+                "stage": "preflight_staged",
+                "error": "pre-existing staged changes must be reviewed before committing",
+                "staged": staged,
+            }
+        branch = self._run_git_readonly(["branch", "--show-current"])
+        if branch["returncode"] != 0 or branch["output"].strip() != expected_branch:
+            return {
+                "committed": False,
+                "stage": "branch_mismatch",
+                "expected_branch": expected_branch,
+                "branch": branch,
+            }
+
+        changed_paths = []
+        for path in paths:
+            changed = self._run_git_readonly(["status", "--porcelain", "--", path])
+            if changed["returncode"] != 0:
+                return {"committed": False, "stage": "path_status", "path": path, "status": changed}
+            if changed["output"].strip():
+                changed_paths.append(path)
+        if set(changed_paths) != set(paths):
+            return {
+                "committed": False,
+                "stage": "paths_not_all_changed",
+                "requested_paths": paths,
+                "changed_paths": changed_paths,
+            }
+
+        tests = self._run_tests({})
+        if not tests["passed"]:
+            return {
+                "committed": False,
+                "stage": "tests",
+                "tests": {key: value for key, value in tests.items() if key != "output"},
+                "test_output": tests.get("output", "")[-MAX_OUTPUT_CHARS:],
+            }
+
+        add = self._run_git_readonly(["add", "--", *paths], timeout=30)
+        if add["returncode"] != 0:
+            return {"committed": False, "stage": "git_add", "add": add}
+        staged_paths = self._run_git_readonly(["diff", "--cached", "--name-only"])
+        if staged_paths["returncode"] != 0:
+            return {"committed": False, "stage": "staged_path_check", "staged_paths": staged_paths}
+        actual = set(staged_paths["output"].splitlines())
+        if actual != set(paths):
+            return {
+                "committed": False,
+                "stage": "staged_path_mismatch",
+                "requested_paths": paths,
+                "staged_paths": sorted(actual),
+            }
+        whitespace = self._run_git_readonly(["diff", "--cached", "--check"])
+        if whitespace["returncode"] != 0:
+            return {"committed": False, "stage": "diff_check", "diff_check": whitespace}
+        commit = self._run_git_readonly(["commit", "-m", message], timeout=60)
+        if commit["returncode"] != 0:
+            return {"committed": False, "stage": "commit", "commit": commit}
+        head = self._run_git_readonly(["log", "-1", "--format=%H%n%s"])
+        final_status = self._run_git_readonly(["status", "--short", "--branch"])
+        return {
+            "committed": head["returncode"] == 0,
+            "stage": "complete" if head["returncode"] == 0 else "verify_commit",
+            "branch": expected_branch,
+            "paths": paths,
+            "tests": {key: value for key, value in tests.items() if key != "output"},
+            "add": add,
+            "diff_check": whitespace,
+            "commit": commit,
+            "head": head,
+            "status": final_status,
+        }
+
+    def _git_push(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Push the current branch without force and verify the remote commit."""
+        expected_branch = payload.get("expected_branch")
+        if not self._valid_branch_name(expected_branch):
+            raise ValueError("expected_branch must be a valid branch name")
+        status = self._run_git_readonly(["status", "--porcelain"])
+        if status["returncode"] != 0:
+            return {"pushed": False, "stage": "preflight_status", "status": status}
+        if status["output"].strip():
+            return {
+                "pushed": False,
+                "stage": "preflight_dirty",
+                "error": "worktree must be clean before pushing",
+                "status": status,
+            }
+        branch = self._run_git_readonly(["branch", "--show-current"])
+        if branch["returncode"] != 0 or branch["output"].strip() != expected_branch:
+            return {
+                "pushed": False,
+                "stage": "branch_mismatch",
+                "expected_branch": expected_branch,
+                "branch": branch,
+            }
+        fetch = self._run_git_readonly(["fetch", "origin", expected_branch], timeout=60)
+        if fetch["returncode"] != 0:
+            return {"pushed": False, "stage": "fetch", "fetch": fetch}
+        ancestor = self._run_git_readonly(["merge-base", "--is-ancestor", "FETCH_HEAD", "HEAD"])
+        if ancestor["returncode"] != 0:
+            return {
+                "pushed": False,
+                "stage": "non_fast_forward",
+                "error": "remote branch is not an ancestor of local HEAD; sync and review before retrying",
+                "ancestor_check": ancestor,
+            }
+        head = self._run_git_readonly(["rev-parse", "HEAD"])
+        if head["returncode"] != 0 or not head["output"].strip():
+            return {"pushed": False, "stage": "local_head", "head": head}
+        push = self._run_git_readonly(
+            ["push", "origin", f"HEAD:refs/heads/{expected_branch}"], timeout=90
+        )
+        if push["returncode"] != 0:
+            return {"pushed": False, "stage": "push", "fetch": fetch, "push": push}
+        remote = self._run_git_readonly(
+            ["ls-remote", "--heads", "origin", f"refs/heads/{expected_branch}"],
+            timeout=30,
+        )
+        remote_sha = remote["output"].split()[0] if remote["returncode"] == 0 and remote["output"].split() else None
+        local_sha = head["output"].strip()
+        return {
+            "pushed": remote["returncode"] == 0 and remote_sha == local_sha,
+            "stage": "complete" if remote["returncode"] == 0 and remote_sha == local_sha else "verify_remote",
+            "branch": expected_branch,
+            "fetch": fetch,
+            "ancestor_check": ancestor,
+            "push": push,
+            "local_head": local_sha,
+            "remote": remote,
+            "remote_head": remote_sha,
+        }
+
     def _diagnostics(self, payload: dict[str, Any]) -> dict[str, Any]:
         del payload
         return {
@@ -474,7 +660,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "diagnostics"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_commit", "git_push", "diagnostics"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
