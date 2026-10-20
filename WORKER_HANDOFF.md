@@ -2213,3 +2213,28 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task b380d697-73b5-45f8-8c22-2f2caa331e30
+
+[Full task output](worker-logs/b380d697-73b5-45f8-8c22-2f2caa331e30.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T13:46:22.133053+00:00",
+  "source_comment_id": "6292344764",
+  "task_id": "b380d697-73b5-45f8-8c22-2f2caa331e30",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/b380d697-73b5-45f8-8c22-2f2caa331e30.md"
+  },
+  "summary": {
+    "path": "tests/test_mailbox_logs.py",
+    "bytes_written": 3616
+  }
+}
+```
