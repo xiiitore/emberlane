@@ -4019,3 +4019,36 @@ acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 32728aaf-53d1-4acc-9771-01f92a9fd366
+
+[Full task output](worker-logs/32728aaf-53d1-4acc-9771-01f92a9fd366.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T22:14:41.707943+00:00",
+  "source_comment_id": "6302923803",
+  "task_id": "32728aaf-53d1-4acc-9771-01f92a9fd366",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/32728aaf-53d1-4acc-9771-01f92a9fd366.md"
+  },
+  "summary": {
+    "bytes_written": 9009,
+    "path": "tests/test_mailbox_logs.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/32728aaf-53d1-4acc-9771-01f92a9fd366.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
