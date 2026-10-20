@@ -314,6 +314,36 @@ class LocalWorkerTests(unittest.TestCase):
             self.worker.submit("git_sync", {"expected_branch": "-c"})
         self.assertEqual(self.worker.queue.list_tasks(), [])
 
+    def test_git_stash_inspect_uses_fixed_read_only_commands(self):
+        self.worker.submit("git_stash_inspect", {})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(
+                    ["git", "stash", "list", "--format=%gd %gs"], 0,
+                    "stash@{0} On feature: recovery\\n"
+                ),
+                subprocess.CompletedProcess(
+                    ["git", "stash", "show", "--stat", "--include-untracked", "stash@{0}"],
+                    0, " worker.py | 3 +++\\n 1 file changed, 3 insertions(+)\\n"
+                ),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.result["entries"][0]["ref"], "stash@{0}")
+        self.assertIn("worker.py", result.result["entries"][0]["stat"]["output"])
+        self.assertEqual(run.call_count, 2)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+        self.assertEqual(
+            run.call_args_list[0].args[0],
+            ["git", "stash", "list", "--format=%gd %gs"],
+        )
+        self.assertEqual(
+            run.call_args_list[1].args[0],
+            ["git", "stash", "show", "--stat", "--include-untracked", "stash@{0}"],
+        )
+
     def test_diagnostics_returns_runtime_and_git_information(self):
         self.worker.submit("diagnostics", {})
         with patch(
