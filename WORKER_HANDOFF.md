@@ -3437,3 +3437,59 @@ Ran 7 tests in 0.058s
 FAILED (failures=1)
 
 ~~~
+
+
+### Worker task 99e9617a-d98b-4f8f-8098-8ec34e3c1459
+
+[Full task output](worker-logs/99e9617a-d98b-4f8f-8098-8ec34e3c1459.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T16:45:04.359968+00:00",
+  "source_comment_id": "6296131549",
+  "task_id": "99e9617a-d98b-4f8f-8098-8ec34e3c1459",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/99e9617a-d98b-4f8f-8098-8ec34e3c1459.md"
+  },
+  "summary": {
+    "platform": "Android-14-aarch64-64bit-ELF",
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 631,
+    "full_log_path": "worker-logs/99e9617a-d98b-4f8f-8098-8ec34e3c1459.md"
+  }
+}
+```
+
+#### Output: `result.git_status.output`
+
+~~~text
+## feat/local-coding-worker...origin/feat/local-coding-worker
+ M .github/workflows/tests.yml
+ M WORKER_HANDOFF.md
+ M emberlane/mailbox.py
+ M tests/test_mailbox.py
+ M tests/test_mailbox_logs.py
+?? activate-termux-worker-loop.sh
+?? emberlane/mailbox.py.bak-20261020T151505Z
+?? status-short.txt
+?? termux-worker-loop.sh
+?? worker-logs/full-tests-20261020T173033.log
+?? worker-logs/termux-check-20261020T150908Z.md
+?? worker-logs/worker-loop.log
+
+~~~
+
+#### Output: `result.latest_commit.output`
+
+~~~text
+acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
+
+~~~
