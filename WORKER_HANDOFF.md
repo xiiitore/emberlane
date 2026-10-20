@@ -241,3 +241,22 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task aa07bad2-6745-47c1-b731-5b083f3c3517
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:28:52.649205+00:00",
+  "source_comment_id": "6288858846",
+  "task_id": "aa07bad2-6745-47c1-b731-5b083f3c3517",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "path": "emberlane/mailbox.py",
+    "bytes_written": 28341
+  }
+}
+```
