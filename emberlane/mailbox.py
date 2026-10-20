@@ -36,6 +36,9 @@ _RETRYABLE_ERRORS = (
     "connection refused",
     "temporary failure",
     "timed out",
+    # gh can expose a truncated/transient HTTP response as this parser error.
+    "unexpected end of json input",
+    "unexpected eof",
 )
 
 
