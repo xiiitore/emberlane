@@ -180,10 +180,7 @@ class GitHubIssueMailbox:
         result = task.result if isinstance(task.result, dict) else {}
         outputs: list[tuple[str, str]] = []
         def redact(value: str) -> str:
-            value = re.sub(r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})", "[REDACTED_GITHUB_TOKEN]", value)
-            value = re.sub(r"(?i)(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+", r"\1[REDACTED]", value)
-            value = re.sub(r"(?im)\b(password|passwd|secret|api[_-]?key|access[_-]?token)\b(\s*[:=]\s*)[^\s,;]+", r"\1\2[REDACTED]", value)
-            return value
+            return _redact_sensitive_text(value)
         def sanitize(value: Any, path: str) -> Any:
             if isinstance(value, str):
                 return redact(value)
