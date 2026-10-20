@@ -1854,3 +1854,28 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 8c610008-cda2-416e-96db-46c926c214a1
+
+[Full task output](worker-logs/8c610008-cda2-416e-96db-46c926c214a1.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-20T13:13:09.748697+00:00",
+  "source_comment_id": "6291674690",
+  "task_id": "8c610008-cda2-416e-96db-46c926c214a1",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/8c610008-cda2-416e-96db-46c926c214a1.md"
+  },
+  "summary": {
+    "passed": true,
+    "returncode": 0
+  }
+}
+```
