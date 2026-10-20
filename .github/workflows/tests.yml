@@ -2,7 +2,13 @@ name: tests
 
 on:
   push:
+    paths-ignore:
+      - 'worker-logs/**'
+      - 'WORKER_HANDOFF.md'
   pull_request:
+    paths-ignore:
+      - 'worker-logs/**'
+      - 'WORKER_HANDOFF.md'
 
 jobs:
   unittest:
