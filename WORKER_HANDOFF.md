@@ -655,3 +655,19 @@ These records were fetched from Issue #6 after the local worker completed each t
   "summary": {}
 }
 ```
+
+
+### Worker task d740fc13-6508-4d3d-b2bd-8a5509818bcb
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:42:26.405226+00:00",
+  "source_comment_id": "6289062477",
+  "task_id": "d740fc13-6508-4d3d-b2bd-8a5509818bcb",
+  "kind": "replace_text",
+  "status": "failed",
+  "attempts": 3,
+  "error_present": true,
+  "summary": {}
+}
+```
