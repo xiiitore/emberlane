@@ -2838,3 +2838,25 @@ Full task output log was not published.
   }
 }
 ```
+
+
+## Efficient continuation protocol (2026-10-20)
+
+This section is the operating contract for future ChatGPT sessions and local-worker handoffs. It exists to prevent repeated audits and duplicate tasks.
+
+### Single-pass loop
+
+1. Fetch Issue #6 comments once. Build a map of task comments by source comment ID and matching `EMBERLANE_RESULT` records. Check existing task logs only when a result points to one or when a concrete discrepancy needs resolution.
+2. Continue the earliest existing unresolved task; never repost its payload. A diagnostics request is not proof that the worker ran.
+3. Treat a task as completed only when its result comment and task log/status support that claim. If the issue has no newer result, report the worker as not observed processing the queue; do not label the task failed without evidence.
+4. Inspect only the relevant file/commit for the next concrete discrepancy. Do not repeat repository-wide audits, successful test runs, or already-verified checks without a new code change or failure signal.
+5. After a patch, run the relevant test suite once, then inspect the result. Re-run only if a code change or a specific failure justifies it.
+6. Keep the final report to PASS / BLOCKED / NEXT, with exact task IDs, evidence links, and commit SHA when available. Record unknowns explicitly.
+
+### Mailbox execution boundary
+
+The current CLI exposes `mailbox-once`, which polls and handles at most one new task per invocation. GitHub comments alone do not execute tasks: the local Termux process must run the mailbox poller. If new task comments have no matching results, first verify poller/worker liveness from local diagnostics or an incoming worker result; do not keep posting more diagnostics comments. ChatGPT's GitHub connector can inspect and edit repository files, but cannot itself start or inspect a process running on the user's Termux device.
+
+### Current checkpoint
+
+At the time this checkpoint was written, Issue #6 had comments through `6293199754`, but no `EMBERLANE_RESULT` was visible for task comments `6292794987`, `6292806369`, `6292972845`, or `6293002984`. A continuation instruction was posted as comment `6293199754`; it is not evidence of worker execution. Do not duplicate these requests. First check for a new result, then continue the existing queue or establish the concrete local-poller blocker.
