@@ -151,3 +151,23 @@ These records were fetched from Issue #6 after the local worker completed each t
   }
 }
 ```
+
+
+### Worker task 3c0e65ac-0fec-4a47-8b3c-3e56e626750b
+
+```json
+{
+  "timestamp_utc": "2026-10-20T10:22:28.665145+00:00",
+  "source_comment_id": "6288752388",
+  "task_id": "3c0e65ac-0fec-4a47-8b3c-3e56e626750b",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "summary": {
+    "returncode": 0,
+    "tests_run": 63,
+    "passed": true
+  }
+}
+```
