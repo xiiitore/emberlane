@@ -44,8 +44,12 @@ python -m emberlane submit git_diff
 python -m emberlane submit git_sync --payload '{"expected_branch":"feat/local-coding-worker"}'
 python -m emberlane submit diagnostics
 
-# Queue and execute the fixed unittest command
+# Queue and execute the full unittest suite
 python -m emberlane submit run_tests
+python -m emberlane run-one
+
+# Run only one test file (filename must be test_*.py directly inside tests/)
+python -m emberlane submit run_tests --payload '{"test_file":"test_worker.py"}'
 python -m emberlane run-one
 
 # Inspect queue state and task results
@@ -67,10 +71,13 @@ and rejects oversized content before queueing. Each
 individual file replacement is atomic; the batch as a whole is not atomic, so a
 filesystem failure during the write phase can leave earlier files changed. The
 worker blocks writes to common Git metadata, virtual-environment, queue-state,
-and environment-secret paths. Test execution uses a fixed command
-(`python -m unittest discover -s tests -v`) with no shell and a timeout.
-Project tests are still executable code: run the worker only in a repository
-you trust.
+and environment-secret paths. Test execution uses fixed argument lists with no
+shell and a timeout. By default it runs the full suite with
+`python -m unittest discover -s tests -v`; an optional `test_file` selects one
+exact `test_*.py` filename directly inside `tests/`. Invalid names are rejected
+before queueing, and a missing test file returns an explicit failed result
+instead of treating zero discovered tests as success. Project tests are still
+executable code: run the worker only in a repository you trust.
 
 ## Security boundary
 
