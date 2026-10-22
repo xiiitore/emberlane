@@ -99,6 +99,13 @@ class GoalPlanner:
             for task in self.queue.list_tasks()
             if task.idempotency_key and task.idempotency_key.startswith(key_prefix)
         }
+        for step_id, step in normalized.items():
+            prior = existing.get(step_id)
+            if prior is not None and (prior.kind != step["kind"] or prior.payload != step["payload"]):
+                raise PlanValidationError(
+                    f"step {step_id} conflicts with a previously queued task; use a new goal_id"
+                )
+
         failed = [step_id for step_id, task in existing.items() if task.status == "failed"]
         if len(failed) >= max_failures:
             return {
