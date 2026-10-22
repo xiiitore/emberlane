@@ -6456,3 +6456,40 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 7f53b79a-0c83-4a44-85e8-7e798fa9ae97
+
+[Full task output](worker-logs/7f53b79a-0c83-4a44-85e8-7e798fa9ae97.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T20:48:45.080047+00:00",
+  "source_comment_id": "6350983302",
+  "task_id": "7f53b79a-0c83-4a44-85e8-7e798fa9ae97",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/7f53b79a-0c83-4a44-85e8-7e798fa9ae97.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/7f53b79a-0c83-4a44-85e8-7e798fa9ae97.md",
+    "dropbox_sha256": "ab0acaf319151f97ff1fa4552a2ed642244fe0131cc1422b9f73a292c33de132",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0",
+    "platform": "Android-14-aarch64-64bit-ELF"
+  },
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/7f53b79a-0c83-4a44-85e8-7e798fa9ae97.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/7f53b79a-0c83-4a44-85e8-7e798fa9ae97.md).
