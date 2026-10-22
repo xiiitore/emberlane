@@ -6087,3 +6087,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 1ae09037-f96a-4c67-85a1-254217569772
+
+[Full task output](worker-logs/1ae09037-f96a-4c67-85a1-254217569772.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T18:30:54.847164+00:00",
+  "source_comment_id": "6348228385",
+  "task_id": "1ae09037-f96a-4c67-85a1-254217569772",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/1ae09037-f96a-4c67-85a1-254217569772.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/1ae09037-f96a-4c67-85a1-254217569772.md",
+    "dropbox_sha256": "beaa07274d7ebba8853fa91b0808a2ed2017960155e95e8a4bb68688e9311d2f",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "tests/test_codex_autopilot_supervisor.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/1ae09037-f96a-4c67-85a1-254217569772.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
