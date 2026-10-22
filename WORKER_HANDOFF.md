@@ -5716,3 +5716,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 9a49a291-393d-4e30-a70a-6659efb79d7f
+
+[Full task output](worker-logs/9a49a291-393d-4e30-a70a-6659efb79d7f.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T17:42:17.890559+00:00",
+  "source_comment_id": "6347261499",
+  "task_id": "9a49a291-393d-4e30-a70a-6659efb79d7f",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/9a49a291-393d-4e30-a70a-6659efb79d7f.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/9a49a291-393d-4e30-a70a-6659efb79d7f.md",
+    "dropbox_sha256": "51671add08b0221738892dce7b6652d1753fd96b1055e9656d2bc85fcd31318f",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "scripts/codex-autopilot.sh"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/9a49a291-393d-4e30-a70a-6659efb79d7f.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
