@@ -5981,3 +5981,37 @@ Ran 2 tests in 0.026s
 OK
 
 ~~~
+
+
+### Worker task b9ab76f9-98cb-408f-bf26-5731d4c644b0
+
+[Full task output](worker-logs/b9ab76f9-98cb-408f-bf26-5731d4c644b0.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T18:26:23.690824+00:00",
+  "source_comment_id": "6348149543",
+  "task_id": "b9ab76f9-98cb-408f-bf26-5731d4c644b0",
+  "kind": "git_diff",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/b9ab76f9-98cb-408f-bf26-5731d4c644b0.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/b9ab76f9-98cb-408f-bf26-5731d4c644b0.md",
+    "dropbox_sha256": "380b0f0a1a54ba7513035507b81de705823d9a92deeac138f1e7dc00d3fd1425",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/b9ab76f9-98cb-408f-bf26-5731d4c644b0.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/b9ab76f9-98cb-408f-bf26-5731d4c644b0.md).
