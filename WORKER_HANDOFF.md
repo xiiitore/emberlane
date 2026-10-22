@@ -4331,3 +4331,36 @@ OK
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 2b2b867f-0a00-402e-9273-1df95b9bcb32
+
+[Full task output](worker-logs/2b2b867f-0a00-402e-9273-1df95b9bcb32.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T11:32:20.528099+00:00",
+  "source_comment_id": "6339693917",
+  "task_id": "2b2b867f-0a00-402e-9273-1df95b9bcb32",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/2b2b867f-0a00-402e-9273-1df95b9bcb32.md"
+  },
+  "summary": {
+    "bytes_written": 5738,
+    "path": "emberlane/dropbox_output.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/2b2b867f-0a00-402e-9273-1df95b9bcb32.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
