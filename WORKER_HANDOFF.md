@@ -4945,3 +4945,108 @@ acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 
 ~~~
+
+
+### Worker task 8e82a962-f6a8-406f-866f-facfc19a542c
+
+[Full task output](worker-logs/8e82a962-f6a8-406f-866f-facfc19a542c.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T12:24:26.399079+00:00",
+  "source_comment_id": "6340660496",
+  "task_id": "8e82a962-f6a8-406f-866f-facfc19a542c",
+  "kind": "git_diff",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/8e82a962-f6a8-406f-866f-facfc19a542c.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/8e82a962-f6a8-406f-866f-facfc19a542c.md",
+    "dropbox_sha256": "f4b4c60491bd65fe02ea16b3a84b777e81ad49db7ecaa1cee62ed37e3c186f9a",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 2083,
+    "full_log_path": "worker-logs/8e82a962-f6a8-406f-866f-facfc19a542c.md"
+  }
+}
+```
+
+#### Output: `result.files.output`
+
+~~~text
+.github/workflows/tests.yml
+WORKER_HANDOFF.md
+emberlane/mailbox.py
+tests/test_mailbox.py
+tests/test_mailbox_logs.py
+
+~~~
+
+#### Output: `result.stat.output`
+
+~~~text
+ .github/workflows/tests.yml |   6 ++
+ WORKER_HANDOFF.md           | 151 +++++++++++++++++++++++++++++++++++
+ emberlane/mailbox.py        | 155 ++++++++++++++++++++++++++++++++----
+ tests/test_mailbox.py       |  48 +++++++++++
+ tests/test_mailbox_logs.py  | 190 ++++++++++++++++++++++++++++++++++++++++++--
+ 5 files changed, 528 insertions(+), 22 deletions(-)
+
+~~~
+
+#### Output: `result.staged_files.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.staged_stat.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.untracked_files.output`
+
+~~~text
+activate-termux-worker-loop.sh
+emberlane/dropbox_output.py
+emberlane/mailbox.py.bak-20261020T151505Z
+emberlane/mailbox.py.bak-before-escaped-newline-redaction
+scripts/setup_dropbox_oauth.py
+status-short.txt
+tatus --short
+termux-worker-loop.sh
+tests/test_dropbox_output.py
+tests/test_mailbox_logs.py.bak-20261022T121708Z
+worker-logs/0397bc14-0af0-43a1-babd-5e75db2bc745.md
+worker-logs/1e8bbd18-54ca-4450-aca8-2d4658d6da13.md
+worker-logs/2c7e3c7f-3948-4700-80d0-1402e1d3d050.md
+worker-logs/52596439-67be-4e6f-afb7-4e21e7ae3c3e.md
+worker-logs/579e9db8-b27e-4db5-816a-03c8b1751f1b.md
+worker-logs/68cac21b-dde7-4d86-bd30-a8d9cdd24665.md
+worker-logs/6ef18906-f170-4ee2-84f1-593426c43d9b.md
+worker-logs/73a48a46-c92b-4148-a9d1-a4adb724e79b.md
+worker-logs/86e12302-e8ed-4492-9427-1627e2da1b90.md
+worker-logs/8dcf1d61-38f3-450c-8b19-a5d1ee3d51d9.md
+worker-logs/8ee9988e-c70e-4d4a-99a9-894060f95bb1.md
+worker-logs/b8baa4bd-b6f4-43a4-9b5e-9cff3ced502b.md
+worker-logs/full-tests-20261020T173033.log
+worker-logs/full-tests-20261022T121757Z.log
+worker-logs/full-tests-after-readback.log
+worker-logs/mailbox-loop.log
+worker-logs/pre-restart-pane.log
+worker-logs/task-123.md
+worker-logs/task-bad-readback.md
+worker-logs/task-readback-fail.md
+worker-logs/task-wrapped-base64.md
+worker-logs/termux-check-20261020T150908Z.md
+worker-logs/worker-loop.log
+
+~~~
