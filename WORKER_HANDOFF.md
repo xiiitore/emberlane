@@ -4510,3 +4510,33 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 2c7e3c7f-3948-4700-80d0-1402e1d3d050
+
+[Full task output](worker-logs/2c7e3c7f-3948-4700-80d0-1402e1d3d050.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T11:35:53.158246+00:00",
+  "source_comment_id": "6339753788",
+  "task_id": "2c7e3c7f-3948-4700-80d0-1402e1d3d050",
+  "kind": "replace_text",
+  "status": "failed",
+  "attempts": 3,
+  "error_present": true,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/2c7e3c7f-3948-4700-80d0-1402e1d3d050.md"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/2c7e3c7f-3948-4700-80d0-1402e1d3d050.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
