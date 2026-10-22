@@ -4298,3 +4298,36 @@ Ran 9 tests in 0.255s
 OK
 
 ~~~
+
+
+### Worker task c3750ca8-da34-4402-b7c0-fe66cfa2d5c6
+
+[Full task output](worker-logs/c3750ca8-da34-4402-b7c0-fe66cfa2d5c6.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T11:31:26.752474+00:00",
+  "source_comment_id": "6339677729",
+  "task_id": "c3750ca8-da34-4402-b7c0-fe66cfa2d5c6",
+  "kind": "write_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/c3750ca8-da34-4402-b7c0-fe66cfa2d5c6.md"
+  },
+  "summary": {
+    "bytes_written": 5137,
+    "path": "emberlane/dropbox_output.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/c3750ca8-da34-4402-b7c0-fe66cfa2d5c6.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
