@@ -4119,3 +4119,36 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task b047be34-866d-4efa-9557-a43fbd5ca5dd
+
+[Full task output](worker-logs/b047be34-866d-4efa-9557-a43fbd5ca5dd.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T08:33:01.173593+00:00",
+  "source_comment_id": "6336330240",
+  "task_id": "b047be34-866d-4efa-9557-a43fbd5ca5dd",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/b047be34-866d-4efa-9557-a43fbd5ca5dd.md"
+  },
+  "summary": {
+    "bytes_written": 9009,
+    "path": "tests/test_mailbox_logs.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/b047be34-866d-4efa-9557-a43fbd5ca5dd.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
