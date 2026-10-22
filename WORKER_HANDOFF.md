@@ -5174,3 +5174,39 @@ acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 045c36d3-a68f-4284-a36e-52770e87d3f1
+
+[Full task output](worker-logs/045c36d3-a68f-4284-a36e-52770e87d3f1.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T12:31:50.922337+00:00",
+  "source_comment_id": "6340805257",
+  "task_id": "045c36d3-a68f-4284-a36e-52770e87d3f1",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/045c36d3-a68f-4284-a36e-52770e87d3f1.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/045c36d3-a68f-4284-a36e-52770e87d3f1.md",
+    "dropbox_sha256": "0933089235e69e547c153b4af6e0b0fa3193ca57e3c9479a222753134f7f713f",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/045c36d3-a68f-4284-a36e-52770e87d3f1.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
