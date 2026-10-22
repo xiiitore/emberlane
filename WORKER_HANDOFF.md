@@ -5752,3 +5752,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 8116f596-a084-453b-b084-e7b7c95d175e
+
+[Full task output](worker-logs/8116f596-a084-453b-b084-e7b7c95d175e.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T17:46:13.200634+00:00",
+  "source_comment_id": "6347355269",
+  "task_id": "8116f596-a084-453b-b084-e7b7c95d175e",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/8116f596-a084-453b-b084-e7b7c95d175e.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/8116f596-a084-453b-b084-e7b7c95d175e.md",
+    "dropbox_sha256": "f364b97e05e69800a26faa92e2c3e68e40e4f1c1677327c2b08ef49b32fb090c",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/8116f596-a084-453b-b084-e7b7c95d175e.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
