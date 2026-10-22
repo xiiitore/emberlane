@@ -7403,3 +7403,39 @@ emberlane/queue.py
 emberlane/dropbox_output.py
 
 ~~~
+
+
+### Worker task 3f720844-c978-411b-b525-ae9d0aff9ab7
+
+[Full task output](worker-logs/3f720844-c978-411b-b525-ae9d0aff9ab7.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T21:09:12.007004+00:00",
+  "source_comment_id": "6351014870",
+  "task_id": "3f720844-c978-411b-b525-ae9d0aff9ab7",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/3f720844-c978-411b-b525-ae9d0aff9ab7.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/3f720844-c978-411b-b525-ae9d0aff9ab7.md",
+    "dropbox_sha256": "85021cc3f02b2d44b7662fe1cb2777ab7be8d5d0ede8c331b383b95c43471d85",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "tests/test_worker.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/3f720844-c978-411b-b525-ae9d0aff9ab7.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
