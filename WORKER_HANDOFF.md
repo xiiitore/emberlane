@@ -5210,3 +5210,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task ed9caeeb-a1af-40f9-be6d-8e0fd473bb4a
+
+[Full task output](worker-logs/ed9caeeb-a1af-40f9-be6d-8e0fd473bb4a.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T12:32:33.191881+00:00",
+  "source_comment_id": "6340815692",
+  "task_id": "ed9caeeb-a1af-40f9-be6d-8e0fd473bb4a",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ed9caeeb-a1af-40f9-be6d-8e0fd473bb4a.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/ed9caeeb-a1af-40f9-be6d-8e0fd473bb4a.md",
+    "dropbox_sha256": "1c8162fcc49a5a3f5b35a3808c40fb84724e87c89dfbaac36c7213d35fb114be",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "termux-worker-loop.sh"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/ed9caeeb-a1af-40f9-be6d-8e0fd473bb4a.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
