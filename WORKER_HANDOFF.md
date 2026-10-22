@@ -4214,3 +4214,35 @@ Full task output log was not published.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 3b4ceb60-bb75-4e7e-bc14-fe66a70fd379
+
+Full task output log was not published.
+
+```json
+{
+  "timestamp_utc": "2026-10-22T10:27:47.327940+00:00",
+  "source_comment_id": "6338505329",
+  "task_id": "3b4ceb60-bb75-4e7e-bc14-fe66a70fd379",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "failed",
+    "task_log_error": "MailboxError: could not verify published task log"
+  },
+  "summary": {
+    "path": "WORKER_HANDOFF.md"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": null
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
