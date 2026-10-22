@@ -5680,3 +5680,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 2ab30553-c8f8-4171-84a0-39e04e922eb6
+
+[Full task output](worker-logs/2ab30553-c8f8-4171-84a0-39e04e922eb6.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T17:41:34.884678+00:00",
+  "source_comment_id": "6347260670",
+  "task_id": "2ab30553-c8f8-4171-84a0-39e04e922eb6",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/2ab30553-c8f8-4171-84a0-39e04e922eb6.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/2ab30553-c8f8-4171-84a0-39e04e922eb6.md",
+    "dropbox_sha256": "16f32406d6a35037f8d7727703e80ab1d7a12f5ca5405c9aadfeb81ff35955dd",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "scripts/codex-autopilot-supervisor.sh"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/2ab30553-c8f8-4171-84a0-39e04e922eb6.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
