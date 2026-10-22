@@ -7027,3 +7027,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task edf00fc0-998c-484b-b807-8425c7a78f38
+
+[Full task output](worker-logs/edf00fc0-998c-484b-b807-8425c7a78f38.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T21:00:17.716550+00:00",
+  "source_comment_id": "6351002958",
+  "task_id": "edf00fc0-998c-484b-b807-8425c7a78f38",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/edf00fc0-998c-484b-b807-8425c7a78f38.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/edf00fc0-998c-484b-b807-8425c7a78f38.md",
+    "dropbox_sha256": "745e82d96b00371602f5e74b050fd53aded0d3bb9beee014f3a7fbf39fc18f66",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "tests/test_workspace_security.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/edf00fc0-998c-484b-b807-8425c7a78f38.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
