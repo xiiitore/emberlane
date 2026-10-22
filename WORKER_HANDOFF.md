@@ -6384,3 +6384,39 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 406045db-0234-4b9e-8147-3490c88bf8dd
+
+[Full task output](worker-logs/406045db-0234-4b9e-8147-3490c88bf8dd.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T18:38:48.331052+00:00",
+  "source_comment_id": "6348403948",
+  "task_id": "406045db-0234-4b9e-8147-3490c88bf8dd",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/406045db-0234-4b9e-8147-3490c88bf8dd.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/406045db-0234-4b9e-8147-3490c88bf8dd.md",
+    "dropbox_sha256": "5718228c0276c40dae968e8be3eb11f87b3d759a76136435c9d7b9544bb02396",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "pyproject.toml"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/406045db-0234-4b9e-8147-3490c88bf8dd.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
