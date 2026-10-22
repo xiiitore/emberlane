@@ -4246,3 +4246,55 @@ Full task output log was not published.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task f3f258a1-7d8c-41d0-aa76-f78647f6ea67
+
+Full task output log was not published.
+
+```json
+{
+  "timestamp_utc": "2026-10-22T10:33:53.252853+00:00",
+  "source_comment_id": "6338639123",
+  "task_id": "f3f258a1-7d8c-41d0-aa76-f78647f6ea67",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "failed",
+    "task_log_error": "MailboxError: could not verify published task log"
+  },
+  "summary": {
+    "passed": true,
+    "returncode": 0,
+    "output": "test_existing_task_log_is_idempotent (test_mailbox_logs.TaskLogPublishingTests.test_existing_task_log_is_idempotent) ... ok\ntest_handoff_includes_small_sanitized_output_inline (test_mailbox_logs.TaskLogPublishingTests.test_handoff_includes_small_sanitized_output_inline) ... ok\ntest_handoff_uses_full_log_for_output_over_inline_limit (test_mailbox_logs.TaskLogPublishingTests.test_handoff_uses_full_log_for_output_over_inline_limit) ... ok\ntest_malformed_readback_response_raises_mailbox_error (test_mailbox_logs.TaskLogPublishingTests.test_malformed_readback_response_raises_mailbox_error) ... ok\ntest_publishes_full_output_redacts_secrets_and_omits_file_content (test_mailbox_logs.TaskLogPublishingTests.test_publishes_full_output_redacts_secrets_and_omits_file_content) ... ok\ntest_readback_failure_after_put_raises_mailbox_error (test_mailbox_logs.TaskLogPublishingTests.test_readback_failure_after_put_raises_mailbox_error) ... ok\ntest_rejects_oversized_log_instead_of_silently_truncating (test_mailbox_logs.TaskLogPublishingTests.test_rejects_oversized_log_instead_of_silently_truncating) ... ok\ntest_shared_redactor_removes_tokens_authorization_and_secret_values (test_mailbox_logs.TaskLogPublishingTests.test_shared_redactor_removes_tokens_authorization_and_secret_values) ... ok\ntest_terminal_result_redacts_sensitive_last_error_before_comment (test_mailbox_logs.TaskLogPublishingTests.test_terminal_result_redacts_sensitive_last_error_before_comment) ... ok\n\n----------------------------------------------------------------------\nRan 9 tests in 0.255s\n\nOK\n",
+    "output_publication": "inline_and_full_log"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 1610,
+    "full_log_path": null
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+test_existing_task_log_is_idempotent (test_mailbox_logs.TaskLogPublishingTests.test_existing_task_log_is_idempotent) ... ok
+test_handoff_includes_small_sanitized_output_inline (test_mailbox_logs.TaskLogPublishingTests.test_handoff_includes_small_sanitized_output_inline) ... ok
+test_handoff_uses_full_log_for_output_over_inline_limit (test_mailbox_logs.TaskLogPublishingTests.test_handoff_uses_full_log_for_output_over_inline_limit) ... ok
+test_malformed_readback_response_raises_mailbox_error (test_mailbox_logs.TaskLogPublishingTests.test_malformed_readback_response_raises_mailbox_error) ... ok
+test_publishes_full_output_redacts_secrets_and_omits_file_content (test_mailbox_logs.TaskLogPublishingTests.test_publishes_full_output_redacts_secrets_and_omits_file_content) ... ok
+test_readback_failure_after_put_raises_mailbox_error (test_mailbox_logs.TaskLogPublishingTests.test_readback_failure_after_put_raises_mailbox_error) ... ok
+test_rejects_oversized_log_instead_of_silently_truncating (test_mailbox_logs.TaskLogPublishingTests.test_rejects_oversized_log_instead_of_silently_truncating) ... ok
+test_shared_redactor_removes_tokens_authorization_and_secret_values (test_mailbox_logs.TaskLogPublishingTests.test_shared_redactor_removes_tokens_authorization_and_secret_values) ... ok
+test_terminal_result_redacts_sensitive_last_error_before_comment (test_mailbox_logs.TaskLogPublishingTests.test_terminal_result_redacts_sensitive_last_error_before_comment) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.255s
+
+OK
+
+~~~
