@@ -4152,3 +4152,33 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task d1643450-6bfa-4b03-9fc4-17cb019842c1
+
+Full task output log was not published.
+
+```json
+{
+  "timestamp_utc": "2026-10-22T10:23:22.290313+00:00",
+  "source_comment_id": "6338416084",
+  "task_id": "d1643450-6bfa-4b03-9fc4-17cb019842c1",
+  "kind": "replace_text",
+  "status": "failed",
+  "attempts": 3,
+  "error_present": true,
+  "task_log": {
+    "task_log_status": "failed",
+    "task_log_error": "MailboxError: could not verify published task log"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": null
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
