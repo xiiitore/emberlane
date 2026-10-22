@@ -6420,3 +6420,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 8b5552d2-0a5d-49b7-84ea-03c9f22bd7ed
+
+[Full task output](worker-logs/8b5552d2-0a5d-49b7-84ea-03c9f22bd7ed.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T18:40:03.922360+00:00",
+  "source_comment_id": "6348443203",
+  "task_id": "8b5552d2-0a5d-49b7-84ea-03c9f22bd7ed",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/8b5552d2-0a5d-49b7-84ea-03c9f22bd7ed.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/8b5552d2-0a5d-49b7-84ea-03c9f22bd7ed.md",
+    "dropbox_sha256": "2858e8f784ca0aee3cb1fc1256253ef848a1bd0b6776dd09a2b02905c715cd3c",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "pyproject.toml"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/8b5552d2-0a5d-49b7-84ea-03c9f22bd7ed.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
