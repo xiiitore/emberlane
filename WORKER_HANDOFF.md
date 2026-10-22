@@ -7475,3 +7475,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task ca9f3489-a46d-4700-b9cc-9a92098e33d9
+
+[Full task output](worker-logs/ca9f3489-a46d-4700-b9cc-9a92098e33d9.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T21:10:49.272071+00:00",
+  "source_comment_id": "6351016150",
+  "task_id": "ca9f3489-a46d-4700-b9cc-9a92098e33d9",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ca9f3489-a46d-4700-b9cc-9a92098e33d9.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/ca9f3489-a46d-4700-b9cc-9a92098e33d9.md",
+    "dropbox_sha256": "a87176446e34ce62ca4d0052e622010f42975bd882e2c58a508b6fe2b45027d6",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "tests/test_workspace_security.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/ca9f3489-a46d-4700-b9cc-9a92098e33d9.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
