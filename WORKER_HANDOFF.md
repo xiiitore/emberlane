@@ -4182,3 +4182,35 @@ Full task output log was not published.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task b491463c-ca33-4a19-aac9-b817cdf6bce6
+
+Full task output log was not published.
+
+```json
+{
+  "timestamp_utc": "2026-10-22T10:25:34.190143+00:00",
+  "source_comment_id": "6338467723",
+  "task_id": "b491463c-ca33-4a19-aac9-b817cdf6bce6",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "failed",
+    "task_log_error": "MailboxError: could not verify published task log"
+  },
+  "summary": {
+    "path": "emberlane/mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": null
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
