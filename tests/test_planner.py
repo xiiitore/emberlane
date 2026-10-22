@@ -93,6 +93,7 @@ class GoalPlannerTests(unittest.TestCase):
         self.assertEqual(result["status"], "active")
         task = self.queue.get(result["next_cycle_task_id"])
         self.assertIsNotNone(task)
+        self.queue.run_one({"diagnostics": lambda payload: {"ok": True}})
         task.status = "completed"
         self.queue._save()
         result = self.planner.advance(self.plan(steps=[
