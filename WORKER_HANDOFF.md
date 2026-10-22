@@ -6264,3 +6264,53 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 75a85e22-8069-46a8-8622-ae649cd977ed
+
+[Full task output](worker-logs/75a85e22-8069-46a8-8622-ae649cd977ed.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T18:35:34.066539+00:00",
+  "source_comment_id": "6348319901",
+  "task_id": "75a85e22-8069-46a8-8622-ae649cd977ed",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/75a85e22-8069-46a8-8622-ae649cd977ed.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/75a85e22-8069-46a8-8622-ae649cd977ed.md",
+    "dropbox_sha256": "09ac83e7354651f870c62131dad7806b6693c2e5ee6f53d0ebecdee023c964a4",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "returncode": 0,
+    "passed": true,
+    "output": "test_supervisor_script_has_valid_bash_syntax (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_supervisor_script_has_valid_bash_syntax) ... ok\ntest_usage_limit_is_terminal_before_generic_failure_counter (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_usage_limit_is_terminal_before_generic_failure_counter) ... ok\ntest_usage_limit_stops_supervisor_without_three_retries (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_usage_limit_stops_supervisor_without_three_retries) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.613s\n\nOK\n",
+    "output_publication": "inline_and_full_log"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 677,
+    "full_log_path": "worker-logs/75a85e22-8069-46a8-8622-ae649cd977ed.md"
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+test_supervisor_script_has_valid_bash_syntax (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_supervisor_script_has_valid_bash_syntax) ... ok
+test_usage_limit_is_terminal_before_generic_failure_counter (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_usage_limit_is_terminal_before_generic_failure_counter) ... ok
+test_usage_limit_stops_supervisor_without_three_retries (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_usage_limit_stops_supervisor_without_three_retries) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.613s
+
+OK
+
+~~~
