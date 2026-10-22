@@ -5932,3 +5932,52 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 8f6c5837-c8df-4f99-bde9-2a6b34702c90
+
+[Full task output](worker-logs/8f6c5837-c8df-4f99-bde9-2a6b34702c90.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T17:50:26.733332+00:00",
+  "source_comment_id": "6347432510",
+  "task_id": "8f6c5837-c8df-4f99-bde9-2a6b34702c90",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/8f6c5837-c8df-4f99-bde9-2a6b34702c90.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/8f6c5837-c8df-4f99-bde9-2a6b34702c90.md",
+    "dropbox_sha256": "e2600f98eef796e09b27eb20db0497da2385c9e9690a024b4ff0c1c46d7dd876",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "returncode": 0,
+    "passed": true,
+    "output": "test_supervisor_script_has_valid_bash_syntax (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_supervisor_script_has_valid_bash_syntax) ... ok\ntest_usage_limit_is_terminal_before_generic_failure_counter (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_usage_limit_is_terminal_before_generic_failure_counter) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.026s\n\nOK\n",
+    "output_publication": "inline_and_full_log"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 494,
+    "full_log_path": "worker-logs/8f6c5837-c8df-4f99-bde9-2a6b34702c90.md"
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+test_supervisor_script_has_valid_bash_syntax (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_supervisor_script_has_valid_bash_syntax) ... ok
+test_usage_limit_is_terminal_before_generic_failure_counter (test_codex_autopilot_supervisor.CodexAutopilotSupervisorTests.test_usage_limit_is_terminal_before_generic_failure_counter) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.026s
+
+OK
+
+~~~
