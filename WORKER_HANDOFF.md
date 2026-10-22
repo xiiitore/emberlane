@@ -4444,3 +4444,36 @@ Ran 4 tests in 0.009s
 OK
 
 ~~~
+
+
+### Worker task a944dd44-792f-4980-bf45-605f880c3d3b
+
+[Full task output](worker-logs/a944dd44-792f-4980-bf45-605f880c3d3b.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T11:34:34.062122+00:00",
+  "source_comment_id": "6339734159",
+  "task_id": "a944dd44-792f-4980-bf45-605f880c3d3b",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/a944dd44-792f-4980-bf45-605f880c3d3b.md"
+  },
+  "summary": {
+    "bytes_written": 24991,
+    "path": "emberlane/mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/a944dd44-792f-4980-bf45-605f880c3d3b.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
