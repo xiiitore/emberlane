@@ -7341,3 +7341,65 @@ emberlane/queue.py
 ~~~text
 
 ~~~
+
+
+### Worker task 2f189356-4dfe-458e-8040-988e993aef2a
+
+[Full task output](worker-logs/2f189356-4dfe-458e-8040-988e993aef2a.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T21:07:53.023127+00:00",
+  "source_comment_id": "6351014245",
+  "task_id": "2f189356-4dfe-458e-8040-988e993aef2a",
+  "kind": "git_diff",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/2f189356-4dfe-458e-8040-988e993aef2a.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/2f189356-4dfe-458e-8040-988e993aef2a.md",
+    "dropbox_sha256": "9750eda8ae6ee2d3a18c6002b27334cf8b57fa8e12d2b8ec4f150214cb3d3c22",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 300,
+    "full_log_path": "worker-logs/2f189356-4dfe-458e-8040-988e993aef2a.md"
+  }
+}
+```
+
+#### Output: `result.files.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.stat.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.staged_files.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.staged_stat.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.untracked_files.output`
+
+~~~text
+emberlane/dropbox_output.py
+
+~~~
