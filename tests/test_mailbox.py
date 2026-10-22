@@ -158,6 +158,12 @@ class MailboxIdempotencyTests(unittest.TestCase):
             }]
             replies = []
             mailbox._reply = replies.append
+            mailbox._publish_task_log = lambda task, comment_id: {
+                "task_log_status": "published", "task_log_url": "test://task-log"
+            }
+            mailbox._publish_handoff_record = lambda task, comment_id, log: {
+                "handoff_status": "published"
+            }
             result = mailbox.run_once()
 
             self.assertEqual(result["status"], "finished")

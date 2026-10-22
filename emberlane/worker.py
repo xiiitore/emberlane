@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .mailbox import GitHubIssueMailbox
+from .planner import GoalPlanner
 from .queue import Task, TaskQueue
 from .workspace import Workspace, WorkspaceError
 
@@ -65,7 +66,13 @@ class LocalWorker:
             "git_diff": self._git_diff,
             "git_sync": self._git_sync,
             "diagnostics": self._diagnostics,
+            "plan_goal": self._plan_goal,
         }
+
+    def _plan_goal(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Advance a bounded plan using only the worker's registered handlers."""
+        planner = GoalPlanner(self.queue, set(self.handlers) - {"plan_goal"})
+        return planner.advance(payload)
 
     def _write_file(self, payload: dict[str, Any]) -> dict[str, Any]:
         path = _checked_path(payload.get("path"))
