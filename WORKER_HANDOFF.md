@@ -5822,3 +5822,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task e4fd6e69-cb2f-4157-ba8f-9867f58591b0
+
+[Full task output](worker-logs/e4fd6e69-cb2f-4157-ba8f-9867f58591b0.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T17:47:37.442390+00:00",
+  "source_comment_id": "6347378615",
+  "task_id": "e4fd6e69-cb2f-4157-ba8f-9867f58591b0",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/e4fd6e69-cb2f-4157-ba8f-9867f58591b0.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/e4fd6e69-cb2f-4157-ba8f-9867f58591b0.md",
+    "dropbox_sha256": "b525cd5738976dd08d6e5cce8c358ac38402dc83f8352820094e81ec7ae56340",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "WORKER_HANDOFF.md"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/e4fd6e69-cb2f-4157-ba8f-9867f58591b0.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
