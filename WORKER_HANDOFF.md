@@ -5858,3 +5858,40 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 420b54d8-1c6e-4008-b7fa-b8a06de40c58
+
+[Full task output](worker-logs/420b54d8-1c6e-4008-b7fa-b8a06de40c58.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T17:48:52.668842+00:00",
+  "source_comment_id": "6347404923",
+  "task_id": "420b54d8-1c6e-4008-b7fa-b8a06de40c58",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/420b54d8-1c6e-4008-b7fa-b8a06de40c58.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/420b54d8-1c6e-4008-b7fa-b8a06de40c58.md",
+    "dropbox_sha256": "7ba583385a46c7062df9c268ff59eb85d8cb7e417fe3a29dd62ff49d97bd90dc",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "scripts/codex-autopilot-supervisor.sh",
+    "bytes_written": 5120
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/420b54d8-1c6e-4008-b7fa-b8a06de40c58.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
