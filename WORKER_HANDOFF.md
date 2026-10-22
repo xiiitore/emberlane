@@ -6015,3 +6015,39 @@ OK
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/b9ab76f9-98cb-408f-bf26-5731d4c644b0.md).
+
+
+### Worker task 22184f64-43ed-4197-a16e-4d7a892636d6
+
+[Full task output](worker-logs/22184f64-43ed-4197-a16e-4d7a892636d6.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T18:28:01.826643+00:00",
+  "source_comment_id": "6348176122",
+  "task_id": "22184f64-43ed-4197-a16e-4d7a892636d6",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/22184f64-43ed-4197-a16e-4d7a892636d6.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/22184f64-43ed-4197-a16e-4d7a892636d6.md",
+    "dropbox_sha256": "9f72ccc4dc0d2e1afe5023242014c93f6963142e76d0d8185add74050044e1d1",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "scripts/codex-autopilot-supervisor.sh"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/22184f64-43ed-4197-a16e-4d7a892636d6.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
