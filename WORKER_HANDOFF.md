@@ -4397,3 +4397,50 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 77345d76-fdb3-4ca3-bfdf-4b882b719ce7
+
+[Full task output](worker-logs/77345d76-fdb3-4ca3-bfdf-4b882b719ce7.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T11:33:22.105677+00:00",
+  "source_comment_id": "6339708009",
+  "task_id": "77345d76-fdb3-4ca3-bfdf-4b882b719ce7",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/77345d76-fdb3-4ca3-bfdf-4b882b719ce7.md"
+  },
+  "summary": {
+    "passed": true,
+    "returncode": 0,
+    "output": "test_missing_auth_is_blocked_without_network (test_dropbox_output.DropboxOutputTests.test_missing_auth_is_blocked_without_network) ... ok\ntest_readback_mismatch_fails (test_dropbox_output.DropboxOutputTests.test_readback_mismatch_fails) ... ok\ntest_task_id_rejects_path_injection (test_dropbox_output.DropboxOutputTests.test_task_id_rejects_path_injection) ... ok\ntest_upload_and_readback_verified (test_dropbox_output.DropboxOutputTests.test_upload_and_readback_verified) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.009s\n\nOK\n",
+    "output_publication": "inline_and_full_log"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 622,
+    "full_log_path": "worker-logs/77345d76-fdb3-4ca3-bfdf-4b882b719ce7.md"
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+test_missing_auth_is_blocked_without_network (test_dropbox_output.DropboxOutputTests.test_missing_auth_is_blocked_without_network) ... ok
+test_readback_mismatch_fails (test_dropbox_output.DropboxOutputTests.test_readback_mismatch_fails) ... ok
+test_task_id_rejects_path_injection (test_dropbox_output.DropboxOutputTests.test_task_id_rejects_path_injection) ... ok
+test_upload_and_readback_verified (test_dropbox_output.DropboxOutputTests.test_upload_and_readback_verified) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.009s
+
+OK
+
+~~~
