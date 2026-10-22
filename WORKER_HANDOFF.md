@@ -7277,3 +7277,67 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 70ccdd24-f89a-4fba-a55e-5e1adc006697
+
+[Full task output](worker-logs/70ccdd24-f89a-4fba-a55e-5e1adc006697.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T21:07:06.737622+00:00",
+  "source_comment_id": "6351013555",
+  "task_id": "70ccdd24-f89a-4fba-a55e-5e1adc006697",
+  "kind": "git_diff",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/70ccdd24-f89a-4fba-a55e-5e1adc006697.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/70ccdd24-f89a-4fba-a55e-5e1adc006697.md",
+    "dropbox_sha256": "70ea44ee32ff35364d5392964f6ab3574f5374a80dafe540057163305bf6bf5c",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 423,
+    "full_log_path": "worker-logs/70ccdd24-f89a-4fba-a55e-5e1adc006697.md"
+  }
+}
+```
+
+#### Output: `result.files.output`
+
+~~~text
+emberlane/queue.py
+
+~~~
+
+#### Output: `result.stat.output`
+
+~~~text
+ emberlane/queue.py | 295 ++++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 224 insertions(+), 71 deletions(-)
+
+~~~
+
+#### Output: `result.staged_files.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.staged_stat.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.untracked_files.output`
+
+~~~text
+
+~~~
