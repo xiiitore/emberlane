@@ -4860,3 +4860,88 @@ No stdout/stderr output field was retained for inline publication.
 acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
 
 ~~~
+
+
+### Worker task 86e12302-e8ed-4492-9427-1627e2da1b90
+
+[Full task output](worker-logs/86e12302-e8ed-4492-9427-1627e2da1b90.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T12:24:00.912169+00:00",
+  "source_comment_id": "6340651390",
+  "task_id": "86e12302-e8ed-4492-9427-1627e2da1b90",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/86e12302-e8ed-4492-9427-1627e2da1b90.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/86e12302-e8ed-4492-9427-1627e2da1b90.md",
+    "dropbox_sha256": "d0b214cbe71c1e009d170c6130dabab48458b32e6faf80726cf5cd2ec18ea6c9",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0",
+    "platform": "Android-14-aarch64-64bit-ELF"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 1740,
+    "full_log_path": "worker-logs/86e12302-e8ed-4492-9427-1627e2da1b90.md"
+  }
+}
+```
+
+#### Output: `result.git_status.output`
+
+~~~text
+## feat/local-coding-worker...origin/feat/local-coding-worker
+ M .github/workflows/tests.yml
+ M WORKER_HANDOFF.md
+ M emberlane/mailbox.py
+ M tests/test_mailbox.py
+ M tests/test_mailbox_logs.py
+?? activate-termux-worker-loop.sh
+?? emberlane/dropbox_output.py
+?? emberlane/mailbox.py.bak-20261020T151505Z
+?? emberlane/mailbox.py.bak-before-escaped-newline-redaction
+?? scripts/
+?? status-short.txt
+?? "tatus --short"
+?? termux-worker-loop.sh
+?? tests/test_dropbox_output.py
+?? tests/test_mailbox_logs.py.bak-20261022T121708Z
+?? worker-logs/0397bc14-0af0-43a1-babd-5e75db2bc745.md
+?? worker-logs/1e8bbd18-54ca-4450-aca8-2d4658d6da13.md
+?? worker-logs/2c7e3c7f-3948-4700-80d0-1402e1d3d050.md
+?? worker-logs/52596439-67be-4e6f-afb7-4e21e7ae3c3e.md
+?? worker-logs/579e9db8-b27e-4db5-816a-03c8b1751f1b.md
+?? worker-logs/68cac21b-dde7-4d86-bd30-a8d9cdd24665.md
+?? worker-logs/6ef18906-f170-4ee2-84f1-593426c43d9b.md
+?? worker-logs/73a48a46-c92b-4148-a9d1-a4adb724e79b.md
+?? worker-logs/8dcf1d61-38f3-450c-8b19-a5d1ee3d51d9.md
+?? worker-logs/8ee9988e-c70e-4d4a-99a9-894060f95bb1.md
+?? worker-logs/b8baa4bd-b6f4-43a4-9b5e-9cff3ced502b.md
+?? worker-logs/full-tests-20261020T173033.log
+?? worker-logs/full-tests-20261022T121757Z.log
+?? worker-logs/full-tests-after-readback.log
+?? worker-logs/mailbox-loop.log
+?? worker-logs/pre-restart-pane.log
+?? worker-logs/task-123.md
+?? worker-logs/task-bad-readback.md
+?? worker-logs/task-readback-fail.md
+?? worker-logs/task-wrapped-base64.md
+?? worker-logs/termux-check-20261020T150908Z.md
+?? worker-logs/worker-loop.log
+
+~~~
+
+#### Output: `result.latest_commit.output`
+
+~~~text
+acc56c1 Append Emberlane worker result a362ae57-8d80-4f7a-bdf3-be3f7e15a1fb
+
+~~~
