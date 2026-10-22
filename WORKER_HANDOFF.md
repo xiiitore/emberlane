@@ -6919,3 +6919,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 3a3db39c-6b4a-4280-b19c-bd5d731c62db
+
+[Full task output](worker-logs/3a3db39c-6b4a-4280-b19c-bd5d731c62db.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T20:58:09.325367+00:00",
+  "source_comment_id": "6351000535",
+  "task_id": "3a3db39c-6b4a-4280-b19c-bd5d731c62db",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/3a3db39c-6b4a-4280-b19c-bd5d731c62db.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/3a3db39c-6b4a-4280-b19c-bd5d731c62db.md",
+    "dropbox_sha256": "348e1c82036279cc45e57e3e0fc22b548d07934e1bf15e20286965fc76db33a4",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "tests/test_mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/3a3db39c-6b4a-4280-b19c-bd5d731c62db.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
