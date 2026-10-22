@@ -4746,3 +4746,36 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/0397bc14-0af0-43a1-babd-5e75db2bc745.md).
+
+
+### Worker task 6ef18906-f170-4ee2-84f1-593426c43d9b
+
+[Full task output](worker-logs/6ef18906-f170-4ee2-84f1-593426c43d9b.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-22T12:08:44.251363+00:00",
+  "source_comment_id": "6340358925",
+  "task_id": "6ef18906-f170-4ee2-84f1-593426c43d9b",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/6ef18906-f170-4ee2-84f1-593426c43d9b.md"
+  },
+  "summary": {
+    "path": "emberlane/mailbox.py",
+    "bytes_written": 25141
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/6ef18906-f170-4ee2-84f1-593426c43d9b.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
