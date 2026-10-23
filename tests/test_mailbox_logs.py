@@ -147,5 +147,39 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertNotIn("ghp_" + "D" * 35, json.dumps(public))
         self.assertIn("[REDACTED_GITHUB_TOKEN]", public["token"])
 
+    def test_public_result_redacts_values_by_sensitive_field_name(self):
+        raw = {
+            "status": "failed",
+            "api_key": "plain-api-key-value",
+            "refresh_token": "plain-refresh-token-value",
+            "Authorization": "Bearer plain-authorization-value",
+            "nested": [
+                {
+                    "client_secret": "plain-client-secret-value",
+                    "database_password": "plain-database-password-value",
+                    "safe_label": "kept",
+                }
+            ],
+        }
+
+        public = _public_result(raw)
+        encoded = json.dumps(public)
+
+        self.assertEqual(public["api_key"], "[REDACTED]")
+        self.assertEqual(public["refresh_token"], "[REDACTED]")
+        self.assertEqual(public["Authorization"], "[REDACTED]")
+        self.assertEqual(public["nested"][0]["client_secret"], "[REDACTED]")
+        self.assertEqual(public["nested"][0]["database_password"], "[REDACTED]")
+        self.assertEqual(public["nested"][0]["safe_label"], "kept")
+        for sensitive in (
+            "plain-api-key-value",
+            "plain-refresh-token-value",
+            "plain-authorization-value",
+            "plain-client-secret-value",
+            "plain-database-password-value",
+        ):
+            self.assertNotIn(sensitive, encoded)
+
+
 if __name__ == "__main__":
     unittest.main()
