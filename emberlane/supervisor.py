@@ -70,7 +70,7 @@ def run_supervisor(
                 **event,
             })
             return True
-        except OSError:
+        except (OSError, ValueError):
             return False
 
     if not emit({
