@@ -8173,3 +8173,40 @@ Allowed file exceeds 20000 bytes: emberlane/worker.py
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task e0ad8e22-ca89-402a-9e07-744e743905d6
+
+[Full task output](worker-logs/e0ad8e22-ca89-402a-9e07-744e743905d6.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:30:03.202165+00:00",
+  "source_comment_id": "6370586309",
+  "task_id": "e0ad8e22-ca89-402a-9e07-744e743905d6",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/e0ad8e22-ca89-402a-9e07-744e743905d6.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/e0ad8e22-ca89-402a-9e07-744e743905d6.md",
+    "dropbox_sha256": "59258f4c7d9ebfc5168414237e681d562f35715425dc4c9051560dc9d7c99d5f",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 113,
+    "full_log_path": "worker-logs/e0ad8e22-ca89-402a-9e07-744e743905d6.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: tests/test_queue.py
+~~~
