@@ -110,14 +110,6 @@ The model sees only explicitly allow-listed UTF-8 files, subject to strict conte
 
 Workspace path checks protect against accidental path escape and common symlink traversal; they are not an OS sandbox. The worker runs with the same OS permissions as its owner. It does not provide a network listener, remote task submission, or automatic Git commits/pushes. The optional local-model task proposes patches but does not apply them. File-writing tasks must include the exact file path and content in their payload. Use a separate OS account or container for stronger isolation.
 
-Workspace path checks protect against accidental path escape and common
-symlink traversal; they are not an OS sandbox. The worker runs with the same
-OS permissions as its owner. It does not provide a network listener, remote
-task submission, automatic Git commits/pushes, or an LLM that independently
-writes code from natural-language specifications. File-writing tasks must
-include the exact file path and content in their payload. Use a separate OS
-account or container for stronger isolation.
-
 ## Optional GitHub issue mailbox
 
 The mailbox lets a local worker receive exact, allow-listed task payloads through
