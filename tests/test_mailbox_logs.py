@@ -105,7 +105,7 @@ class TaskLogPublishingTests(unittest.TestCase):
     def test_shared_redactor_removes_tokens_authorization_and_secret_values(self):
         token = "ghp_" + "Z" * 35
         cleaned = _redact_sensitive_text(
-            f"token={token} Authorization: Bearer abc123 api_key=xyz "
+            f"raw={token} token={token} Authorization: Bearer abc123 api_key=xyz "
             "-----BEGIN PRIVATE KEY-----private-----END PRIVATE KEY-----"
         )
         self.assertNotIn(token, cleaned)
