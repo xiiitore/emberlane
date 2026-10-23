@@ -39,7 +39,7 @@ Check the CLI help first because options can change. Typical commands are:
     python -m emberlane run-one
     python -m emberlane status
 
-For a bounded batch, use `python -m emberlane supervise --max-tasks 10 --max-failures 3 --max-seconds 300`. It exits on an idle queue, pause/stop, deadline, task budget, or failure budget. It does not resume deferred work automatically. Review `.emberlane/supervisor.jsonl` for metadata-only audit events; the file deliberately excludes task payloads and raw exception text. Run one supervisor process per queue file.
+For a bounded batch, use `python -m emberlane supervise --max-tasks 10 --max-failures 3 --max-seconds 300`. It exits on an idle queue, pause/stop, deadline, task budget, or failure budget. It does not resume deferred work automatically. Review `.emberlane/supervisor.jsonl` for metadata-only audit events; the file deliberately excludes task payloads and raw exception text. Run one supervisor process per queue file. To include the GitHub mailbox, pass `--mailbox-repo xiiitore/emberlane --mailbox-issue 6 --mailbox-author xiiitore --poll-interval 5 --max-idle-polls 3`. This requires preconfigured GitHub CLI authentication. Mailbox polling is bounded; it stops after the configured idle-poll budget and never resumes deferred tasks automatically.
 
 Guarded publishing is explicit: `git_commit` accepts only an explicit list of changed paths, refuses pre-staged changes, and runs the full test suite before committing. `git_push` requires a clean worktree, verifies that the remote head is an ancestor, never force-pushes, and verifies the remote SHA. Neither operation is triggered automatically by `supervise`.
 
