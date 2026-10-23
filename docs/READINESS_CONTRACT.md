@@ -15,7 +15,7 @@ Known external capacity limits, including a Codex usage limit, become `deferred`
 - [ ] Confirm context/file limits do not reject required worker inputs.
 - [ ] Complete one disposable end-to-end coding task: propose a change, apply it, run a focused test, inspect the diff, and preserve unrelated dirty files.
 - [ ] Confirm a real operation/test failure blocks dependent steps.
-- [ ] Confirm a known quota limit becomes deferred without a retry loop.
+- [ ] Confirm a known quota limit becomes deferred without a retry loop and remains deferred across restart until explicit resume.
 - [ ] Confirm deferred-task resumption continues the waiting plan.
 - [ ] Confirm duplicate mailbox delivery is idempotent and interrupted tasks recover without losing task identity.
 - [ ] Run the existing unit suite and retain the exact command, exit code, summary, and available log.
