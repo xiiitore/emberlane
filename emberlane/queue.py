@@ -14,8 +14,11 @@ from typing import Any, Callable
 _FAILURE_STATES = {
     "failed", "error", "blocked", "cancelled", "canceled", "timeout",
     "rejected", "invalid_model_output", "input_limit", "model_not_configured",
-    "model_not_found", "backend_unavailable", "model_failed", "output_limit",
-    "no_changes", "snapshot_failed", "verification_setup_failed", "patch_rejected",
+    "model_not_found", "model_unreadable", "model_cli_not_found",
+    "model_cli_not_executable", "runtime_loader_failed", "model_load_failed",
+    "backend_unavailable", "model_failed", "output_limit", "stderr_limit",
+    "empty_model_output", "no_changes", "snapshot_failed",
+    "verification_setup_failed", "patch_rejected",
     "verification_failed", "tests_missing", "tests_failed", "conflict",
     "apply_failed", "apply_verification_failed", "recovery_required",
 }
@@ -280,7 +283,7 @@ class TaskQueue:
                 and isinstance(task.result.get("status"), str)
                 else ""
             )
-            if result_status in {"deferred", "waiting_for_quota", "rate_limited", "paused"}:
+            if result_status in {"deferred", "waiting_for_quota", "rate_limited", "paused", "stopped"}:
                 task.last_error = None
                 task.status = "deferred"
             elif _result_has_failure(task.result):
