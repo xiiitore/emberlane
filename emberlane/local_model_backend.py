@@ -20,6 +20,7 @@ import time
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from .pause import control_state
 from .workspace import Workspace, WorkspaceError
 
 DEFAULT_TIMEOUT = 300
@@ -251,8 +252,9 @@ def run_local_model_proposal(
     if workspace is None:
         workspace = Workspace(source)
     payload = validate_local_model_payload(raw_payload, workspace)
-    if (source / ".emberlane" / "PAUSED").exists():
-        return {"status": "paused", "proposal": None}
+    state = control_state(source)
+    if state is not None:
+        return {"status": state, "proposal": None}
 
     model_value = os.environ.get("EMBERLANE_MODEL_PATH", "").strip()
     if not model_value:
@@ -374,8 +376,9 @@ def run_local_model_proposal(
             return {"status": "backend_unavailable", "proposal": None,
                     "output": f"Could not capture local model output: {type(exc).__name__}"}
         stderr_output = stderr_path.read_bytes().decode("utf-8", errors="replace")
-        if (source / ".emberlane" / "PAUSED").exists():
-            return {"status": "paused", "proposal": None}
+        state = control_state(source)
+        if state is not None:
+            return {"status": state, "proposal": None}
         if capture_status == "timeout":
             return {"status": "timeout", "proposal": None,
                     "output": _redact(stderr_output[-2000:] or "Local model timed out")}
@@ -610,8 +613,9 @@ def run_local_model_edit(
         return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
     if set(clean_paths) != set(changed_paths):
         return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
-    if (source / ".emberlane" / "PAUSED").exists():
-        return {"status": "paused", "applied": False}
+    state = control_state(source)
+    if state is not None:
+        return {"status": state, "applied": False}
 
     with tempfile.TemporaryDirectory(prefix="emberlane-verify-") as scratch:
         temp_root = Path(scratch) / "project"
@@ -685,8 +689,9 @@ def run_local_model_edit(
                     "test_returncode": test_process.returncode,
                     "test_output": test_output[-2000:], "test_output_bytes": test_output_size}
 
-        if (source / ".emberlane" / "PAUSED").exists():
-            return {"status": "paused", "applied": False}
+        state = control_state(source)
+        if state is not None:
+            return {"status": state, "applied": False}
         for name in clean_paths:
             current = workspace.validate_write_path(name)
             if current.exists():
