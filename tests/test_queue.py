@@ -142,6 +142,40 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(completed.status, "completed")
         self.assertEqual(completed.attempts, 2)
 
+    def test_deferred_quota_survives_restart_without_retry_until_explicit_resume(self):
+        class ChatGPTAgentToolRateLimitException(RuntimeError):
+            pass
+
+        queue = TaskQueue(self.state)
+        submitted = queue.submit("provider", {"request": "bounded"})
+        first = queue.run_one({
+            "provider": lambda payload: (_ for _ in ()).throw(
+                ChatGPTAgentToolRateLimitException("usage limit reached")
+            )
+        })
+        self.assertEqual(first.status, "deferred")
+        self.assertEqual(first.attempts, 1)
+
+        restored = TaskQueue(self.state)
+        deferred = restored.get(submitted.task_id)
+        self.assertEqual(deferred.status, "deferred")
+        self.assertEqual(deferred.attempts, 1)
+        calls = []
+        self.assertIsNone(restored.run_one({"provider": lambda payload: calls.append(payload)}))
+        self.assertEqual(calls, [])
+        self.assertEqual(restored.get(submitted.task_id).attempts, 1)
+
+        resumed = restored.resume_deferred(submitted.task_id)
+        self.assertEqual(resumed.status, "pending")
+        after_resume = TaskQueue(self.state)
+        completed = after_resume.run_one({
+            "provider": lambda payload: {"ok": True, "resumed": payload["request"]}
+        })
+        self.assertEqual(completed.task_id, submitted.task_id)
+        self.assertEqual(completed.status, "completed")
+        self.assertEqual(completed.attempts, 2)
+        self.assertEqual(completed.result, {"ok": True, "resumed": "bounded"})
+
     def test_unknown_handler_fails_closed(self):
         queue = TaskQueue(self.state)
         queue.submit("unregistered", {})
