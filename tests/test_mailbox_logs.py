@@ -64,6 +64,30 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertIn("[REDACTED_GITHUB_TOKEN]", content)
         self.assertIn('"error_present": true', content)
 
+    @patch("emberlane.mailbox.upload_task_log")
+    def test_rejects_symlinked_log_directory(self, upload):
+        with TemporaryDirectory() as temp:
+            root = Path(temp) / "root"
+            outside = Path(temp) / "outside"
+            root.mkdir()
+            outside.mkdir()
+            (root / "worker-logs").symlink_to(outside, target_is_directory=True)
+            self.mailbox.worker = SimpleNamespace(root=root)
+            task = SimpleNamespace(
+                task_id="task-symlink",
+                kind="diagnostics",
+                status="completed",
+                attempts=1,
+                last_error=None,
+                result={"output": "test"},
+            )
+
+            with self.assertRaisesRegex(MailboxError, "must not be a symlink"):
+                self.mailbox._publish_task_log(task, "comment-symlink")
+
+            upload.assert_not_called()
+            self.assertEqual(list(outside.iterdir()), [])
+
     @patch("emberlane.mailbox.upload_task_log", side_effect=DropboxOutputError("private network error"))
     def test_dropbox_failure_keeps_local_log_and_reports_local_only(self, upload):
         task = SimpleNamespace(
