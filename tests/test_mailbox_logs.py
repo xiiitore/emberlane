@@ -5,7 +5,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from emberlane.mailbox import GitHubIssueMailbox, MailboxError, _redact_sensitive_text
+from emberlane.mailbox import GitHubIssueMailbox, MailboxError, _public_result, _redact_sensitive_text
 
 
 class TaskLogPublishingTests(unittest.TestCase):
@@ -122,6 +122,30 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertEqual(len(replies), 1)
         self.assertNotIn(token, replies[0])
         self.assertIn("[REDACTED_GITHUB_TOKEN]", replies[0])
+
+
+    def test_public_result_recursively_omits_nested_source_output_and_patch(self):
+        raw = {
+            "status": "model_failed",
+            "output": "private top-level diagnostic",
+            "proposal_result": {
+                "output": "private nested diagnostic",
+                "proposal": {"patch": "--- secret source diff", "patch_bytes": 22},
+            },
+            "items": [{"source_text": "private source", "path": "src/safe.py"}],
+            "token": "ghp_" + "D" * 35,
+        }
+
+        public = _public_result(raw)
+
+        self.assertEqual(public["output"], "[OMITTED; SEE TASK LOG]")
+        self.assertEqual(public["proposal_result"]["output"], "[OMITTED; SEE TASK LOG]")
+        self.assertEqual(public["proposal_result"]["proposal"]["patch"], "[OMITTED; SEE TASK LOG]")
+        self.assertEqual(public["items"][0]["source_text"], "[OMITTED; SEE TASK LOG]")
+        self.assertEqual(public["items"][0]["path"], "src/safe.py")
+        self.assertNotIn("private", json.dumps(public))
+        self.assertNotIn("ghp_" + "D" * 35, json.dumps(public))
+        self.assertIn("[REDACTED_GITHUB_TOKEN]", public["token"])
 
 if __name__ == "__main__":
     unittest.main()
