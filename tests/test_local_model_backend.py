@@ -135,7 +135,7 @@ class LocalModelProposalTests(unittest.TestCase):
                 self.kwargs["stderr"].flush()
 
         result = self.run_with_fake(FailedProcess)
-        self.assertEqual(result["status"], "model_load_failed")
+        self.assertEqual(result["status"], "runtime_loader_failed")
         self.assertEqual(result["returncode"], 1)
         self.assertIn("libllama.so", result["output"])
 
@@ -171,6 +171,19 @@ class LocalModelProposalTests(unittest.TestCase):
         result = self.run_with_fake(EmptyOutputProcess)
         self.assertEqual(result["status"], "empty_model_output")
         self.assertEqual(result["returncode"], 0)
+
+    def test_model_load_failure_is_distinguished_from_runtime_loader_failure(self):
+        class FailedModelLoadProcess(FakeProcess):
+            def __init__(self, command, *, cwd, stdout, **kwargs):
+                super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
+                self.returncode = 1
+                self.kwargs["stderr"].write(b"Failed to load the model")
+                self.kwargs["stderr"].flush()
+
+        result = self.run_with_fake(FailedModelLoadProcess)
+        self.assertEqual(result["status"], "model_load_failed")
+        self.assertEqual(result["returncode"], 1)
+        self.assertIn("Failed to load the model", result["output"])
 
     def test_generic_nonzero_exit_is_not_misclassified_as_loader_failure(self):
         class GenericFailureProcess(FakeProcess):
