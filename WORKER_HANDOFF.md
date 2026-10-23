@@ -8139,3 +8139,37 @@ Allowed file exceeds 20000 bytes: emberlane/worker.py
 ~~~text
 Allowed file exceeds 20000 bytes: emberlane/worker.py
 ~~~
+
+
+### Worker task 98795076-923e-4cda-9531-378e220b242c
+
+[Full task output](worker-logs/98795076-923e-4cda-9531-378e220b242c.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:29:05.134043+00:00",
+  "source_comment_id": "6370585660",
+  "task_id": "98795076-923e-4cda-9531-378e220b242c",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/98795076-923e-4cda-9531-378e220b242c.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/98795076-923e-4cda-9531-378e220b242c.md",
+    "dropbox_sha256": "71bb245bad26e4a7d9304fc14acbafbaf72ae8c935fea822e453e6f6a3c1c1da",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/98795076-923e-4cda-9531-378e220b242c.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
