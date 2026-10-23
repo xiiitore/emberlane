@@ -8618,3 +8618,40 @@ Failed to load the model
 ~~~text
 Allowed file exceeds 20000 bytes: tests/test_worker.py
 ~~~
+
+
+### Worker task df2e1f79-ae81-4269-9e8f-9e749e5e49ea
+
+[Full task output](worker-logs/df2e1f79-ae81-4269-9e8f-9e749e5e49ea.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:40:59.127298+00:00",
+  "source_comment_id": "6370604647",
+  "task_id": "df2e1f79-ae81-4269-9e8f-9e749e5e49ea",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/df2e1f79-ae81-4269-9e8f-9e749e5e49ea.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/df2e1f79-ae81-4269-9e8f-9e749e5e49ea.md",
+    "dropbox_sha256": "2c9765d89bed76bac283487ba7e2a35b19705b60f82a64520dde219eeba2f0f5",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 114,
+    "full_log_path": "worker-logs/df2e1f79-ae81-4269-9e8f-9e749e5e49ea.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: emberlane/mailbox.py
+~~~
