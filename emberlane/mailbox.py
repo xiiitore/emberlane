@@ -51,40 +51,10 @@ def _redact_sensitive_text(value: str) -> str:
     return value
 
 
-_PUBLIC_RESULT_OMIT_KEYS_NORMALIZED = {"content", "output", "sourcetext", "patch"}
-
-
 _PUBLIC_RESULT_SENSITIVE_KEY_MARKERS = (
     "token", "secret", "password", "passwd", "credential", "apikey",
     "authorization", "privatekey", "cookie", "bearer",
 )
-
-
-def _public_result(value: Any) -> Any:
-    """Remove source/output and redact sensitive values recursively for public comments."""
-    if isinstance(value, dict):
-        cleaned: dict[str, Any] = {}
-        for key, item in value.items():
-            normalized_key = re.sub(r"[^a-z0-9]", "", str(key).casefold())
-            if normalized_key in _PUBLIC_RESULT_OMIT_KEYS_NORMALIZED:
-                cleaned[key] = "[OMITTED; SEE TASK LOG]" if item is not None else None
-            elif any(marker in normalized_key for marker in _PUBLIC_RESULT_SENSITIVE_KEY_MARKERS):
-                if item is None:
-                    cleaned[key] = None
-                elif isinstance(item, str):
-                    redacted = _redact_sensitive_text(item)
-                    cleaned[key] = redacted if redacted != item else "[REDACTED]"
-                else:
-                    cleaned[key] = "[REDACTED]"
-            else:
-                cleaned[key] = _public_result(item)
-        return cleaned
-    if isinstance(value, list):
-        return [_public_result(item) for item in value]
-    if isinstance(value, str):
-        return _redact_sensitive_text(value)
-    return value
-
 
 class MailboxError(RuntimeError):
     pass
@@ -295,7 +265,7 @@ class GitHubIssueMailbox:
                         cleaned[key] = sanitize(item, child_path)
                 return cleaned
             return value
-        record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "source_comment_id": str(comment_id), "task_id": task_id, "kind": str(task.kind), "status": str(task.status), "attempts": int(task.attempts), "last_error": redact(str(task.last_error)) if task.last_error else None, "result": sanitize(result, "result")}
+        record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "source_comment_id": str(comment_id), "task_id": task_id, "kind": str(task.kind), "status": str(task.status), "attempts": int(task.attempts), "error_present": bool(task.last_error), "result": sanitize(result, "result")}
         content = "# Emberlane task output\n\n" + f"- Task ID: `{task_id}`\n- Kind: `{task.kind}`\n- Status: `{task.status}`\n- Attempts: `{task.attempts}`\n- Source comment: `{comment_id}`\n\n"
         content += "## Result metadata\n\n```json\n" + json.dumps(record, ensure_ascii=False, indent=2) + "\n```\n"
         for label, output in outputs:
