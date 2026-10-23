@@ -326,14 +326,14 @@ class TaskQueueTests(unittest.TestCase):
         queue.submit("pending", {})
         queue._save()
         original_state = self.state.read_bytes()
-        original_write_bytes = Path.write_bytes
 
         def corrupt_archive(path, data):
-            if ".pre-prune-" in path.name:
-                return original_write_bytes(path, b"corrupt archive")
-            return original_write_bytes(path, data)
+            from emberlane.queue import _write_private_archive
+            return _write_private_archive(
+                path, b"corrupt archive" if ".pre-prune-" in path.name else data
+            )
 
-        with patch.object(Path, "write_bytes", corrupt_archive):
+        with patch("emberlane.queue._write_private_archive", side_effect=corrupt_archive):
             with self.assertRaisesRegex(OSError, "archive verification failed"):
                 queue.prune_terminal(keep_terminal=0)
 
