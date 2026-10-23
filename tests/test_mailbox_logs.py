@@ -1,4 +1,5 @@
 import json
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -64,7 +65,7 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertIn("[REDACTED_GITHUB_TOKEN]", content)
         self.assertIn('"error_present": true', content)
 
-    @unittest.skipUnless(__import__("os").name == "posix", "POSIX file mode assertion")
+    @unittest.skipUnless(os.name == "posix", "POSIX file mode assertion")
     @patch("emberlane.mailbox.upload_task_log")
     def test_local_task_log_is_private(self, upload):
         upload.return_value = {
