@@ -118,6 +118,14 @@ class LocalModelRunnerTests(unittest.TestCase):
         })
         self.assertEqual(config.max_output_chars, 1234)
 
+    def test_environment_requires_absolute_model_path(self):
+        with self.assertRaises(LocalModelError) as caught:
+            LocalModelConfig.from_env({
+                "EMBERLANE_MODEL_PATH": "models/tiny.gguf",
+            })
+        self.assertEqual(caught.exception.code, "invalid_configuration")
+        self.assertIn("absolute path", str(caught.exception))
+
     def test_environment_rejects_out_of_range_limits(self):
         with self.assertRaises(LocalModelError) as caught:
             LocalModelConfig.from_env({
