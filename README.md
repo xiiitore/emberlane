@@ -38,9 +38,7 @@ python -m emberlane supervise --max-tasks 10 --max-failures 3 --max-seconds 300
 
 # Optional: poll the authorized GitHub mailbox a bounded number of times
 # Requires a working GitHub CLI authentication on the host running Emberlane.
-python -m emberlane supervise --max-tasks 10 --max-failures 3 --max-seconds 300 \\
-  --mailbox-repo xiiitore/emberlane --mailbox-issue 6 --mailbox-author xiiitore \\
-  --poll-interval 5 --max-idle-polls 3
+python -m emberlane supervise --max-tasks 10 --max-failures 3 --max-seconds 300 --mailbox-repo xiiitore/emberlane --mailbox-issue 6 --mailbox-author xiiitore --poll-interval 5 --max-idle-polls 3
 
 # Opt in to publishing a redacted source preview in the task's private-to-repo Markdown log
 # Only use this for files safe to expose to people with repository access.
