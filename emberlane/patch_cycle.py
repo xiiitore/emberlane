@@ -142,8 +142,12 @@ def validate_patch_in_worktree(
         raise PatchCycleError("repository root must be an existing directory")
     if not isinstance(run_tests, bool):
         raise PatchCycleError("run_tests must be a boolean")
-    if not 1 <= test_timeout <= MAX_TEST_TIMEOUT:
-        raise PatchCycleError(f"test_timeout must be 1..{MAX_TEST_TIMEOUT}")
+    if (
+        isinstance(test_timeout, bool)
+        or not isinstance(test_timeout, int)
+        or not 1 <= test_timeout <= MAX_TEST_TIMEOUT
+    ):
+        raise PatchCycleError(f"test_timeout must be an integer from 1 to {MAX_TEST_TIMEOUT}")
     touched_paths = validate_patch_paths(patch)
 
     status = _run_git(["status", "--porcelain"], cwd=repo)
@@ -168,6 +172,14 @@ def validate_patch_in_worktree(
         if add.returncode != 0:
             raise PatchCycleError(f"could not create disposable worktree: {add.stdout[-2000:]}")
         worktree_added = True
+
+        # Never let patch application traverse a symlink already present in the base tree.
+        for touched in touched_paths:
+            candidate = checkout
+            for part in PurePosixPath(touched).parts:
+                candidate = candidate / part
+                if candidate.is_symlink():
+                    raise PatchCycleError(f"patch target traverses a symlink: {touched}")
 
         check = _run_git(["apply", "--check"], cwd=checkout, input_text=patch)
         if check.returncode != 0:
