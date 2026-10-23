@@ -90,12 +90,14 @@ class GoalPlannerCliTests(unittest.TestCase):
                 "--root", str(self.root), "submit", "diagnostics",
                 "--payload", "{}",
             ]), 0)
+            stdout.seek(0)
+            stdout.truncate(0)
             code = main([
                 "--root", str(self.root), "supervise",
                 "--max-tasks", "1", "--max-failures", "2", "--max-seconds", "30",
             ])
         self.assertEqual(code, 0)
-        report = json.loads(stdout.getvalue().splitlines()[-1])
+        report = json.loads(stdout.getvalue())
         self.assertEqual(report["status"], "task_limit")
         self.assertEqual(report["processed"], 1)
         self.assertTrue((self.root / ".emberlane" / "supervisor.jsonl").is_file())
