@@ -99,6 +99,33 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertNotIn("API_SECRET", process.kwargs["env"])
         self.assertEqual(process.kwargs["env"].get("LD_LIBRARY_PATH"), "/test/lib")
 
+    def test_termux_prefix_library_path_is_inferred_when_unset(self):
+        prefix = Path(self.temp.name) / "termux"
+        (prefix / "lib").mkdir(parents=True)
+        processes = []
+
+        def fake(*args, **kwargs):
+            process = FakeProcess(*args, **kwargs)
+            processes.append(process)
+            return process
+
+        with patch.dict(os.environ, {
+            "EMBERLANE_MODEL_PATH": str(self.model),
+            "EMBERLANE_LLAMA_CLI": "llama-cli",
+            "PREFIX": str(prefix),
+            "LD_LIBRARY_PATH": "",
+        }, clear=False), patch(
+            "emberlane.local_model_backend.subprocess.Popen", fake
+        ):
+            result = run_local_model_proposal(
+                self.root, self.payload, workspace=self.workspace
+            )
+
+        self.assertEqual(result["status"], "proposal")
+        self.assertEqual(
+            processes[0].kwargs["env"]["LD_LIBRARY_PATH"], str(prefix / "lib")
+        )
+
     def test_model_failure_preserves_stderr_diagnostic(self):
         class FailedProcess(FakeProcess):
             def __init__(self, command, *, cwd, stdout, **kwargs):
