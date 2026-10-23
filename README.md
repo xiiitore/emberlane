@@ -94,7 +94,7 @@ executable code: run the worker only in a repository you trust.
 
 ## Offline local-model proposals
 
-The optional `local_model_proposal` task uses a local `llama.cpp` `llama-cli` executable and a local GGUF model. It requires no paid API or network call. Install `llama-cli` separately and set `EMBERLANE_MODEL_PATH` to the model file; `EMBERLANE_LLAMA_CLI` can override the executable name (default `llama-cli`).
+The optional `local_model_proposal` task uses a local `llama.cpp` `llama-cli` executable and a local GGUF model. It requires no paid API or network call. Install `llama-cli` separately and set `EMBERLANE_MODEL_PATH` to the model file; `EMBERLANE_LLAMA_CLI` can override the executable name (default `llama-cli`). Source context starts with a 4,096-token budget and automatically grows in powers of two when needed, up to 16,384 tokens, to avoid rejecting ordinary multi-kilobyte files. Set `auto_context_size: false` in a task payload to enforce the requested `context_size` strictly. Larger context increases memory use; if the bounded automatic limit is reached, narrow `allowed_paths` or explicitly choose a supported larger `context_size`.
 
 ```sh
 export EMBERLANE_MODEL_PATH="$HOME/models/qwen-coder.gguf"
