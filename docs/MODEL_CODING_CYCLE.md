@@ -13,7 +13,7 @@ The `coding_cycle` task combines local llama.cpp generation with disposable patc
 }
 ```
 
-- `prompt` is required and limited to 4,000 characters.
+- `prompt` is required and limited to 4,000 characters. Credential-like patterns are rejected before the payload is persisted to the local queue.
 - `context_files` is optional, accepts up to five unique safe relative paths, each at most 4,000 characters, with an aggregate content limit of 8,000 characters. Secret-like patterns are redacted before source text is sent to the model.
 - `run_tests` defaults to false. Tests execute generated repository code with the worker's OS permissions; use a separate OS/container sandbox for untrusted code.
 - `test_timeout` is an integer from 1 to 300 seconds.
