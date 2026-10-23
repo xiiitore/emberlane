@@ -401,26 +401,34 @@ class GitHubIssueMailbox:
             return True
         if task.status not in {"completed", "failed"}:
             return False
-        # Public issue comments contain metadata only. Full sanitized output is
-        # retained in the linked task log, so nested fields must be filtered too.
-        safe_result = _public_result(task.result)
+        # The mailbox issue is public. Emit only explicitly approved scalar
+        # metadata; never serialize arbitrary nested task/log/handoff results.
+        safe_result: dict[str, Any] = {"result_available": task.result is not None}
+        if isinstance(task.result, dict):
+            allowed_scalar_fields = {
+                "ok", "passed", "returncode", "exit_code", "replacements",
+                "bytes_written", "count", "files_changed", "patch_included",
+            }
+            for key in allowed_scalar_fields:
+                value = task.result.get(key)
+                if isinstance(value, (bool, int, float)):
+                    safe_result[key] = value
         try:
             task_log_result = self._publish_task_log(task, comment_id)
-        except Exception as exc:
-            task_log_result = {"task_log_status": "failed", "task_log_error": f"{type(exc).__name__}: {exc}"[:500]}
-        # Do not publish a handoff record that permanently says the full log
-        # failed: the handoff publisher is idempotent and would not repair it
-        # after a later retry succeeds.
+        except Exception:
+            task_log_result = {"task_log_status": "failed"}
         if task_log_result.get("task_log_status") not in {"published", "already_present"}:
             return False
         try:
             handoff_result = self._publish_handoff_record(task, comment_id, task_log_result)
-        except Exception as exc:
-            handoff_result = {"handoff_status": "failed", "handoff_error": f"{type(exc).__name__}: {exc}"[:500]}
-        if isinstance(safe_result, dict):
-            safe_result.update(task_log_result)
-            safe_result.update(handoff_result)
-        # Keep the terminal task active until both durable records are published.
+        except Exception:
+            handoff_result = {"handoff_status": "failed"}
+        # Retain only bounded status values; omit paths, exception text and hashes.
+        for source, key in ((task_log_result, "task_log_status"),
+                            (handoff_result, "handoff_status")):
+            value = source.get(key)
+            if isinstance(value, str) and value in {"published", "already_present", "failed"}:
+                safe_result[key] = value
         if handoff_result.get("handoff_status") not in {"published", "already_present"}:
             return False
         result = {
@@ -429,10 +437,10 @@ class GitHubIssueMailbox:
             "kind": task.kind,
             "status": task.status,
             "attempts": task.attempts,
-            "last_error": _redact_sensitive_text(str(task.last_error)) if task.last_error else None,
+            "error_present": task.last_error is not None,
             "result": safe_result,
         }
-        self._reply("EMBERLANE_RESULT\n" + json.dumps(result, ensure_ascii=False, indent=2)[:MAX_COMMENT_CHARS])
+        self._reply("EMBERLANE_RESULT\\n" + json.dumps(result, ensure_ascii=False, indent=2)[:MAX_COMMENT_CHARS])
         self.state["handled"].append(comment_id)
         self.state["active"].pop(comment_id, None)
         self._save_state()
