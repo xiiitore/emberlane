@@ -333,7 +333,7 @@ class MailboxRejectionTests(unittest.TestCase):
             mailbox._comments = lambda: [{
                 "id": 126,
                 "user": {"login": "authorized"},
-                "body": 'EMBERLANE_TASK_JSON\\n' + json.dumps({
+                "body": 'EMBERLANE_TASK_JSON\n' + json.dumps({
                     "kind": "write_file",
                     "payload": {"path": "queued.txt", "content": "queued"},
                 }),
