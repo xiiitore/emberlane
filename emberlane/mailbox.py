@@ -413,12 +413,17 @@ class GitHubIssueMailbox:
         self._save_state()
         return True
 
-    def run_once(self) -> dict[str, Any]:
+    def run_once(self, *, execute_tasks: bool = True) -> dict[str, Any]:
+        """Poll one authorized task; optionally leave execution to the bounded supervisor."""
+        if not isinstance(execute_tasks, bool):
+            raise ValueError("execute_tasks must be a boolean")
         comments = self._comments()
         # Resume an already enqueued task first; never enqueue it twice after a restart.
         for comment_id, task_id in list(self.state["active"].items()):
             task = self.worker.queue.get(task_id)
             if task is not None and task.status == "pending":
+                if not execute_tasks:
+                    return {"status": "pending", "comment_id": comment_id, "task_id": task_id}
                 self.worker.run_one()
             if self._finish_if_terminal(comment_id, task_id):
                 return {"status": "finished", "comment_id": comment_id, "task_id": task_id}
@@ -461,6 +466,8 @@ class GitHubIssueMailbox:
                 }
             self.state["active"][comment_id] = task.task_id
             self._save_state()
+            if not execute_tasks:
+                return {"status": "pending", "comment_id": comment_id, "task_id": task.task_id}
             self.worker.run_one()
             if self._finish_if_terminal(comment_id, task.task_id):
                 return {"status": "finished", "comment_id": comment_id, "task_id": task.task_id}
