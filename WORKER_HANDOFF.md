@@ -7617,3 +7617,39 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task dbc770b6-2be4-4e51-aae6-1020e18ed0e5
+
+[Full task output](worker-logs/dbc770b6-2be4-4e51-aae6-1020e18ed0e5.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T11:18:47.050286+00:00",
+  "source_comment_id": "6360801192",
+  "task_id": "dbc770b6-2be4-4e51-aae6-1020e18ed0e5",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/dbc770b6-2be4-4e51-aae6-1020e18ed0e5.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/dbc770b6-2be4-4e51-aae6-1020e18ed0e5.md",
+    "dropbox_sha256": "36a5f00252a40d7179871e68dcd865c1fdb0535bbadafda157b4d41be02c5913",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "tests/test_codex_autopilot_supervisor.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/dbc770b6-2be4-4e51-aae6-1020e18ed0e5.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
