@@ -28,8 +28,9 @@ class PatchCycleError(ValueError):
 def _validate_repo_path(value: str) -> None:
     if not value or value.startswith(("/", "\\")) or "\\" in value:
         raise PatchCycleError("patch paths must be relative POSIX paths")
+    raw_parts = value.split("/")
     path = PurePosixPath(value)
-    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in raw_parts):
         raise PatchCycleError("patch path traversal is not allowed")
     if any(part in PROTECTED_PARTS or part in PROTECTED_NAMES for part in path.parts):
         raise PatchCycleError("patch modifies a protected path")
