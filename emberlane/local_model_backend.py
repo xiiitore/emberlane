@@ -131,13 +131,17 @@ def _capture_output(
             selector.register(streams["stderr"], selectors.EVENT_READ, data="stderr")
             destinations = {"stdout": output, "stderr": error_output}
             limits = {"stdout": max_bytes, "stderr": max_stderr_bytes}
-            while selector.get_map():
+            while process.poll() is None or selector.get_map():
                 remaining = timeout_seconds - (time.monotonic() - started)
                 if remaining <= 0:
                     process.kill()
                     process.wait()
                     return "timeout", sizes["stdout"], sizes["stderr"]
-                events = selector.select(min(0.05, remaining))
+                if selector.get_map():
+                    events = selector.select(min(0.05, remaining))
+                else:
+                    time.sleep(min(0.05, remaining))
+                    events = []
                 for key, _ in events:
                     name = key.data
                     remaining_limit = limits[name] + 1 - sizes[name]
