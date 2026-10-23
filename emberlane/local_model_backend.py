@@ -256,6 +256,8 @@ def run_local_model_proposal(
                     "output": f"Could not start local model executable: {type(exc).__name__}"}
         capture_status, output_size = _capture_output(
             process, output_path, payload["max_output_bytes"], payload["timeout_seconds"])
+        if (source / ".emberlane" / "PAUSED").exists():
+            return {"status": "paused", "proposal": None}
         if capture_status == "timeout":
             return {"status": "timeout", "proposal": None, "output": "Local model timed out"}
         if capture_status == "output_limit":
