@@ -8504,3 +8504,40 @@ No stdout/stderr output field was retained for inline publication.
 ~~~text
 Allowed file exceeds 20000 bytes: emberlane/mailbox.py
 ~~~
+
+
+### Worker task d8fabd75-9a5a-49ed-99f3-d12c4a70459e
+
+[Full task output](worker-logs/d8fabd75-9a5a-49ed-99f3-d12c4a70459e.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:38:15.718659+00:00",
+  "source_comment_id": "6370599252",
+  "task_id": "d8fabd75-9a5a-49ed-99f3-d12c4a70459e",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/d8fabd75-9a5a-49ed-99f3-d12c4a70459e.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/d8fabd75-9a5a-49ed-99f3-d12c4a70459e.md",
+    "dropbox_sha256": "dbc3044775c2eb6b422c6ffcca4d81c0d329373d1931c375ffaa4106e31356c1",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 114,
+    "full_log_path": "worker-logs/d8fabd75-9a5a-49ed-99f3-d12c4a70459e.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: emberlane/mailbox.py
+~~~
