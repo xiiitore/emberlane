@@ -8398,3 +8398,40 @@ Allowed file exceeds 20000 bytes: emberlane/mailbox.py
 ~~~text
 Allowed source context exceeds the configured context-size budget
 ~~~
+
+
+### Worker task ad422035-1b13-4558-9db7-5cee86e353a8
+
+[Full task output](worker-logs/ad422035-1b13-4558-9db7-5cee86e353a8.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:35:25.111286+00:00",
+  "source_comment_id": "6370596041",
+  "task_id": "ad422035-1b13-4558-9db7-5cee86e353a8",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ad422035-1b13-4558-9db7-5cee86e353a8.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/ad422035-1b13-4558-9db7-5cee86e353a8.md",
+    "dropbox_sha256": "6da47db240db4bd516a9da20b03eb7d10902b26756ea32383effa592c50611f5",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 126,
+    "full_log_path": "worker-logs/ad422035-1b13-4558-9db7-5cee86e353a8.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: emberlane/local_model_backend.py
+~~~
