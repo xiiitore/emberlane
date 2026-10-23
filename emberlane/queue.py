@@ -11,6 +11,32 @@ from pathlib import Path
 from typing import Any, Callable
 
 
+_FAILURE_STATES = {"failed", "error", "blocked", "cancelled", "canceled", "timeout"}
+_FAILURE_FLAGS = {"ok", "success", "passed", "synced", "applied", "verified"}
+
+
+def _result_has_failure(value: Any) -> bool:
+    """Recognize explicit failure evidence in a JSON-compatible handler result."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            normalized_key = key.lower() if isinstance(key, str) else key
+            if normalized_key in _FAILURE_FLAGS and item is False:
+                return True
+            if normalized_key in {"status", "state"} and isinstance(item, str):
+                if item.strip().lower() in _FAILURE_STATES:
+                    return True
+            if normalized_key in {"returncode", "exit_code"}:
+                if isinstance(item, int) and not isinstance(item, bool) and item != 0:
+                    return True
+            if normalized_key == "error" and item not in (None, "", False):
+                return True
+            if _result_has_failure(item):
+                return True
+    elif isinstance(value, list):
+        return any(_result_has_failure(item) for item in value)
+    return False
+
+
 @dataclass
 class Task:
     task_id: str
@@ -141,8 +167,14 @@ class TaskQueue:
             task.last_error = f"{type(exc).__name__}: {exc}"
             task.status = "pending" if task.attempts < self.max_attempts else "failed"
         else:
-            task.last_error = None
-            task.status = "completed"
+            if _result_has_failure(task.result):
+                # A handler may return normally while reporting a failed operation.
+                # Preserve its structured result, but do not label the task successful.
+                task.last_error = "handler returned explicit failure evidence"
+                task.status = "failed"
+            else:
+                task.last_error = None
+                task.status = "completed"
         task.updated_at = time.time()
         self._save()
         return task
