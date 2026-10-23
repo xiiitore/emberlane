@@ -7,6 +7,10 @@ A small, standalone Python task runner with a local coding-workflow worker.
 - Python 3.11+
 - Standard-library-only runtime
 
+## Documentation
+
+Start with the [documentation index](docs/INDEX.md). It links the architecture, task lifecycle, security model, adapter contract, testing/release gates, Termux readiness and operations runbooks.
+
 ## Install and test
 
 From the repository root:
