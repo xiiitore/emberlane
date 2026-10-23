@@ -389,6 +389,22 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(result.result, fake_result)
         self.assertEqual(result.attempts, 1)
 
+    def test_local_model_output_redacts_github_tokens_before_persistence(self):
+        token = "ghp_" + ("A" * 30)
+        self.worker.submit("local_model", {"prompt": "produce test output"})
+        with patch("emberlane.worker.LocalModelConfig.from_env", return_value=object()), patch(
+            "emberlane.worker.LocalModelRunner"
+        ) as runner:
+            runner.return_value.generate.return_value = {
+                "ok": True, "output": f"example {token}", "truncated": False,
+                "returncode": 0, "elapsed_seconds": 0.01,
+            }
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.result["output"], "example [REDACTED_GITHUB_TOKEN]")
+        self.assertTrue(result.result["output_redacted"])
+        self.assertNotIn(token, str(result.result))
+
     def test_local_model_configuration_error_is_terminal_not_retried(self):
         self.worker.submit("local_model", {"prompt": "say hello"})
         with patch(
