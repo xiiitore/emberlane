@@ -8324,3 +8324,40 @@ Allowed file exceeds 20000 bytes: emberlane/worker.py
 ~~~text
 Allowed source context exceeds the configured context-size budget
 ~~~
+
+
+### Worker task f2202c1c-dae5-404c-88f3-8fd74c36f582
+
+[Full task output](worker-logs/f2202c1c-dae5-404c-88f3-8fd74c36f582.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:33:37.219022+00:00",
+  "source_comment_id": "6370594303",
+  "task_id": "f2202c1c-dae5-404c-88f3-8fd74c36f582",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/f2202c1c-dae5-404c-88f3-8fd74c36f582.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/f2202c1c-dae5-404c-88f3-8fd74c36f582.md",
+    "dropbox_sha256": "6dad6c0c78f58bd7961474375402ca4abb72f27f22d6eb3426b815ae1bfd8392",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 114,
+    "full_log_path": "worker-logs/f2202c1c-dae5-404c-88f3-8fd74c36f582.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: emberlane/mailbox.py
+~~~
