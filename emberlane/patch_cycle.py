@@ -276,6 +276,11 @@ def validate_patch_in_worktree(
         stat = _run_git(["diff", "--stat"], cwd=checkout)
         if stat.returncode != 0:
             raise PatchCycleError("could not inspect disposable-worktree diff")
+        full_diff = _run_git(["diff", "--no-ext-diff", "--no-color"], cwd=checkout)
+        if full_diff.returncode != 0:
+            raise PatchCycleError("could not capture disposable-worktree diff")
+        diff_preview = full_diff.stdout[:MAX_RESULT_CHARS]
+        diff_truncated = len(full_diff.stdout) > MAX_RESULT_CHARS
         if not stat.stdout.strip():
             return {
                 "ok": False, "passed": False, "stage": "no_changes",
@@ -294,6 +299,8 @@ def validate_patch_in_worktree(
             "patch_sha256": patch_sha256,
             "touched_paths": touched_paths,
             "diff_stat": stat.stdout[-MAX_RESULT_CHARS:],
+            "diff_preview": diff_preview,
+            "diff_truncated": diff_truncated,
             "tests_run": False,
             "worktree_discarded": True,
             "original_worktree_modified": False,
