@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .dropbox_output import DropboxOutputError, MAX_LOG_BYTES, upload_task_log
+
 TASK_MARKER = "EMBERLANE_TASK_JSON"
 MAX_COMMENT_CHARS = 20_000
 MAX_GH_ATTEMPTS = 4
@@ -228,22 +230,24 @@ class GitHubIssueMailbox:
         endpoint = f"repos/{self.repository}/issues/{self.issue_number}/comments"
         _gh(["api", "--method", "POST", endpoint, "-f", f"body={body[:MAX_COMMENT_CHARS]}"])
 
-    def _publish_task_log(self, task: Any, comment_id: str) -> dict[str, str]:
-        """Publish complete retained output in readable, per-task Markdown."""
+    def _publish_task_log(self, task: Any, comment_id: str) -> dict[str, Any]:
+        """Write a complete sanitized local log and publish it to Dropbox."""
         task_id = str(task.task_id)
         if not re.fullmatch(r"[A-Za-z0-9-]{1,100}", task_id):
             raise MailboxError("task id is not safe for a log path")
         result = task.result if isinstance(task.result, dict) else {}
         outputs: list[tuple[str, str]] = []
+
         def redact(value: str) -> str:
             return _redact_sensitive_text(value)
+
         def sanitize(value: Any, path: str) -> Any:
             if isinstance(value, str):
                 return redact(value)
             if isinstance(value, list):
                 return [sanitize(item, f"{path}[{index}]") for index, item in enumerate(value)]
             if isinstance(value, dict):
-                cleaned = {}
+                cleaned: dict[str, Any] = {}
                 for key, item in value.items():
                     child_path = f"{path}.{key}"
                     normalized_key = re.sub(r"[^a-z0-9]", "", str(key).casefold())
@@ -265,101 +269,77 @@ class GitHubIssueMailbox:
                         cleaned[key] = sanitize(item, child_path)
                 return cleaned
             return value
-        record = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "source_comment_id": str(comment_id), "task_id": task_id, "kind": str(task.kind), "status": str(task.status), "attempts": int(task.attempts), "error_present": bool(task.last_error), "result": sanitize(result, "result")}
-        content = "# Emberlane task output\n\n" + f"- Task ID: `{task_id}`\n- Kind: `{task.kind}`\n- Status: `{task.status}`\n- Attempts: `{task.attempts}`\n- Source comment: `{comment_id}`\n\n"
-        content += "## Result metadata\n\n```json\n" + json.dumps(record, ensure_ascii=False, indent=2) + "\n```\n"
-        for label, output in outputs:
-            content += f"\n## Full output: `{label}`\n\n~~~text\n{output}\n~~~\n"
-        if len(content.encode("utf-8")) > 1_000_000:
-            raise MailboxError("task log exceeds GitHub single-file size limit (1 MB)")
-        path = f"worker-logs/{task_id}.md"
-        endpoint = f"repos/{self.repository}/contents/{path}"
-        branch = "feat/local-coding-worker"
-        existing = subprocess.run(["gh", "api", f"{endpoint}?ref={branch}"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, check=False, shell=False)
-        if existing.returncode == 0:
-            try:
-                previous = base64.b64decode(json.loads(existing.stdout)["content"]).decode("utf-8")
-            except (json.JSONDecodeError, KeyError, ValueError, UnicodeDecodeError) as exc:
-                raise MailboxError("could not inspect existing task log") from exc
-            if re.search(r'"task_id"\s*:\s*"' + re.escape(task_id) + r'"', previous):
-                return {"task_log_status": "already_present", "task_log_path": path}
-            raise MailboxError("task log path exists with unrelated content")
-        encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
-        _gh(["api", "--method", "PUT", endpoint, "-f", f"message=Publish full task output {task_id}", "-f", f"content={encoded}", "-f", f"branch={branch}"])
-        return {"task_log_status": "published", "task_log_path": path}
-    def _publish_handoff_record(self, task: Any, comment_id: str, task_log_result: dict[str, str] | None = None) -> dict[str, str]:
-        """Append a bounded, sanitized task summary to the handoff file on GitHub."""
-        handoff_path = "WORKER_HANDOFF.md"
-        branch = "feat/local-coding-worker"
-        endpoint = f"repos/{self.repository}/contents/{handoff_path}"
-        result = task.result if isinstance(task.result, dict) else {}
-        allowed_keys = {
-            "returncode", "passed", "failed", "tests_run", "branch_status",
-            "working_tree_dirty", "changed_paths_count", "head_commit",
-            "files_written", "path", "bytes_written", "result_available",
-            "python_version", "platform", "content_returned_to_mailbox",
-            "content_truncated",
-        }
-        summary = {key: result[key] for key in allowed_keys if key in result}
-        if isinstance(summary.get("files_written"), list):
-            summary["files_written"] = [
-                {"path": item.get("path"), "bytes_written": item.get("bytes_written")}
-                for item in summary["files_written"] if isinstance(item, dict)
-            ]
+
         record = {
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "source_comment_id": str(comment_id),
-            "task_id": str(task.task_id),
+            "task_id": task_id,
             "kind": str(task.kind),
             "status": str(task.status),
             "attempts": int(task.attempts),
             "error_present": bool(task.last_error),
-            "task_log": task_log_result or {"task_log_status": "not_reported"},
-            "summary": summary,
+            "result": sanitize(result, "result"),
         }
-        task_log_status = (task_log_result or {}).get("task_log_status")
-        task_log_link = (
-            f"[Full task output](worker-logs/{task.task_id}.md)"
-            if task_log_status in {"published", "already_present"}
-            else "Full task output log was not published."
-        )
-        section = (
-            "\n\n### Worker task " + str(task.task_id) + "\n\n"
-            + task_log_link + "\n\n"
-            + "```json\n"
-            + json.dumps(record, ensure_ascii=False, indent=2)[:5000]
+        content = (
+            "# Emberlane task output\n\n"
+            f"- Task ID: `{task_id}`\n"
+            f"- Kind: `{task.kind}`\n"
+            f"- Status: `{task.status}`\n"
+            f"- Attempts: `{task.attempts}`\n"
+            f"- Source comment: `{comment_id}`\n\n"
+            "## Result metadata\n\n```json\n"
+            + json.dumps(record, ensure_ascii=False, indent=2)
             + "\n```\n"
         )
-        if len(section) > 6000:
-            raise MailboxError("handoff record exceeded 6000 characters")
+        for label, output in outputs:
+            content += f"\n## Full output: `{label}`\n\n~~~text\n{output}\n~~~\n"
+        encoded = content.encode("utf-8")
+        if len(encoded) > MAX_LOG_BYTES:
+            raise MailboxError("task log exceeds configured 1 MB limit")
 
-        for attempt in range(3):
+        relative_path = f"worker-logs/{task_id}.md"
+        local_path = self.worker.root / relative_path
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = local_path.with_name(f".{task_id}.{time.time_ns()}.tmp")
+        try:
+            with temporary_path.open("wb") as handle:
+                handle.write(encoded)
+                handle.flush()
+                import os
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, local_path)
+        finally:
             try:
-                current_file = _gh_json(["api", f"{endpoint}?ref={branch}"])
-                current = base64.b64decode(current_file["content"]).decode("utf-8")
-                sha = current_file["sha"]
-            except (json.JSONDecodeError, KeyError, ValueError, UnicodeDecodeError) as exc:
-                raise MailboxError("could not decode existing handoff document") from exc
-            if str(task.task_id) in current:
-                return {"handoff_status": "already_present"}
-            updated = current + section
-            encoded = base64.b64encode(updated.encode("utf-8")).decode("ascii")
-            try:
-                _gh([
-                    "api", "--method", "PUT", endpoint,
-                    "-f", f"message=Append Emberlane worker result {task.task_id}",
-                    "-f", f"content={encoded}",
-                    "-f", f"sha={sha}",
-                    "-f", f"branch={branch}",
-                ])
-                return {"handoff_status": "published"}
-            except MailboxError as exc:
-                message = str(exc).casefold()
-                if attempt == 2 or not any(
-                    marker in message for marker in ("409", "422", "sha", "conflict")
-                ):
-                    raise
-        raise MailboxError("handoff publish conflict after three attempts")
+                temporary_path.unlink()
+            except FileNotFoundError:
+                pass
+
+        try:
+            dropbox_result = upload_task_log(task_id, content)
+        except DropboxOutputError:
+            # Keep the complete local log and finish the task with an explicit
+            # delivery failure; do not block the mailbox on a missing network.
+            return {
+                "task_log_status": "local_only",
+                "dropbox_status": "failed",
+                "dropbox_readback_verified": False,
+                "error_present": True,
+            }
+        return {
+            "task_log_status": "published",
+            "dropbox_status": dropbox_result.get("status"),
+            "dropbox_path": dropbox_result.get("path"),
+            "dropbox_sha256": dropbox_result.get("sha256"),
+            "dropbox_bytes": dropbox_result.get("bytes"),
+            "dropbox_readback_verified": dropbox_result.get("readback_verified") is True,
+        }
+
+    def _publish_handoff_record(
+        self, task: Any, comment_id: str, task_log_result: dict[str, Any] | None = None
+    ) -> dict[str, str]:
+        """Avoid a GitHub commit for every task; issue comments are the status ledger."""
+        del task, comment_id, task_log_result
+        return {"handoff_status": "not_required"}
 
     def _finish_if_terminal(self, comment_id: str, task_id: str) -> bool:
         task = self.worker.queue.get(task_id)
