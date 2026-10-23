@@ -99,6 +99,42 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertNotIn("API_SECRET", process.kwargs["env"])
         self.assertEqual(process.kwargs["env"].get("LD_LIBRARY_PATH"), "/test/lib")
 
+    def test_context_budget_grows_automatically_within_termux_limit(self):
+        # The default budget is 2 bytes per context token. A source file larger
+        # than 8192 bytes should select a larger bounded context, not fail before
+        # llama-cli is launched.
+        (self.root / "src" / "allowed.py").write_text(
+            "# " + ("x" * 9000) + "\n", encoding="utf-8"
+        )
+        processes = []
+
+        def fake(command, **kwargs):
+            process = FakeProcess(command, **kwargs)
+            processes.append(process)
+            return process
+
+        result = self.run_with_fake(fake, {**self.payload, "context_size": 4096})
+        self.assertEqual(result["status"], "proposal")
+        self.assertEqual(result["proposal"]["context_size_used"], 8192)
+        self.assertEqual(result["proposal"]["context_bytes"], 9003)
+        self.assertEqual(processes[0].command[processes[0].command.index("-c") + 1], "8192")
+
+    def test_context_budget_can_be_kept_strict_explicitly(self):
+        (self.root / "src" / "allowed.py").write_text(
+            "# " + ("x" * 9000) + "\n", encoding="utf-8"
+        )
+        processes = []
+
+        def fake(command, **kwargs):
+            processes.append(FakeProcess(command, **kwargs))
+            return processes[-1]
+
+        result = self.run_with_fake(
+            fake, {**self.payload, "context_size": 4096, "auto_context_size": False}
+        )
+        self.assertEqual(result["status"], "input_limit")
+        self.assertEqual(result["context_size_used"], 4096)
+        self.assertEqual(processes, [])
     def test_missing_model_configuration_does_not_launch_process(self):
         with patch.dict(os.environ, {}, clear=True), patch(
             "emberlane.local_model_backend.subprocess.Popen"
@@ -295,6 +331,10 @@ class LocalModelProposalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "test_timeout_seconds must be an integer"):
             worker.submit("local_model_edit", {
                 **self.payload, "test_timeout_seconds": True,
+            })
+        with self.assertRaisesRegex(ValueError, "auto_context_size must be a boolean"):
+            worker.submit("local_model_proposal", {
+                **self.payload, "auto_context_size": 1,
             })
         self.assertEqual(worker.queue.list_tasks(), [])
 
