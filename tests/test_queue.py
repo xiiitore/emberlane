@@ -326,10 +326,10 @@ class TaskQueueTests(unittest.TestCase):
         queue.submit("pending", {})
         queue._save()
         original_state = self.state.read_bytes()
+        from emberlane.queue import _write_private_archive as write_private_archive
 
         def corrupt_archive(path, data):
-            from emberlane.queue import _write_private_archive
-            return _write_private_archive(
+            return write_private_archive(
                 path, b"corrupt archive" if ".pre-prune-" in path.name else data
             )
 
