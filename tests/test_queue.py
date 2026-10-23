@@ -305,6 +305,19 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(second["preserved_active_count"], 2)
         self.assertIsNone(second["backup_file"])
 
+    @unittest.skipIf(sys.platform == "win32", "POSIX file mode assertion")
+    def test_prune_terminal_archive_is_private(self):
+        queue = TaskQueue(self.state)
+        old = queue.submit("done", {"content": "potentially sensitive payload"})
+        old.status = "completed"
+        old.updated_at = 1.0
+        queue._save()
+
+        result = queue.prune_terminal(keep_terminal=0)
+        backup = self.state.parent / result["backup_file"]
+
+        self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
+
     def test_prune_terminal_refuses_to_prune_if_archive_verification_fails(self):
         queue = TaskQueue(self.state)
         old = queue.submit("done", {})
