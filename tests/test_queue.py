@@ -210,6 +210,18 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(completed.attempts, 2)
         self.assertEqual(completed.result, {"ok": True, "resumed": "bounded"})
 
+    def test_unrelated_resource_exhaustion_is_not_deferred_as_quota(self):
+        queue = TaskQueue(self.state)
+        task = queue.submit("provider", {})
+        result = queue.run_one({
+            "provider": lambda payload: (_ for _ in ()).throw(
+                RuntimeError("resource exhausted while allocating memory")
+            )
+        })
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "failed")
+        self.assertIn("resource exhausted", result.last_error)
+
     def test_explicit_negative_result_evidence_fails_closed(self):
         queue = TaskQueue(self.state)
         failures = [
