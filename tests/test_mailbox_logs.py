@@ -52,7 +52,6 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertTrue(any("feat/local-coding-worker" in value for value in args))
 
     @patch("emberlane.mailbox.subprocess.run")
-    @patch("emberlane.mailbox.subprocess.run")
     def test_task_log_redacts_sensitive_fields_and_casefolds_content_key(self, run):
         run.side_effect = [
             subprocess.CompletedProcess(["gh"], 1, "", "HTTP 404: Not Found"),
@@ -88,6 +87,7 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertIn('"safe_label": "kept"', document)
 
 
+    @patch("emberlane.mailbox.subprocess.run")
     def test_existing_task_log_is_idempotent(self, run):
         previous = '# Emberlane task output\n```json\n{"task_id": "task-123"}\n```'
         api_content = base64.b64encode(previous.encode()).decode()
