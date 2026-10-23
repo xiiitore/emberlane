@@ -19,6 +19,7 @@ from .mailbox import GitHubIssueMailbox
 from .planner import GoalPlanner
 from .queue import Task, TaskQueue
 from .workspace import Workspace, WorkspaceError
+from .local_model_backend import run_local_model_proposal, validate_local_model_payload
 
 MAX_OUTPUT_CHARS = 20_000
 GIT_COMMAND_TIMEOUT = 10
@@ -67,12 +68,17 @@ class LocalWorker:
             "git_sync": self._git_sync,
             "diagnostics": self._diagnostics,
             "plan_goal": self._plan_goal,
+            "local_model_proposal": self._local_model_proposal,
         }
 
     def _plan_goal(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Advance a bounded plan using only the worker's registered handlers."""
         planner = GoalPlanner(self.queue, set(self.handlers) - {"plan_goal"})
         return planner.advance(payload)
+
+    def _local_model_proposal(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Ask a configured local llama.cpp model for an unapplied code patch."""
+        return run_local_model_proposal(self.root, payload, workspace=self.workspace)
 
     def _write_file(self, payload: dict[str, Any]) -> dict[str, Any]:
         path = _checked_path(payload.get("path"))
@@ -512,6 +518,8 @@ class LocalWorker:
                 if len(content.encode("utf-8")) > self.workspace.max_file_bytes:
                     raise WorkspaceError(f"content exceeds configured size limit: {path}")
                 seen.add(path)
+        if kind == "local_model_proposal":
+            validate_local_model_payload(payload, self.workspace)
         if kind == "run_tests":
             test_file = payload.get("test_file")
             if test_file is not None and (
@@ -561,7 +569,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "diagnostics"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "diagnostics", "local_model_proposal"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
