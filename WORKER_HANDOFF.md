@@ -8806,3 +8806,40 @@ Allowed file exceeds 20000 bytes: tests/test_queue.py
 ~~~text
 Allowed file exceeds 20000 bytes: tests/test_worker.py
 ~~~
+
+
+### Worker task b5305785-f116-44db-a61b-0e9795e0eb02
+
+[Full task output](worker-logs/b5305785-f116-44db-a61b-0e9795e0eb02.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:45:40.152362+00:00",
+  "source_comment_id": "6370614671",
+  "task_id": "b5305785-f116-44db-a61b-0e9795e0eb02",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/b5305785-f116-44db-a61b-0e9795e0eb02.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/b5305785-f116-44db-a61b-0e9795e0eb02.md",
+    "dropbox_sha256": "56aab0270376feef708c162a57fd5fb58121796edb569ae140b9996af062f10e",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 113,
+    "full_log_path": "worker-logs/b5305785-f116-44db-a61b-0e9795e0eb02.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: emberlane/worker.py
+~~~
