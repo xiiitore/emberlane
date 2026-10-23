@@ -8250,3 +8250,40 @@ Loading model...
 Failed to load the model
 
 ~~~
+
+
+### Worker task 8f8580f2-b103-4e6a-a428-3b22a0ba34cd
+
+[Full task output](worker-logs/8f8580f2-b103-4e6a-a428-3b22a0ba34cd.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:31:50.580990+00:00",
+  "source_comment_id": "6370590381",
+  "task_id": "8f8580f2-b103-4e6a-a428-3b22a0ba34cd",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/8f8580f2-b103-4e6a-a428-3b22a0ba34cd.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/8f8580f2-b103-4e6a-a428-3b22a0ba34cd.md",
+    "dropbox_sha256": "8c1c75130c53fcf370c80c8b2aae35500bc7d4c596c8ad370a6434a6b66a055f",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 113,
+    "full_log_path": "worker-logs/8f8580f2-b103-4e6a-a428-3b22a0ba34cd.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: emberlane/worker.py
+~~~
