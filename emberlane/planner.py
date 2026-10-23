@@ -47,13 +47,18 @@ def _result_has_failure(value: Any) -> bool:
 
 def _task_succeeded(task: Any) -> bool:
     """True only when execution completed without explicit result-level failure."""
-    return task.status == "completed" and not _result_has_failure(task.result)
+    return (
+        task.status == "completed"
+        and task.result is not None
+        and not _result_has_failure(task.result)
+    )
 
 
 def _task_failed(task: Any) -> bool:
     """Treat both executor exceptions and returned failure evidence as failures."""
     return task.status == "failed" or (
-        task.status == "completed" and _result_has_failure(task.result)
+        task.status == "completed"
+        and (task.result is None or _result_has_failure(task.result))
     )
 
 
