@@ -7988,3 +7988,43 @@ Allowed source context exceeds the configured context-size budget
 ~~~text
 Set EMBERLANE_MODEL_PATH to a local GGUF model file
 ~~~
+
+
+### Worker task 8a115931-db1a-431c-8693-4bcf2a6be124
+
+[Full task output](worker-logs/8a115931-db1a-431c-8693-4bcf2a6be124.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:25:28.074209+00:00",
+  "source_comment_id": "6370574661",
+  "task_id": "8a115931-db1a-431c-8693-4bcf2a6be124",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/8a115931-db1a-431c-8693-4bcf2a6be124.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/8a115931-db1a-431c-8693-4bcf2a6be124.md",
+    "dropbox_sha256": "f8b602640486ded0ec3dbfd96cc73a14500c96a94433adb11bf6d8694380f989",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 104,
+    "full_log_path": "worker-logs/8a115931-db1a-431c-8693-4bcf2a6be124.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+
+Loading model... 
+Failed to load the model
+
+~~~
