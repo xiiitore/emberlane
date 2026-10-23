@@ -45,9 +45,9 @@ class LocalModelRunnerTests(unittest.TestCase):
 
     def test_large_stdout_and_stderr_are_drained_with_bounded_capture(self):
         self.write_executable(
-            "import sys\\n"
-            "sys.stdout.write('x' * 1000000)\\n"
-            "sys.stderr.write('diagnostic-' * 100000)\\n"
+            "import sys\n"
+            "sys.stdout.write('x' * 1000000)\n"
+            "sys.stderr.write('diagnostic-' * 100000)\n"
         )
         result = LocalModelRunner(self.config).generate("hello")
         self.assertTrue(result["truncated"])
