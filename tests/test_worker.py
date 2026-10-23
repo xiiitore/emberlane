@@ -414,5 +414,66 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(self.worker.queue.list_tasks(), [])
 
 
+    def _initialize_git_repo(self):
+        (self.root / ".gitignore").write_text(".emberlane/\n", encoding="utf-8")
+        (self.root / "example.py").write_text("VALUE = 1\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True, shell=False)
+        subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=self.root, check=True, shell=False)
+        subprocess.run(["git", "config", "user.name", "Emberlane Test"], cwd=self.root, check=True, shell=False)
+        subprocess.run(["git", "add", ".gitignore", "example.py"], cwd=self.root, check=True, shell=False)
+        subprocess.run(["git", "commit", "-qm", "baseline"], cwd=self.root, check=True, shell=False)
+
+    def test_validate_patch_task_uses_disposable_worktree(self):
+        self._initialize_git_repo()
+        patch = (
+            "diff --git a/example.py b/example.py\n"
+            "--- a/example.py\n"
+            "+++ b/example.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            "+VALUE = 2\n"
+        )
+        task = self.worker.submit("validate_patch", {"patch": patch})
+        result = self.worker.run_one()
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.result["status"], "validated")
+        self.assertIsNone(result.result["passed"])
+        self.assertFalse(result.result["tests_run"])
+        self.assertFalse(result.result["original_worktree_modified"])
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+
+    def test_validate_patch_rejects_dirty_checkout_as_terminal_failure(self):
+        self._initialize_git_repo()
+        (self.root / "example.py").write_text("LOCAL CHANGE\n", encoding="utf-8")
+        patch = (
+            "diff --git a/example.py b/example.py\n"
+            "--- a/example.py\n"
+            "+++ b/example.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            "+VALUE = 2\n"
+        )
+        self.worker.submit("validate_patch", {"patch": patch})
+        result = self.worker.run_one()
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.attempts, 1)
+        self.assertIn("worktree is dirty", result.result["error"])
+        self.assertEqual((self.root / "example.py").read_text(), "LOCAL CHANGE\n")
+
+    def test_validate_patch_payload_is_validated_before_enqueue(self):
+        for payload in (
+            {},
+            {"patch": " "},
+            {"patch": "x", "run_tests": "yes"},
+            {"patch": "x", "test_timeout": True},
+            {"patch": "x", "unexpected": 1},
+        ):
+            with self.subTest(payload=payload):
+                with self.assertRaises(ValueError):
+                    self.worker.submit("validate_patch", payload)
+        self.assertEqual(self.worker.queue.list_tasks(), [])
+
+
 if __name__ == "__main__":
     unittest.main()
