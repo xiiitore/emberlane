@@ -96,10 +96,12 @@ executable code: run the worker only in a repository you trust.
 Workspace path checks protect against accidental path escape and common
 symlink traversal; they are not an OS sandbox. The worker runs with the same
 OS permissions as its owner. It does not provide a network listener, remote
-task submission, automatic Git commits/pushes, or an LLM that independently
-writes code from natural-language specifications. File-writing tasks must
-include the exact file path and content in their payload. Use a separate OS
-account or container for stronger isolation.
+task submission, automatic Git commits/pushes, or an LLM that automatically
+applies code from natural-language specifications. The opt-in `coding_cycle`
+task can propose a patch from bounded source context and validate it in a
+disposable worktree; it never writes that patch into the active checkout.
+File-writing tasks must include the exact file path and content in their
+payload. Use a separate OS account or container for stronger isolation.
 
 ## Local model and disposable patch validation
 
