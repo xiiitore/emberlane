@@ -141,6 +141,15 @@ class DisposablePatchCycleTests(unittest.TestCase):
         with self.assertRaises(PatchCycleError):
             validate_patch_paths(patch)
 
+    def test_noop_or_unapplicable_patch_is_not_reported_as_validated(self):
+        patch = "diff --git a/example.py b/example.py\n"
+        result = validate_patch_in_worktree(self.root, patch)
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["passed"])
+        self.assertNotEqual(result.get("status"), "validated")
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+        self.assertEqual(self.git("worktree", "list", "--porcelain").stdout.count("worktree "), 1)
+
     def test_refuses_dirty_original_worktree(self):
         (self.root / "example.py").write_text("LOCAL CHANGE\n", encoding="utf-8")
         with self.assertRaisesRegex(PatchCycleError, "worktree is dirty"):
