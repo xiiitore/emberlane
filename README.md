@@ -144,12 +144,27 @@ python -m emberlane mailbox-once --repo OWNER/REPO --issue ISSUE_NUMBER --author
 ```
 
 Repeat that command to process tasks and retries. A result comment is posted to
-the same issue when the task reaches a terminal state. Keep the mailbox issue
-dedicated to worker requests; issue comments are visible to people with access
-to the repository. Do not send secrets or private data through it. This is a
-polling bridge, not a process started or controlled directly by ChatGPT; a
-local machine must be running the poller for new tasks to execute. Only the
-worker's registered task types are supported.
+the same issue when the task reaches a terminal state. Public result comments
+contain only allow-listed scalar metadata and delivery status; raw exception
+text, local paths, source text and command output are omitted.
+
+Full sanitized task logs are written locally under `worker-logs/` and uploaded
+to Dropbox with a SHA-256 read-back check. Configure Dropbox credentials in
+environment variables or `~/.config/emberlane/dropbox.env` with owner-only
+permissions (`0600` on POSIX). Required values are `DROPBOX_APP_KEY`,
+`DROPBOX_APP_SECRET` and `DROPBOX_REFRESH_TOKEN`; `DROPBOX_ROOT` is optional
+and defaults to `/worker-logs`. If Dropbox publication fails, the task log
+remains local and the result reports `local_only` rather than blocking the
+mailbox indefinitely.
+
+Task results are not committed to GitHub one-by-one. The issue comments are the
+status ledger, and Dropbox is the full-log sink; this avoids two repository
+commits per task. Keep the mailbox issue dedicated to worker requests; issue
+comments are visible to people with access to the repository. Do not send
+credentials through issue comments. This is a polling bridge, not a process
+started or controlled directly by ChatGPT; a local machine must be running the
+poller for new tasks to execute. Only the worker's registered task types are
+supported.
 
 ## Termux readiness
 
