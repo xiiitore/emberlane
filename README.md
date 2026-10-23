@@ -7,6 +7,10 @@ A small, standalone Python task runner with a local coding-workflow worker.
 - Python 3.11+
 - Standard-library-only runtime
 
+## Documentation
+
+Start with the [documentation index](docs/INDEX.md). For bounded multi-step work, read the [goal planning guide](docs/GOAL_PLANNING_GUIDE.md). The [Termux readiness runbook](docs/TERMUX_READINESS_RUNBOOK.md) explains read-only preflight and the separate device-evidence gates.
+
 ## Install and test
 
 From the repository root:
@@ -142,3 +146,13 @@ to the repository. Do not send secrets or private data through it. This is a
 polling bridge, not a process started or controlled directly by ChatGPT; a
 local machine must be running the poller for new tasks to execute. Only the
 worker's registered task types are supported.
+
+## Termux readiness
+
+Run the read-only preflight from the repository root after reviewing local changes:
+
+```sh
+bash scripts/termux-preflight.sh
+```
+
+This checks prerequisites only. It does not run model inference, start a supervisor, synchronize Git, or prove an end-to-end coding cycle. See the [readiness runbook](docs/TERMUX_READINESS_RUNBOOK.md).
