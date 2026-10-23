@@ -101,10 +101,14 @@ export EMBERLANE_MODEL_PATH="$HOME/models/qwen-coder.gguf"
 export EMBERLANE_LLAMA_CLI="llama-cli"
 python -m emberlane submit local_model_proposal --payload '{"goal":"Make the function handle an empty input","allowed_paths":["src/example.py"]}'
 python -m emberlane run-one
+
+# End-to-end edit: test in a disposable copy and apply only if verification passes
+python -m emberlane submit local_model_edit --payload '{"goal":"Handle an empty input","allowed_paths":["src/example.py"],"test_file":"test_example.py"}'
+python -m emberlane run-one
 python -m emberlane status
 ```
 
-The model sees only explicitly allow-listed UTF-8 files, subject to strict context, output, and time limits. The worker rejects paths outside the allow-list, credential-like context/output, malformed responses, and oversized edits. The result is an **unapplied patch proposal**; this task does not modify source files. A separate verifier/apply stage is still required before the proposal becomes a working-tree change. A small local model may fail to produce valid JSON or useful edits; those failures are reported rather than silently accepted.
+The model sees only explicitly allow-listed UTF-8 files, subject to strict context, output, and time limits. The worker rejects paths outside the allow-list, credential-like context/output, malformed responses, and oversized edits. `local_model_proposal` returns an **unapplied patch** for inspection. `local_model_edit` applies a proposal only after the patch applies cleanly and the selected tests pass in a disposable copy; it then verifies that the source files have not changed since proposal generation before applying the patch to the working tree. If `test_file` is omitted, it runs the full unittest suite. It does not commit or push. A small local model may fail to produce valid JSON or useful edits; those failures are reported rather than silently accepted.
 
 ## Security boundary
 
