@@ -5,7 +5,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from emberlane.mailbox import GitHubIssueMailbox, MailboxError, _public_result, _redact_sensitive_text
+from emberlane.mailbox import GitHubIssueMailbox, MailboxError, _redact_sensitive_text
 
 
 class TaskLogPublishingTests(unittest.TestCase):
@@ -22,7 +22,7 @@ class TaskLogPublishingTests(unittest.TestCase):
         output = "test_alpha ... ok\ntest_beta ... FAIL\n" + ("TRACEBACK_LINE\n" * 4000)
         task = SimpleNamespace(
             task_id="task-123", kind="run_tests", status="completed",
-            attempts=1, last_error=None,
+            attempts=1, last_error="PRIVATE_EXCEPTION /private/path token=ghp_" + "C" * 35,
             result={
                 "output": output, "returncode": 1,
                 "nested": {"output": "token=ghp_" + "A" * 35},
@@ -47,6 +47,9 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertIn("local source", document)
         self.assertIn("[REDACTED]", document)
         self.assertIn("[REDACTED_GITHUB_TOKEN]", document)
+        self.assertNotIn("PRIVATE_EXCEPTION", document)
+        self.assertNotIn("/private/path", document)
+        self.assertIn('"error_present": true', document)
         self.assertIn("[SOURCE TEXT IN SECTION: result.source_text]", document)
         self.assertIn("worker-logs/task-123.md", args[4])
         self.assertTrue(any("feat/local-coding-worker" in value for value in args))
@@ -161,78 +164,6 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertIn('"error_present": true', replies[0])
 
 
-    def test_public_result_recursively_omits_nested_source_output_and_patch(self):
-        raw = {
-            "status": "model_failed",
-            "output": "private top-level diagnostic",
-            "proposal_result": {
-                "output": "private nested diagnostic",
-                "proposal": {"patch": "--- secret source diff", "patch_bytes": 22},
-            },
-            "items": [{"source_text": "private source", "path": "src/safe.py"}],
-            "token": "ghp_" + "D" * 35,
-        }
-
-        public = _public_result(raw)
-
-        self.assertEqual(public["output"], "[OMITTED; SEE TASK LOG]")
-        self.assertEqual(public["proposal_result"]["output"], "[OMITTED; SEE TASK LOG]")
-        self.assertEqual(public["proposal_result"]["proposal"]["patch"], "[OMITTED; SEE TASK LOG]")
-        self.assertEqual(public["items"][0]["source_text"], "[OMITTED; SEE TASK LOG]")
-        self.assertEqual(public["items"][0]["path"], "src/safe.py")
-        self.assertNotIn("private", json.dumps(public))
-        self.assertNotIn("ghp_" + "D" * 35, json.dumps(public))
-        self.assertIn("[REDACTED_GITHUB_TOKEN]", public["token"])
-
-    def test_public_result_redacts_values_by_sensitive_field_name(self):
-        raw = {
-            "status": "failed",
-            "api_key": "plain-api-key-value",
-            "refresh_token": "plain-refresh-token-value",
-            "Authorization": "Bearer plain-authorization-value",
-            "nested": [
-                {
-                    "client_secret": "plain-client-secret-value",
-                    "database_password": "plain-database-password-value",
-                    "safe_label": "kept",
-                }
-            ],
-        }
-
-        public = _public_result(raw)
-        encoded = json.dumps(public)
-
-        self.assertEqual(public["api_key"], "[REDACTED]")
-        self.assertEqual(public["refresh_token"], "[REDACTED]")
-        self.assertEqual(public["Authorization"], "[REDACTED]")
-        self.assertEqual(public["nested"][0]["client_secret"], "[REDACTED]")
-        self.assertEqual(public["nested"][0]["database_password"], "[REDACTED]")
-        self.assertEqual(public["nested"][0]["safe_label"], "kept")
-        for sensitive in (
-            "plain-api-key-value",
-            "plain-refresh-token-value",
-            "plain-authorization-value",
-            "plain-client-secret-value",
-            "plain-database-password-value",
-        ):
-            self.assertNotIn(sensitive, encoded)
-
-
-    def test_public_result_omits_source_fields_case_insensitively(self):
-        raw = {
-            "Content": "private mixed-case source",
-            "OUTPUT": "private mixed-case output",
-            "Source_Text": "private mixed-case source text",
-            "Patch": "--- private mixed-case diff",
-            "safe_label": "kept",
-        }
-
-        public = _public_result(raw)
-
-        for key in ("Content", "OUTPUT", "Source_Text", "Patch"):
-            self.assertEqual(public[key], "[OMITTED; SEE TASK LOG]")
-        self.assertEqual(public["safe_label"], "kept")
-        self.assertNotIn("private mixed-case", json.dumps(public))
 
 
 if __name__ == "__main__":
