@@ -431,12 +431,11 @@ class LocalWorkerTests(unittest.TestCase):
 
 
     def _initialize_git_repo(self):
-        (self.root / ".gitignore").write_text(".emberlane/\n", encoding="utf-8")
         (self.root / "example.py").write_text("VALUE = 1\n", encoding="utf-8")
         subprocess.run(["git", "init", "-q"], cwd=self.root, check=True, shell=False)
         subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=self.root, check=True, shell=False)
         subprocess.run(["git", "config", "user.name", "Emberlane Test"], cwd=self.root, check=True, shell=False)
-        subprocess.run(["git", "add", ".gitignore", "example.py"], cwd=self.root, check=True, shell=False)
+        subprocess.run(["git", "add", "example.py"], cwd=self.root, check=True, shell=False)
         subprocess.run(["git", "commit", "-qm", "baseline"], cwd=self.root, check=True, shell=False)
 
     def test_validate_patch_task_uses_disposable_worktree(self):
