@@ -11,6 +11,23 @@ from pathlib import Path
 from typing import Any, Callable
 
 
+def _write_private_archive(path: Path, data: bytes) -> None:
+    """Create a new owner-only archive and durably write its exact bytes."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    fd = os.open(path, flags, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            fd = -1
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except BaseException:
+        if fd >= 0:
+            os.close(fd)
+        path.unlink(missing_ok=True)
+        raise
+
+
 _FAILURE_STATES = {
     "failed", "error", "blocked", "cancelled", "canceled", "timeout",
     "rejected", "invalid_model_output", "input_limit", "model_not_configured",
@@ -224,7 +241,7 @@ class TaskQueue:
         )
         if self.state_path.exists():
             state_bytes = self.state_path.read_bytes()
-            backup_path.write_bytes(state_bytes)
+            _write_private_archive(backup_path, state_bytes)
             # Pruning is destructive to historical records: verify the recovery
             # copy byte-for-byte before changing in-memory or persisted queue state.
             if backup_path.read_bytes() != state_bytes:
