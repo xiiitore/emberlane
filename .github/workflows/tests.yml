@@ -5,10 +5,14 @@ on:
     paths-ignore:
       - 'worker-logs/**'
       - 'WORKER_HANDOFF.md'
+      - 'docs/**'
+      - 'README.md'
   pull_request:
     paths-ignore:
       - 'worker-logs/**'
       - 'WORKER_HANDOFF.md'
+      - 'docs/**'
+      - 'README.md'
 
 jobs:
   # On every development push, run the complete suite once on the primary
