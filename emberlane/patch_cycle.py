@@ -6,7 +6,6 @@ because test code in an untrusted patch executes with the worker's permissions.
 from __future__ import annotations
 
 import hashlib
-import os
 import shutil
 import subprocess
 import sys
@@ -67,7 +66,7 @@ def _run_git(args: list[str], *, cwd: Path, timeout: int = 15, input_text: str |
         return subprocess.run(
             ["git", *args],
             cwd=cwd,
-            stdin=subprocess.PIPE if input_text is not None else subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL if input_text is None else None,
             input=input_text,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
