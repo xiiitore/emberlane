@@ -81,6 +81,22 @@ class GoalPlannerTests(unittest.TestCase):
         self.assertEqual(result["scheduled"], [])
         self.assertEqual(result["failed_steps"], ["inspect"])
 
+    def test_rejects_reusing_goal_id_with_different_step_set(self):
+        first = self.planner.advance(self.plan(steps=[
+            {"id": "one", "kind": "diagnostics", "payload": {}}
+        ], max_steps_per_cycle=1))
+        self.assertEqual(first["status"], "active")
+        self.queue.run_one({"diagnostics": lambda payload: {"ok": True}})
+
+        with self.assertRaisesRegex(PlanValidationError, "use a new goal_id"):
+            self.planner.advance(self.plan(steps=[
+                {"id": "two", "kind": "diagnostics", "payload": {}}
+            ], cycle=1, max_steps_per_cycle=1))
+        self.assertFalse(any(
+            task.idempotency_key == "goal:test-goal:step:two"
+            for task in self.queue.list_tasks()
+        ))
+
     def test_validates_cycle_and_batch_limits(self):
         with self.assertRaisesRegex(PlanValidationError, "max_steps_per_cycle"):
             self.planner.advance(self.plan(max_steps_per_cycle=11))
