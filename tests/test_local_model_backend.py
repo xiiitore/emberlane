@@ -168,6 +168,18 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertEqual(result["status"], "paused")
         popen.assert_not_called()
 
+    def test_pause_created_during_inference_discards_proposal(self):
+        class PauseDuringProcess(FakeProcess):
+            def __init__(inner_self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                marker = self.root / ".emberlane" / "PAUSED"
+                marker.parent.mkdir(exist_ok=True)
+                marker.write_text("paused", encoding="utf-8")
+
+        result = self.run_with_fake(PauseDuringProcess)
+        self.assertEqual(result["status"], "paused")
+        self.assertIsNone(result["proposal"])
+
     def test_invalid_model_json_is_rejected(self):
         class InvalidJsonProcess(FakeProcess):
             output_bytes = b"not json"
