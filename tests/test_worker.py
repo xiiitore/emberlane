@@ -438,6 +438,82 @@ class LocalWorkerTests(unittest.TestCase):
         subprocess.run(["git", "add", "example.py"], cwd=self.root, check=True, shell=False)
         subprocess.run(["git", "commit", "-qm", "baseline"], cwd=self.root, check=True, shell=False)
 
+    def test_coding_cycle_generates_and_validates_patch_without_touching_checkout(self):
+        self._initialize_git_repo()
+        patch_text = (
+            "diff --git a/example.py b/example.py\n"
+            "--- a/example.py\n"
+            "+++ b/example.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            "+VALUE = 2\n"
+        )
+        task = self.worker.submit(
+            "coding_cycle",
+            {"prompt": "Change VALUE from 1 to 2", "context_files": ["example.py"]},
+        )
+        generated = {
+            "ok": True, "output": patch_text, "truncated": False,
+            "elapsed_seconds": 0.02, "model_path": "/models/fake.gguf",
+        }
+        with patch("emberlane.worker.LocalModelConfig.from_env", return_value=object()), patch(
+            "emberlane.worker.LocalModelRunner"
+        ) as runner:
+            runner.return_value.generate.return_value = generated
+            result = self.worker.run_one()
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.result["status"], "validated")
+        self.assertEqual(result.result["generation_elapsed_seconds"], 0.02)
+        self.assertIn("+VALUE = 2", result.result["diff_preview"])
+        self.assertFalse(result.result["original_worktree_modified"])
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+
+    def test_coding_cycle_rejects_non_diff_model_output(self):
+        self._initialize_git_repo()
+        self.worker.submit("coding_cycle", {"prompt": "Make a change", "context_files": ["example.py"]})
+        with patch("emberlane.worker.LocalModelConfig.from_env", return_value=object()), patch(
+            "emberlane.worker.LocalModelRunner"
+        ) as runner:
+            runner.return_value.generate.return_value = {
+                "ok": True, "output": "Here is the patch", "truncated": False,
+                "elapsed_seconds": 0.01, "model_path": "/models/fake.gguf",
+            }
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.attempts, 1)
+        self.assertEqual(result.result["stage"], "model_output_validation")
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+
+    def test_coding_cycle_rejects_truncated_model_output(self):
+        self._initialize_git_repo()
+        self.worker.submit("coding_cycle", {"prompt": "Make a change", "context_files": ["example.py"]})
+        with patch("emberlane.worker.LocalModelConfig.from_env", return_value=object()), patch(
+            "emberlane.worker.LocalModelRunner"
+        ) as runner:
+            runner.return_value.generate.return_value = {
+                "ok": True, "output": "diff --git a/example.py b/example.py\n...",
+                "truncated": True, "elapsed_seconds": 0.01, "model_path": "/models/fake.gguf",
+            }
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.attempts, 1)
+        self.assertIn("truncated", result.result["error"])
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+
+    def test_coding_cycle_rejects_invalid_context_paths_before_enqueue(self):
+        for payload in (
+            {"prompt": "change", "context_files": ["../outside.py"]},
+            {"prompt": "change", "context_files": [".env"]},
+            {"prompt": "change", "context_files": ["a.py", "a.py"]},
+            {"prompt": "change", "context_files": ["a.py"] * 6},
+            {"prompt": "change", "unexpected": True},
+        ):
+            with self.subTest(payload=payload):
+                with self.assertRaises(ValueError):
+                    self.worker.submit("coding_cycle", payload)
+        self.assertEqual(self.worker.queue.list_tasks(), [])
+
     def test_validate_patch_task_uses_disposable_worktree(self):
         self._initialize_git_repo()
         patch = (
