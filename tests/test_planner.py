@@ -73,7 +73,8 @@ class GoalPlannerTests(unittest.TestCase):
     def test_stops_after_failed_step(self):
         self.planner.advance(self.plan())
         task = next(t for t in self.queue.list_tasks() if t.kind == "diagnostics")
-        task.status = "failed"
+        task.status = "completed"
+        task.result = {"ok": False, "error": "operation did not succeed"}
         self.queue._save()
         result = self.planner.advance(self.plan(cycle=1))
         self.assertEqual(result["status"], "blocked")
