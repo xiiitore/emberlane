@@ -15,6 +15,32 @@ _FAILURE_STATES = {"failed", "error", "blocked", "cancelled", "canceled", "timeo
 _FAILURE_FLAGS = {"ok", "success", "passed", "synced", "applied", "verified"}
 
 
+def _is_external_wait_exception(exc: Exception) -> bool:
+    """Identify known quota/capacity waits without treating arbitrary errors as waits."""
+    name = type(exc).__name__.casefold()
+    message = str(exc).casefold()
+    known_names = {
+        "chatgptagenttoolratelimitexception",
+        "ratelimiterror",
+        "quotaexceedederror",
+        "usage_limit_error",
+    }
+    if name in known_names:
+        return True
+    markers = (
+        "chatgptagenttoolratelimit",
+        "rate limit exceeded",
+        "rate limit reached",
+        "usage limit reached",
+        "usage limit exceeded",
+        "quota exceeded",
+        "resource exhausted",
+        "too many requests",
+        "http 429",
+    )
+    return any(marker in message for marker in markers)
+
+
 def _result_has_failure(value: Any) -> bool:
     """Recognize explicit failure evidence in a JSON-compatible handler result."""
     if isinstance(value, dict):
@@ -144,6 +170,20 @@ class TaskQueue:
     def list_tasks(self) -> list[Task]:
         return list(self._tasks.values())
 
+    def resume_deferred(self, task_id: str) -> Task:
+        """Explicitly requeue a deferred task after its external dependency recovers."""
+        task = self._tasks.get(task_id)
+        if task is None:
+            raise KeyError(f"unknown task id: {task_id}")
+        if task.status != "deferred":
+            raise ValueError(f"task is not deferred: {task_id}")
+        task.status = "pending"
+        task.last_error = None
+        task.result = None
+        task.updated_at = time.time()
+        self._save()
+        return task
+
     def run_one(self, handlers: dict[str, Callable[[dict[str, Any]], Any]]) -> Task | None:
         task = next((t for t in self._tasks.values() if t.status == "pending"), None)
         if task is None:
@@ -163,9 +203,20 @@ class TaskQueue:
             # Persist only JSON-compatible results so task state remains portable.
             task.result = json.loads(json.dumps(handler(task.payload), ensure_ascii=False))
         except Exception as exc:
-            task.result = None
-            task.last_error = f"{type(exc).__name__}: {exc}"
-            task.status = "pending" if task.attempts < self.max_attempts else "failed"
+            if _is_external_wait_exception(exc):
+                # Known provider quota/usage limits are external waits, not code
+                # defects. Persist a safe marker and stop retrying this task.
+                task.result = {
+                    "status": "deferred",
+                    "reason": "external_capacity_limit",
+                    "exception_type": type(exc).__name__,
+                }
+                task.last_error = None
+                task.status = "deferred"
+            else:
+                task.result = None
+                task.last_error = f"{type(exc).__name__}: {exc}"
+                task.status = "pending" if task.attempts < self.max_attempts else "failed"
         else:
             result_status = (
                 task.result.get("status", "").strip().lower()
