@@ -3,7 +3,7 @@
 This is an acceptance checklist, not a claim that the local Termux setup has passed.
 
 ## Success semantics
-Queue status `completed` means a handler returned without raising. It does not prove the operation succeeded. Structured results such as `passed: false`, nonzero `returncode`, `synced: false`, `ok: false`, or `status: blocked` must block dependent planner steps and must not be reported as PASS. Expected external capacity limits (for example, a known Codex usage limit) must be returned as `status: deferred` or `status: rate_limited`: pause dependent work without retry loops, do not mislabel the condition as a code defect, and resume only when capacity is available.
+Queue status `completed` means a handler returned without raising. It does not prove the operation succeeded. Structured results such as `passed: false`, nonzero `returncode`, `synced: false`, `ok: false`, or `status: blocked` must block dependent planner steps and must not be reported as PASS. Expected external capacity limits (for example, a known Codex usage limit) must become `status: deferred`: pause dependent work without retry loops and do not mislabel the condition as a code defect. The queue recognizes the known rate-limit exception class names and explicit quota markers, persists a safe deferred result, and requires an explicit `resume-deferred TASK_ID` after capacity is available. It does not poll the provider or automatically retry a quota-limited operation.
 
 ## Tomorrow's release gates
 - [ ] Resolve the actual Termux Python, llama-cli path, and configured GGUF path; verify the model file exists and is readable.
