@@ -56,6 +56,7 @@ class LocalModelConfig:
             context = int(values.get("EMBERLANE_MODEL_CONTEXT", str(DEFAULT_CONTEXT_TOKENS)))
             tokens = int(values.get("EMBERLANE_MODEL_MAX_TOKENS", str(DEFAULT_MAX_TOKENS)))
             timeout = int(values.get("EMBERLANE_MODEL_TIMEOUT", str(DEFAULT_TIMEOUT_SECONDS)))
+            max_output = int(values.get("EMBERLANE_MODEL_MAX_OUTPUT", str(DEFAULT_MAX_OUTPUT_CHARS)))
         except (TypeError, ValueError) as exc:
             raise LocalModelError("invalid_configuration", "model numeric settings must be integers") from exc
         if not executable:
@@ -66,7 +67,16 @@ class LocalModelConfig:
             raise LocalModelError("invalid_configuration", f"max tokens must be 1..{MAX_GENERATION_TOKENS}")
         if not 1 <= timeout <= 3600:
             raise LocalModelError("invalid_configuration", "timeout must be 1..3600 seconds")
-        return cls(executable, Path(raw_model).expanduser().resolve(), context, tokens, timeout)
+        if not 1 <= max_output <= 200_000:
+            raise LocalModelError("invalid_configuration", "max output must be 1..200000 characters")
+        return cls(
+            executable,
+            Path(raw_model).expanduser().resolve(),
+            context,
+            tokens,
+            timeout,
+            max_output_chars=max_output,
+        )
 
 
 def _read_bounded_stream(stream, limit: int, *, keep_tail: bool = False) -> tuple[bytes, bool]:
