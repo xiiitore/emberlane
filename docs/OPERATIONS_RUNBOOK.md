@@ -106,3 +106,7 @@ If multiple processes wrote the same file, assume possible lost updates; atomic 
 ## End-of-session record
 
 Record branch and commit, processed task IDs and statuses, tests and exit codes, changed files and diff summary, deferred tasks and reasons, unresolved blockers, pause state, and next safe action. Never claim completion while tasks remain deferred or verification is missing.
+
+## Queue maintenance
+
+Use the allow-listed `queue_prune` task only when the queue has accumulated terminal records. It creates a local backup before rewriting the queue, removes only old `completed`, `failed`, or cancelled records, and keeps the newest configured number of terminal records. Pending, running and deferred tasks are preserved. The backup remains local and can contain task payloads; do not publish it. Example: `python -m emberlane submit queue_prune --payload '{"keep_terminal":50}'`, then execute one task with `python -m emberlane run-one`.
