@@ -9,7 +9,8 @@ The `emberlane.local_model` module provides a bounded subprocess adapter for a l
 Set these environment variables in the process that invokes the adapter:
 
 - `EMBERLANE_MODEL_PATH`: required absolute or home-relative path to an existing readable GGUF file.
-- `LLAMA_CLI_BIN`: optional executable name or path; defaults to `llama-cli`.
+- `EMBERLANE_LLAMA_CLI`: optional executable name or path, compatible with the existing Termux backend configuration.
+- `LLAMA_CLI_BIN`: optional fallback executable name or path; defaults to `llama-cli`.
 - `EMBERLANE_MODEL_CONTEXT`: optional context token limit; defaults to 2048 and accepts 128–32768.
 - `EMBERLANE_MODEL_MAX_TOKENS`: optional generation cap; defaults to 256 and accepts 1–4096.
 - `EMBERLANE_MODEL_TIMEOUT`: optional wall-clock timeout in seconds; defaults to 120 and accepts 1–3600.
