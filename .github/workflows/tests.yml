@@ -11,7 +11,25 @@ on:
       - 'WORKER_HANDOFF.md'
 
 jobs:
-  unittest:
+  # On every development push, run the complete suite once on the primary
+  # supported runtime. Avoid repeating identical tests on three interpreters
+  # for each small commit.
+  push-smoke:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Compile Python modules
+        run: python -m compileall -q emberlane tests
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+  # Preserve the full supported-version matrix as the merge gate.
+  compatibility:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
