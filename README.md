@@ -20,7 +20,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, `diagnostics`, `local_model`, and `validate_patch`. It does not accept arbitrary shell commands.
+`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, `diagnostics`, `local_model`, `validate_patch`, and `coding_cycle`. It does not accept arbitrary shell commands.
 
 ```sh
 # Queue a file-writing task (quote the JSON as one argument)
@@ -109,7 +109,7 @@ account or container for stronger isolation.
 python scripts/local-model-smoke.py
 ```
 
-`validate_patch` accepts a unified Git diff and checks it in a detached disposable worktree. It requires a clean original Git checkout, rejects protected/traversal/symlink targets, and never modifies the original checkout or commits/pushes/merges. Tests are opt-in because patch code can execute with the worker's OS permissions; a Git worktree is not a sandbox. See [Local model adapter](docs/LOCAL_MODEL_ADAPTER.md) and [Disposable patch validation](docs/DISPOSABLE_PATCH_VALIDATION.md).
+`validate_patch` accepts a unified Git diff and checks it in a detached disposable worktree. It requires a clean original Git checkout, rejects protected/traversal/symlink targets, and never modifies the original checkout or commits/pushes/merges. Tests are opt-in because patch code can execute with the worker's OS permissions; a Git worktree is not a sandbox. See [Local model adapter](docs/LOCAL_MODEL_ADAPTER.md), [Disposable patch validation](docs/DISPOSABLE_PATCH_VALIDATION.md), and [Model-generated coding cycle](docs/MODEL_CODING_CYCLE.md).
 
 ## Optional GitHub issue mailbox
 
