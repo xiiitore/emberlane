@@ -80,6 +80,27 @@ class GoalPlannerTests(unittest.TestCase):
         self.assertEqual(result["scheduled"], [])
         self.assertEqual(result["failed_steps"], ["inspect"])
 
+    def test_result_level_failure_blocks_dependent_steps(self):
+        self.planner.advance(self.plan())
+        self.queue.run_one({"diagnostics": lambda payload: {
+            "ok": False, "error": "model_not_configured"
+        }})
+        result = self.planner.advance(self.plan(cycle=1))
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["completed_steps"], [])
+        self.assertEqual(result["failed_steps"], ["inspect"])
+        self.assertEqual(result["scheduled"], [])
+
+    def test_nonzero_nested_returncode_is_not_success(self):
+        self.planner.advance(self.plan())
+        self.queue.run_one({"diagnostics": lambda payload: {
+            "summary": {"returncode": 1, "passed": False}
+        }})
+        result = self.planner.advance(self.plan(cycle=1))
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["failed_steps"], ["inspect"])
+        self.assertEqual(result["scheduled"], [])
+
     def test_validates_cycle_and_batch_limits(self):
         with self.assertRaisesRegex(PlanValidationError, "max_steps_per_cycle"):
             self.planner.advance(self.plan(max_steps_per_cycle=11))
