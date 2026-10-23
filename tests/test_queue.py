@@ -82,6 +82,60 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(second.status, "failed")
         self.assertEqual(second.attempts, 2)
 
+        class ChatGPTAgentToolRateLimitException(RuntimeError):
+            pass
+
+        deferred = queue.submit("provider", {})
+        waiting = queue.run_one({
+            "provider": lambda payload: (_ for _ in ()).throw(
+                ChatGPTAgentToolRateLimitException("usage limit reached")
+            )
+        })
+        self.assertEqual(waiting.task_id, deferred.task_id)
+        self.assertEqual(waiting.status, "deferred")
+        self.assertEqual(waiting.attempts, 1)
+        self.assertIsNone(waiting.last_error)
+        self.assertEqual(waiting.result["reason"], "external_capacity_limit")
+        resumed = queue.resume_deferred(waiting.task_id)
+        self.assertEqual(resumed.status, "pending")
+        completed = queue.run_one({"provider": lambda payload: {"ok": True}})
+        self.assertEqual(completed.status, "completed")
+        self.assertEqual(completed.attempts, 2)
+
+    def test_local_model_failure_statuses_do_not_complete_tasks(self):
+        queue = TaskQueue(self.state)
+        failure_statuses = (
+            "model_not_configured", "model_not_found", "input_limit",
+            "rejected", "backend_unavailable", "timeout", "output_limit",
+            "model_failed", "invalid_model_output", "blocked", "no_changes",
+            "snapshot_failed", "verification_setup_failed", "patch_rejected",
+            "verification_failed", "tests_missing", "tests_failed", "conflict",
+            "apply_failed", "apply_verification_failed", "recovery_required",
+        )
+        for status in failure_statuses:
+            task = queue.submit("local_model", {"status": status})
+            result = queue.run_one({
+                "local_model": lambda payload: {"status": payload["status"]}
+            })
+            self.assertEqual(result.task_id, task.task_id, status)
+            self.assertEqual(result.status, "failed", status)
+
+    def test_paused_local_model_result_is_deferred_not_completed(self):
+        queue = TaskQueue(self.state)
+        task = queue.submit("local_model", {"status": "paused"})
+        result = queue.run_one({
+            "local_model": lambda payload: {"status": payload["status"]}
+        })
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "deferred")
+    def test_successful_local_model_status_is_not_misclassified(self):
+        queue = TaskQueue(self.state)
+        task = queue.submit("local_model", {"status": "applied_and_verified"})
+        result = queue.run_one({
+            "local_model": lambda payload: {"status": payload["status"]}
+        })
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "completed")
     def test_unknown_handler_fails_closed(self):
         queue = TaskQueue(self.state)
         queue.submit("unregistered", {})

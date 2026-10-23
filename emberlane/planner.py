@@ -7,12 +7,26 @@ from __future__ import annotations
 
 from typing import Any
 
-from .queue import TaskQueue
+from .queue import TaskQueue, _result_has_failure
 
 MAX_PLAN_STEPS = 50
 MAX_STEPS_PER_CYCLE = 10
 MAX_PLAN_CYCLES = 50
 MAX_FAILURES = 5
+
+
+def _task_succeeded(task: Any) -> bool:
+    return task.status == "completed" and task.result is not None and not _result_has_failure(task.result)
+
+
+def _task_failed(task: Any) -> bool:
+    return task.status == "failed" or (
+        task.status == "completed" and (task.result is None or _result_has_failure(task.result))
+    )
+
+
+def _task_deferred(task: Any) -> bool:
+    return task.status == "deferred"
 
 
 class PlanValidationError(ValueError):
@@ -106,7 +120,16 @@ class GoalPlanner:
                     f"step {step_id} conflicts with a previously queued task; use a new goal_id"
                 )
 
-        failed = [step_id for step_id, task in existing.items() if task.status == "failed"]
+        deferred = sorted(step_id for step_id, task in existing.items() if _task_deferred(task))
+        if deferred:
+            return {
+                "goal_id": goal_id, "status": "waiting", "cycle": cycle,
+                "reason": "external_dependency_deferred", "deferred_steps": deferred,
+                "failed_steps": [], "scheduled": [],
+                "completed_steps": self._completed(existing),
+            }
+
+        failed = [step_id for step_id, task in existing.items() if _task_failed(task)]
         if len(failed) >= max_failures:
             return {
                 "goal_id": goal_id, "status": "blocked", "cycle": cycle,
@@ -127,7 +150,7 @@ class GoalPlanner:
             if step_id in existing:
                 continue
             dep_tasks = [existing.get(dep) for dep in step["depends_on"]]
-            if any(task is None or task.status != "completed" for task in dep_tasks):
+            if any(task is None or not _task_succeeded(task) for task in dep_tasks):
                 continue
             if len(scheduled) >= max_steps:
                 break
@@ -139,7 +162,7 @@ class GoalPlanner:
             scheduled.append(step_id)
 
         completed = self._completed(existing)
-        failed = sorted(step_id for step_id, task in existing.items() if task.status == "failed")
+        failed = sorted(step_id for step_id, task in existing.items() if _task_failed(task))
         all_completed = len(completed) == len(normalized)
         if all_completed:
             status = "completed"
@@ -178,4 +201,4 @@ class GoalPlanner:
 
     @staticmethod
     def _completed(existing: dict[str, Any]) -> list[str]:
-        return sorted(step_id for step_id, task in existing.items() if task.status == "completed")
+        return sorted(step_id for step_id, task in existing.items() if _task_succeeded(task))

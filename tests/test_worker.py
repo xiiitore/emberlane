@@ -109,7 +109,7 @@ class LocalWorkerTests(unittest.TestCase):
         self.worker.submit("run_tests", {"test_file": "test_missing.py"})
         result = self.worker.run_one()
         self.assertIsNotNone(result)
-        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.status, "failed")
         self.assertFalse(result.result["passed"])
         self.assertEqual(result.result["returncode"], 2)
         self.assertEqual(result.result["error"], "test_file_not_found")
@@ -149,7 +149,7 @@ class LocalWorkerTests(unittest.TestCase):
             ),
         ) as run:
             result = self.worker.run_one()
-        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.status, "failed")
         self.assertFalse(result.result["synced"])
         self.assertEqual(result.result["stage"], "preflight_dirty")
         self.assertEqual(run.call_count, 1)
@@ -166,7 +166,7 @@ class LocalWorkerTests(unittest.TestCase):
             ],
         ) as run:
             result = self.worker.run_one()
-        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.status, "failed")
         self.assertFalse(result.result["synced"])
         self.assertEqual(result.result["stage"], "branch_mismatch")
         self.assertEqual(run.call_count, 2)
@@ -214,7 +214,7 @@ class LocalWorkerTests(unittest.TestCase):
             ],
         ):
             result = self.worker.run_one()
-        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.status, "failed")
         self.assertFalse(result.result["synced"])
         self.assertEqual(result.result["stage"], "postflight_head_mismatch")
 
@@ -235,7 +235,7 @@ class LocalWorkerTests(unittest.TestCase):
             ],
         ):
             result = self.worker.run_one()
-        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.status, "failed")
         self.assertFalse(result.result["synced"])
         self.assertEqual(result.result["stage"], "postflight_dirty")
 
@@ -253,7 +253,7 @@ class LocalWorkerTests(unittest.TestCase):
             ],
         ) as run:
             result = self.worker.run_one()
-        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.status, "failed")
         self.assertFalse(result.result["synced"])
         self.assertEqual(result.result["stage"], "matching_worktree_preflight")
         self.assertEqual(run.call_count, 6)
@@ -304,7 +304,7 @@ class LocalWorkerTests(unittest.TestCase):
             ],
         ) as run:
             result = self.worker.run_one()
-        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.status, "failed")
         self.assertFalse(result.result["synced"])
         self.assertEqual(result.result["stage"], "matching_worktree_mismatch")
         self.assertEqual(run.call_count, 7)

@@ -571,6 +571,36 @@ class LocalWorker:
     def run_one(self) -> Task | None:
         return self.queue.run_one(self.handlers)
 
+    def resume_deferred(self, task_id: str) -> Task:
+        """Resume a deferred task and continue its waiting goal plan, if any."""
+        task = self.queue.resume_deferred(task_id)
+        key = task.idempotency_key or ""
+        if not key.startswith("goal:") or ":step:" not in key:
+            return task
+        goal_id = key[len("goal:"):].split(":step:", 1)[0]
+        waiting_plans = [
+            candidate for candidate in self.queue.list_tasks()
+            if candidate.kind == "plan_goal"
+            and candidate.status == "completed"
+            and isinstance(candidate.result, dict)
+            and candidate.result.get("goal_id") == goal_id
+            and candidate.result.get("status") == "waiting"
+            and isinstance(candidate.payload, dict)
+        ]
+        if not waiting_plans:
+            return task
+        previous = max(waiting_plans, key=lambda item: item.payload.get("cycle", 0))
+        cycle = previous.payload.get("cycle", 0) + 1
+        max_cycles = previous.payload.get("max_cycles", 20)
+        if not isinstance(cycle, int) or isinstance(cycle, bool) or cycle > max_cycles:
+            return task
+        self.queue.submit(
+            "plan_goal",
+            {**previous.payload, "cycle": cycle},
+            idempotency_key=f"goal:{goal_id}:planner:cycle:{cycle}",
+        )
+        return task
+
 
 def _print_task(task: Task | None) -> None:
     if task is None:
@@ -593,10 +623,14 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "diagnostics", "local_model_proposal", "local_model_edit"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_stash_inspect", "diagnostics", "local_model_proposal", "local_model_edit"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
+    resume_parser = sub.add_parser(
+        "resume-deferred", help="resume a deferred task after its external wait clears"
+    )
+    resume_parser.add_argument("task_id", help="task identifier reported by status")
     mailbox_parser = sub.add_parser(
         "mailbox-once", help="poll one GitHub issue for one authorized task"
     )
@@ -623,6 +657,14 @@ def main(argv: list[str] | None = None) -> int:
         task = worker.run_one()
         _print_task(task)
         return 1 if task is not None and task.status == "failed" else 0
+
+    if args.command == "resume-deferred":
+        try:
+            task = worker.resume_deferred(args.task_id)
+        except (KeyError, ValueError) as exc:
+            parser.error(str(exc))
+        _print_task(task)
+        return 0
 
     if args.command == "mailbox-once":
         mailbox = GitHubIssueMailbox(
