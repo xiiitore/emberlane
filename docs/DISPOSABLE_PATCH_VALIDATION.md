@@ -14,7 +14,8 @@ The `validate_patch` worker task validates a proposed unified Git diff in a temp
 
 - `patch` is required and limited to 256,000 UTF-8 bytes.
 - `run_tests` defaults to false. Set it to true only when authorized to execute code from the patch; tests run with the worker's operating-system permissions.
-- `test_timeout` is an integer from 1 to 300 seconds.
+- `test_timeout` is an integer from 1 to 300 seconds. Timeout handling kills the test process group on supported POSIX systems before cleanup.
+- Test output is drained while running and only a bounded tail is retained in memory; a noisy test cannot fill the worker's output buffer.
 - Only standard, unquoted Git diff path headers are accepted. Absolute paths, traversal, Windows-style paths, protected paths (`.git`, `.emberlane`, `.venv`, secret/key filenames), symlink targets, and mismatched diff/file headers are rejected.
 - The original checkout must be a Git worktree root with no source changes. The worker's own `.emberlane/` runtime queue/state is excluded from the dirty check; other modified or untracked files make validation fail closed.
 - The patch is checked and applied in a detached worktree at the original HEAD. The worker reports the base SHA, patch SHA-256, touched paths, diff summary, test status and bounded test-output preview. The temporary worktree is removed in cleanup.
