@@ -11,6 +11,63 @@ from pathlib import Path
 from typing import Any, Callable
 
 
+_FAILURE_STATES = {
+    "failed", "error", "blocked", "cancelled", "canceled", "timeout", "paused",
+    "rejected", "invalid_model_output", "input_limit", "model_not_configured",
+    "model_not_found", "backend_unavailable", "model_failed", "output_limit",
+    "no_changes", "snapshot_failed", "verification_setup_failed", "patch_rejected",
+    "verification_failed", "tests_missing", "tests_failed", "conflict",
+    "apply_failed", "apply_verification_failed", "recovery_required",
+}
+_FAILURE_FLAGS = {"ok", "success", "passed", "synced", "applied", "verified"}
+
+
+def _is_external_wait_exception(exc: Exception) -> bool:
+    """Identify known quota/capacity waits without treating arbitrary errors as waits."""
+    name = type(exc).__name__.casefold()
+    message = str(exc).casefold()
+    if name in {
+        "chatgptagenttoolratelimitexception",
+        "ratelimiterror",
+        "quotaexceedederror",
+        "usage_limit_error",
+    }:
+        return True
+    return any(marker in message for marker in (
+        "chatgptagenttoolratelimit",
+        "rate limit exceeded",
+        "rate limit reached",
+        "usage limit reached",
+        "usage limit exceeded",
+        "quota exceeded",
+        "resource exhausted",
+        "too many requests",
+        "http 429",
+    ))
+
+
+def _result_has_failure(value: Any) -> bool:
+    """Recognize explicit failure evidence in a JSON-compatible handler result."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            normalized_key = key.lower() if isinstance(key, str) else key
+            if normalized_key in _FAILURE_FLAGS and item is False:
+                return True
+            if normalized_key in {"status", "state"} and isinstance(item, str):
+                if item.strip().lower() in _FAILURE_STATES:
+                    return True
+            if normalized_key in {"returncode", "exit_code"}:
+                if isinstance(item, int) and not isinstance(item, bool) and item != 0:
+                    return True
+            if normalized_key == "error" and item not in (None, "", False):
+                return True
+            if _result_has_failure(item):
+                return True
+    elif isinstance(value, list):
+        return any(_result_has_failure(item) for item in value)
+    return False
+
+
 @dataclass
 class Task:
     task_id: str
@@ -118,6 +175,20 @@ class TaskQueue:
     def list_tasks(self) -> list[Task]:
         return list(self._tasks.values())
 
+    def resume_deferred(self, task_id: str) -> Task:
+        """Explicitly requeue a deferred task after its external dependency recovers."""
+        task = self._tasks.get(task_id)
+        if task is None:
+            raise KeyError(f"unknown task id: {task_id}")
+        if task.status != "deferred":
+            raise ValueError(f"task is not deferred: {task_id}")
+        task.status = "pending"
+        task.last_error = None
+        task.result = None
+        task.updated_at = time.time()
+        self._save()
+        return task
+
     def run_one(self, handlers: dict[str, Callable[[dict[str, Any]], Any]]) -> Task | None:
         task = next((t for t in self._tasks.values() if t.status == "pending"), None)
         if task is None:
@@ -137,12 +208,34 @@ class TaskQueue:
             # Persist only JSON-compatible results so task state remains portable.
             task.result = json.loads(json.dumps(handler(task.payload), ensure_ascii=False))
         except Exception as exc:
-            task.result = None
-            task.last_error = f"{type(exc).__name__}: {exc}"
-            task.status = "pending" if task.attempts < self.max_attempts else "failed"
+            if _is_external_wait_exception(exc):
+                task.result = {
+                    "status": "deferred",
+                    "reason": "external_capacity_limit",
+                    "exception_type": type(exc).__name__,
+                }
+                task.last_error = None
+                task.status = "deferred"
+            else:
+                task.result = None
+                task.last_error = f"{type(exc).__name__}: {exc}"
+                task.status = "pending" if task.attempts < self.max_attempts else "failed"
         else:
-            task.last_error = None
-            task.status = "completed"
+            result_status = (
+                task.result.get("status", "").strip().lower()
+                if isinstance(task.result, dict)
+                and isinstance(task.result.get("status"), str)
+                else ""
+            )
+            if result_status in {"deferred", "waiting_for_quota", "rate_limited"}:
+                task.last_error = None
+                task.status = "deferred"
+            elif _result_has_failure(task.result):
+                task.last_error = "handler returned explicit failure evidence"
+                task.status = "failed"
+            else:
+                task.last_error = None
+                task.status = "completed"
         task.updated_at = time.time()
         self._save()
         return task
