@@ -44,6 +44,23 @@ _RETRYABLE_ERRORS = (
 )
 
 
+def _write_private_file(path: Path, data: bytes) -> None:
+    """Create a new owner-only file, durably write it, and clean up on failure."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    fd = os.open(path, flags, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            fd = -1
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except BaseException:
+        if fd >= 0:
+            os.close(fd)
+        path.unlink(missing_ok=True)
+        raise
+
+
 def _redact_sensitive_text(value: str) -> str:
     """Redact common GitHub credentials and key/value secrets before publication."""
     value = re.sub(r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})", "[REDACTED_GITHUB_TOKEN]", value)
@@ -308,10 +325,7 @@ class GitHubIssueMailbox:
         relative_path = f"worker-logs/{task_id}.md"
         temporary_path = local_path.with_name(f".{task_id}.{time.time_ns()}.tmp")
         try:
-            with temporary_path.open("wb") as handle:
-                handle.write(encoded)
-                handle.flush()
-                os.fsync(handle.fileno())
+            _write_private_file(temporary_path, encoded)
             os.replace(temporary_path, local_path)
         finally:
             try:

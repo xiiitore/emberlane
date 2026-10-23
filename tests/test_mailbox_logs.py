@@ -1,4 +1,5 @@
 import json
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -63,6 +64,30 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertNotIn(token, content)
         self.assertIn("[REDACTED_GITHUB_TOKEN]", content)
         self.assertIn('"error_present": true', content)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file mode assertion")
+    @patch("emberlane.mailbox.upload_task_log")
+    def test_local_task_log_is_private(self, upload):
+        upload.return_value = {
+            "status": "published",
+            "path": "/worker-logs/task-private.md",
+            "sha256": "a" * 64,
+            "bytes": 10,
+            "readback_verified": True,
+        }
+        task = SimpleNamespace(
+            task_id="task-private",
+            kind="diagnostics",
+            status="completed",
+            attempts=1,
+            last_error=None,
+            result={"output": "potentially sensitive diagnostic output"},
+        )
+
+        self.mailbox._publish_task_log(task, "comment-private")
+
+        local_log = self.root / "worker-logs" / "task-private.md"
+        self.assertEqual(local_log.stat().st_mode & 0o777, 0o600)
 
     @patch("emberlane.mailbox.upload_task_log")
     def test_rejects_symlinked_log_directory(self, upload):
