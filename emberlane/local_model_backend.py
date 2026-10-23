@@ -109,41 +109,55 @@ def validate_local_model_payload(
     }
 
 
+MAX_STDERR_BYTES = 20_000
+
+
 def _capture_output(
-    process: subprocess.Popen[bytes], output_path: Path, max_bytes: int, timeout_seconds: int
-) -> tuple[str, int]:
+    process: subprocess.Popen[bytes],
+    output_path: Path,
+    stderr_path: Path,
+    max_bytes: int,
+    timeout_seconds: int,
+    max_stderr_bytes: int = MAX_STDERR_BYTES,
+) -> tuple[str, int, int]:
     started = time.monotonic()
-    size = 0
-    stream = process.stdout
-    if stream is None:
-        raise RuntimeError("local model output pipe was not created")
+    sizes = {"stdout": 0, "stderr": 0}
+    streams = {"stdout": process.stdout, "stderr": process.stderr}
+    if streams["stdout"] is None or streams["stderr"] is None:
+        raise RuntimeError("local model stdout/stderr pipes were not created")
     try:
-        with output_path.open("wb") as output, selectors.DefaultSelector() as selector:
-            selector.register(stream, selectors.EVENT_READ)
-            while True:
-                if process.poll() is not None and not selector.get_map():
-                    break
+        with output_path.open("wb") as output, stderr_path.open("wb") as error_output, selectors.DefaultSelector() as selector:
+            selector.register(streams["stdout"], selectors.EVENT_READ, data="stdout")
+            selector.register(streams["stderr"], selectors.EVENT_READ, data="stderr")
+            destinations = {"stdout": output, "stderr": error_output}
+            limits = {"stdout": max_bytes, "stderr": max_stderr_bytes}
+            while selector.get_map():
                 remaining = timeout_seconds - (time.monotonic() - started)
                 if remaining <= 0:
                     process.kill()
                     process.wait()
-                    return "timeout", size
-                events = selector.select(min(0.05, remaining)) if selector.get_map() else []
+                    return "timeout", sizes["stdout"], sizes["stderr"]
+                events = selector.select(min(0.05, remaining))
                 for key, _ in events:
-                    chunk = os.read(key.fd, min(65536, max_bytes + 1 - size))
+                    name = key.data
+                    remaining_limit = limits[name] + 1 - sizes[name]
+                    chunk = os.read(key.fd, min(65536, max(1, remaining_limit)))
                     if not chunk:
                         selector.unregister(key.fileobj)
                         continue
-                    size += len(chunk)
-                    if size > max_bytes:
+                    sizes[name] += len(chunk)
+                    if sizes[name] > limits[name]:
                         process.kill()
                         process.wait()
-                        return "output_limit", size
-                    output.write(chunk)
+                        status = "output_limit" if name == "stdout" else "stderr_limit"
+                        return status, sizes["stdout"], sizes["stderr"]
+                    destinations[name].write(chunk)
             process.wait()
-        return "complete", size
+        return "complete", sizes["stdout"], sizes["stderr"]
     finally:
-        stream.close()
+        for stream in streams.values():
+            if stream is not None:
+                stream.close()
 
 
 def _parse_model_json(text: str) -> dict[str, Any]:
@@ -289,13 +303,10 @@ def run_local_model_proposal(
         ]
         env = _safe_process_env()
         try:
-            with stderr_path.open("wb") as error_stream:
-                process = subprocess.Popen(
-                    command, cwd=Path(scratch), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                    stderr=error_stream, shell=False, env=env,
-                )
-                capture_status, output_size = _capture_output(
-                    process, output_path, payload["max_output_bytes"], payload["timeout_seconds"])
+            process = subprocess.Popen(
+                command, cwd=Path(scratch), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, shell=False, env=env,
+            )
         except FileNotFoundError:
             return {"status": "model_cli_not_found", "proposal": None,
                     "output": "Configured local model executable was not found"}
@@ -305,6 +316,19 @@ def run_local_model_proposal(
         except OSError as exc:
             return {"status": "backend_unavailable", "proposal": None,
                     "output": f"Could not start local model executable: {type(exc).__name__}"}
+        try:
+            capture_status, output_size, stderr_size = _capture_output(
+                process, output_path, stderr_path, payload["max_output_bytes"],
+                payload["timeout_seconds"],
+            )
+        except OSError as exc:
+            try:
+                process.kill()
+                process.wait()
+            except OSError:
+                pass
+            return {"status": "backend_unavailable", "proposal": None,
+                    "output": f"Could not capture local model output: {type(exc).__name__}"}
         stderr_output = stderr_path.read_bytes().decode("utf-8", errors="replace")
         if (source / ".emberlane" / "PAUSED").exists():
             return {"status": "paused", "proposal": None}
@@ -313,7 +337,12 @@ def run_local_model_proposal(
                     "output": _redact(stderr_output[-2000:] or "Local model timed out")}
         if capture_status == "output_limit":
             return {"status": "output_limit", "proposal": None,
-                    "output": _redact(stderr_output[-2000:] or "Local model output exceeded configured limit")}
+                    "output": _redact(stderr_output[-2000:] or "Local model stdout exceeded configured limit"),
+                    "stdout_bytes": output_size, "stderr_bytes": stderr_size}
+        if capture_status == "stderr_limit":
+            return {"status": "stderr_limit", "proposal": None,
+                    "output": _redact(stderr_output[-2000:] or "Local model stderr exceeded configured limit"),
+                    "stdout_bytes": output_size, "stderr_bytes": stderr_size}
         raw_output = output_path.read_bytes().decode("utf-8", errors="replace")
         if process.returncode != 0:
             diagnostic = "\n".join(part for part in (raw_output.strip(), stderr_output.strip()) if part)
