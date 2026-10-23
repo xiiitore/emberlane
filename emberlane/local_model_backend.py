@@ -259,6 +259,9 @@ def run_local_model_proposal(
         return {"status": "model_not_configured", "proposal": None,
                 "output": "Set EMBERLANE_MODEL_PATH to a local GGUF model file"}
     model_path = Path(model_value).expanduser()
+    if not model_path.is_absolute():
+        return {"status": "model_not_configured", "proposal": None,
+                "output": "EMBERLANE_MODEL_PATH must be an absolute file path"}
     if not model_path.is_file():
         return {"status": "model_not_found", "proposal": None,
                 "output": "Configured EMBERLANE_MODEL_PATH is not a file"}
