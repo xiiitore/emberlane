@@ -458,6 +458,25 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertFalse(result.result["original_worktree_modified"])
         self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
 
+    def test_validate_patch_redacts_common_github_tokens_from_result(self):
+        self._initialize_git_repo()
+        token = "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"
+        patch = (
+            "diff --git a/example.py b/example.py\n"
+            "--- a/example.py\n"
+            "+++ b/example.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            f"+VALUE = '{token}'\n"
+        )
+        self.worker.submit("validate_patch", {"patch": patch})
+        result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertTrue(result.result["output_redacted"])
+        self.assertNotIn(token, result.result["diff_preview"])
+        self.assertIn("[REDACTED_GITHUB_TOKEN]", result.result["diff_preview"])
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+
     def test_validate_patch_rejects_dirty_checkout_as_terminal_failure(self):
         self._initialize_git_repo()
         (self.root / "example.py").write_text("LOCAL CHANGE\n", encoding="utf-8")
