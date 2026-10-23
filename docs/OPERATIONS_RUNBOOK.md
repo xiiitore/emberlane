@@ -39,6 +39,10 @@ Check the CLI help first because options can change. Typical commands are:
     python -m emberlane run-one
     python -m emberlane status
 
+For a bounded batch, use `python -m emberlane supervise --max-tasks 10 --max-failures 3 --max-seconds 300`. It exits on an idle queue, pause/stop, deadline, task budget, or failure budget. It does not resume deferred work automatically. Review `.emberlane/supervisor.jsonl` for metadata-only audit events; the file deliberately excludes task payloads and raw exception text. Run one supervisor process per queue file.
+
+Guarded publishing is explicit: `git_commit` accepts only an explicit list of changed paths, refuses pre-staged changes, and runs the full test suite before committing. `git_push` requires a clean worktree, verifies that the remote head is an ancestor, never force-pushes, and verifies the remote SHA. Neither operation is triggered automatically by `supervise`.
+
 Inspect the persisted result for the exact task ID. Diagnose failed tasks before resubmitting. If deferred, resume only through the supported explicit path after the external wait has changed.
 
 ## Before a code-writing task
