@@ -7,6 +7,7 @@ bounded unified-diff proposal for a separate verifier/apply step.
 from __future__ import annotations
 
 import difflib
+import hashlib
 import json
 import os
 import re
@@ -27,6 +28,7 @@ MAX_PATCH_BYTES = 1_000_000
 MAX_OUTPUT_BYTES = 100_000
 MAX_CONTEXT_BYTES = 60_000
 MAX_CONTEXT_FILE_BYTES = 20_000
+MAX_SNAPSHOT_BYTES = 100_000_000
 DEFAULT_MAX_TOKENS = 2048
 MAX_TOKENS = 8192
 DEFAULT_CONTEXT_SIZE = 4096
@@ -322,3 +324,254 @@ def run_local_model_proposal(
             "applied": False,
         },
     }
+
+
+def _excluded_snapshot_name(name: str) -> bool:
+    lower = name.casefold()
+    return (
+        lower in _SKIP_COMPONENTS
+        or lower.startswith(".env")
+        or lower.endswith(("~", ".bak", ".backup", ".orig", ".old", ".swp", ".swo",
+                           ".pem", ".key", ".p12", ".pfx", ".keystore"))
+        or any(marker in lower for marker in ("secret", "credential", "private_key", "token"))
+    )
+
+
+def _snapshot_for_tests(source: Path, target: Path) -> None:
+    total = 0
+    for base, dirs, files in os.walk(source, followlinks=False):
+        base_path = Path(base)
+        rel_dir = base_path.relative_to(source)
+        dirs[:] = sorted(
+            name for name in dirs
+            if not _excluded_snapshot_name(name) and not (base_path / name).is_symlink()
+        )
+        destination_dir = target / rel_dir
+        destination_dir.mkdir(parents=True, exist_ok=True)
+        for name in sorted(files):
+            item = base_path / name
+            if item.is_symlink() or _excluded_snapshot_name(name) or not item.is_file():
+                continue
+            size = item.stat().st_size
+            if total + size > MAX_SNAPSHOT_BYTES:
+                raise ValueError("filtered test workspace exceeds snapshot size limit")
+            destination = destination_dir / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(item, destination)
+            total += size
+
+
+def _safe_process_env() -> dict[str, str]:
+    return {
+        key: os.environ[key]
+        for key in ("PATH", "HOME", "TMPDIR", "LD_LIBRARY_PATH", "SYSTEMROOT")
+        if key in os.environ
+    }
+
+
+def _fixed_command(
+    command: list[str],
+    cwd: Path,
+    *,
+    timeout_seconds: int = 15,
+    input_bytes: bytes | None = None,
+) -> subprocess.CompletedProcess[bytes] | None:
+    try:
+        return subprocess.run(
+            command, cwd=cwd, stdin=subprocess.DEVNULL if input_bytes is None else subprocess.PIPE,
+            input=input_bytes, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            timeout=timeout_seconds, check=False, shell=False, env=_safe_process_env(),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def run_local_model_edit(
+    root: str | Path,
+    raw_payload: dict[str, Any],
+    *,
+    workspace: Workspace | None = None,
+) -> dict[str, Any]:
+    """Generate, test in a disposable copy, then apply only if the source is unchanged."""
+    source = Path(root).resolve(strict=True)
+    if workspace is None:
+        workspace = Workspace(source)
+    if not isinstance(raw_payload, dict):
+        raise ValueError("local_model_edit payload must be an object")
+    allowed_edit_fields = {
+        "goal", "allowed_paths", "max_changed_files", "max_patch_bytes",
+        "max_output_bytes", "timeout_seconds", "max_tokens", "context_size",
+        "test_file", "test_timeout_seconds",
+    }
+    if set(raw_payload) - allowed_edit_fields:
+        raise ValueError("local_model_edit payload contains unsupported fields")
+    test_file = raw_payload.get("test_file")
+    if test_file is not None and (
+        not isinstance(test_file, str) or not test_file.startswith("test_")
+        or not test_file.endswith(".py") or Path(test_file).name != test_file
+        or any(ch.isspace() for ch in test_file)
+        or any(ch in test_file for ch in "*?[]:")
+    ):
+        raise ValueError("test_file must be a test_*.py filename directly inside tests/")
+    test_timeout = raw_payload.get("test_timeout_seconds", 120)
+    if isinstance(test_timeout, bool) or not isinstance(test_timeout, int) or not 1 <= test_timeout <= 300:
+        raise ValueError("test_timeout_seconds must be an integer from 1 to 300")
+    proposal_payload = {key: value for key, value in raw_payload.items()
+                        if key not in {"test_file", "test_timeout_seconds"}}
+    proposal_result = run_local_model_proposal(source, proposal_payload, workspace=workspace)
+    if proposal_result.get("status") != "proposal":
+        return {"status": proposal_result.get("status", "proposal_failed"),
+                "applied": False, "proposal_result": proposal_result}
+    proposal = proposal_result["proposal"]
+    patch = proposal.get("patch")
+    base_hashes = proposal.get("base_sha256")
+    changed_paths = proposal.get("changed_paths")
+    if (
+        not isinstance(patch, str) or not patch
+        or not isinstance(base_hashes, dict)
+        or not isinstance(changed_paths, list) or not changed_paths
+        or set(base_hashes) != set(changed_paths)
+    ):
+        return {"status": "rejected", "reason": "proposal_missing_integrity_metadata", "applied": False}
+    patch_bytes = patch.encode("utf-8")
+    if len(patch_bytes) > MAX_PATCH_BYTES:
+        return {"status": "rejected", "reason": "patch_byte_limit", "applied": False}
+    try:
+        clean_paths = [_safe_relative(path, workspace) for path in changed_paths]
+    except (ValueError, WorkspaceError):
+        return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
+    if set(clean_paths) != set(changed_paths):
+        return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
+    if (source / ".emberlane" / "PAUSED").exists():
+        return {"status": "paused", "applied": False}
+
+    with tempfile.TemporaryDirectory(prefix="emberlane-verify-") as scratch:
+        temp_root = Path(scratch) / "project"
+        temp_root.mkdir()
+        try:
+            _snapshot_for_tests(source, temp_root)
+        except (OSError, ValueError) as exc:
+            return {"status": "snapshot_failed", "applied": False,
+                    "output": type(exc).__name__}
+        git_init = _fixed_command(["git", "init", "--quiet"], temp_root)
+        if git_init is None or git_init.returncode != 0:
+            return {"status": "verification_setup_failed", "applied": False,
+                    "stage": "git_init"}
+        git_add = _fixed_command(["git", "add", "-A"], temp_root)
+        if git_add is None or git_add.returncode != 0:
+            return {"status": "verification_setup_failed", "applied": False,
+                    "stage": "git_add"}
+        git_commit = _fixed_command([
+            "git", "-c", "user.name=Emberlane", "-c", "user.email=emberlane@localhost",
+            "commit", "--quiet", "--allow-empty", "-m", "Temporary verification baseline",
+        ], temp_root)
+        if git_commit is None or git_commit.returncode != 0:
+            return {"status": "verification_setup_failed", "applied": False,
+                    "stage": "git_commit"}
+        check = _fixed_command(
+            ["git", "apply", "--check", "--whitespace=error", "-"],
+            temp_root, input_bytes=patch_bytes,
+        )
+        if check is None or check.returncode != 0:
+            return {"status": "patch_rejected", "applied": False,
+                    "stage": "temporary_patch_check"}
+        apply_temp = _fixed_command(
+            ["git", "apply", "--whitespace=error", "-"],
+            temp_root, input_bytes=patch_bytes,
+        )
+        if apply_temp is None or apply_temp.returncode != 0:
+            return {"status": "patch_rejected", "applied": False,
+                    "stage": "temporary_patch_apply"}
+        whitespace = _fixed_command(
+            ["git", "diff", "--check", "--", *clean_paths], temp_root,
+        )
+        if whitespace is None or whitespace.returncode != 0:
+            return {"status": "verification_failed", "applied": False,
+                    "stage": "diff_check", "output": "Temporary diff failed whitespace checks"}
+        if test_file is not None and not (temp_root / "tests" / test_file).is_file():
+            return {"status": "tests_missing", "applied": False, "test_file": test_file}
+        test_command = [os.environ.get("PYTHON", "python"), "-m", "unittest",
+                        "discover", "-s", "tests", "-v"]
+        if test_file is not None:
+            test_command.extend(["-p", test_file])
+        test_process = None
+        test_output_path = Path(scratch) / "test-output.txt"
+        try:
+            test_process = subprocess.Popen(
+                test_command, cwd=temp_root, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=False,
+                env=_safe_process_env(),
+            )
+        except OSError:
+            return {"status": "verification_setup_failed", "applied": False,
+                    "stage": "test_launch"}
+        capture_status, test_output_size = _capture_output(
+            test_process, test_output_path, MAX_OUTPUT_BYTES, test_timeout,
+        )
+        test_output = _redact(test_output_path.read_bytes().decode("utf-8", errors="replace"))
+        if capture_status != "complete":
+            return {"status": "tests_" + capture_status, "applied": False,
+                    "test_file": test_file, "test_output": test_output[-2000:]}
+        if test_process.returncode != 0:
+            return {"status": "tests_failed", "applied": False, "test_file": test_file,
+                    "test_returncode": test_process.returncode,
+                    "test_output": test_output[-2000:], "test_output_bytes": test_output_size}
+
+        if (source / ".emberlane" / "PAUSED").exists():
+            return {"status": "paused", "applied": False}
+        for name in clean_paths:
+            current = workspace.validate_write_path(name)
+            if current.exists():
+                current_hash = hashlib.sha256(current.read_bytes()).hexdigest()
+            else:
+                current_hash = None
+            if current_hash != base_hashes[name]:
+                return {"status": "conflict", "applied": False,
+                        "reason": "source_changed_since_proposal", "path": name}
+
+        real_check = _fixed_command(
+            ["git", "apply", "--check", "--whitespace=error", "-"],
+            source, input_bytes=patch_bytes,
+        )
+        if real_check is None or real_check.returncode != 0:
+            return {"status": "patch_rejected", "applied": False,
+                    "stage": "working_tree_patch_check"}
+        real_apply = _fixed_command(
+            ["git", "apply", "--whitespace=error", "-"],
+            source, input_bytes=patch_bytes,
+        )
+        if real_apply is None or real_apply.returncode != 0:
+            return {"status": "apply_failed", "applied": False,
+                    "stage": "working_tree_apply"}
+        expected_hashes: dict[str, str] = {}
+        for name in clean_paths:
+            path = temp_root / name
+            if not path.is_file():
+                return {"status": "verification_failed", "applied": True,
+                        "reason": "changed_path_missing_from_verified_snapshot"}
+            expected_hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+        actual_hashes = {
+            name: hashlib.sha256((source / name).read_bytes()).hexdigest()
+            for name in clean_paths if (source / name).is_file()
+        }
+        if actual_hashes != expected_hashes:
+            can_revert = all(
+                (source / name).is_file()
+                and hashlib.sha256((source / name).read_bytes()).hexdigest() == expected_hashes[name]
+                for name in clean_paths
+            )
+            if can_revert:
+                revert = _fixed_command(
+                    ["git", "apply", "--reverse", "--whitespace=error", "-"],
+                    source, input_bytes=patch_bytes,
+                )
+                if revert is not None and revert.returncode == 0:
+                    return {"status": "apply_verification_failed", "applied": False}
+            return {"status": "recovery_required", "applied": True,
+                    "reason": "working_tree_did_not_match_verified_snapshot"}
+        return {
+            "status": "applied_and_verified", "applied": True,
+            "changed_paths": clean_paths, "test_file": test_file,
+            "tests": "passed", "test_output_bytes": test_output_size,
+            "summary": proposal.get("output", "")[:2000],
+        }
