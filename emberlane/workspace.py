@@ -74,7 +74,7 @@ class Workspace:
     def validate_write_path(self, relative: str | Path) -> Path:
         """Validate a write target without creating directories or changing files."""
         raw = str(relative)
-        if not raw or "\\x00" in raw or "\\\\" in raw:
+        if not raw or "\x00" in raw or "\\" in raw:
             raise WorkspaceError("invalid relative path")
         candidate_rel = PurePosixPath(raw)
         if candidate_rel.is_absolute() or any(p in ("", ".", "..") for p in candidate_rel.parts):
