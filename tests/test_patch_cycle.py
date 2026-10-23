@@ -90,6 +90,21 @@ class DisposablePatchCycleTests(unittest.TestCase):
         self.assertIn("Ran 2 tests", result["test_output"])
         self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
 
+    def test_test_timeout_cleans_disposable_worktree(self):
+        timeout_test = self.root / "tests" / "test_timeout.py"
+        timeout_test.write_text(
+            "import time, unittest\n"
+            "class TimeoutCase(unittest.TestCase):\n"
+            "    def test_slow(self): time.sleep(10)\n",
+            encoding="utf-8",
+        )
+        self.git("add", "tests/test_timeout.py")
+        self.git("commit", "-qm", "add timeout fixture")
+        with self.assertRaisesRegex(PatchCycleError, "exceeded 1-second timeout"):
+            validate_patch_in_worktree(self.root, self.patch(), run_tests=True, test_timeout=1)
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+        self.assertEqual(self.git("worktree", "list", "--porcelain").stdout.count("worktree "), 1)
+
     def test_rejects_protected_and_traversal_paths(self):
         for path in (".env", ".git/config", ".emberlane/queue.json", "../outside.py", "src/./outside.py"):
             with self.subTest(path=path):
