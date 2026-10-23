@@ -323,7 +323,7 @@ def run_local_model_proposal(
         try:
             capture_status, output_size, stderr_size = _capture_output(
                 process, output_path, stderr_path, payload["max_output_bytes"],
-                payload["timeout_seconds"],
+                payload["timeout_seconds"], MAX_STDERR_BYTES,
             )
         except OSError as exc:
             try:
