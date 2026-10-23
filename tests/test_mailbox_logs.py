@@ -48,7 +48,6 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertIn("[REDACTED]", document)
         self.assertIn("[REDACTED_GITHUB_TOKEN]", document)
         self.assertIn("[SOURCE TEXT IN SECTION: result.source_text]", document)
-        self.assertIn("[REDACTED_GITHUB_TOKEN]", document)
         self.assertIn("worker-logs/task-123.md", args[4])
         self.assertTrue(any("feat/local-coding-worker" in value for value in args))
 
