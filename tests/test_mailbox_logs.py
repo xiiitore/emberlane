@@ -181,5 +181,22 @@ class TaskLogPublishingTests(unittest.TestCase):
             self.assertNotIn(sensitive, encoded)
 
 
+    def test_public_result_omits_source_fields_case_insensitively(self):
+        raw = {
+            "Content": "private mixed-case source",
+            "OUTPUT": "private mixed-case output",
+            "Source_Text": "private mixed-case source text",
+            "Patch": "--- private mixed-case diff",
+            "safe_label": "kept",
+        }
+
+        public = _public_result(raw)
+
+        for key in ("Content", "OUTPUT", "Source_Text", "Patch"):
+            self.assertEqual(public[key], "[OMITTED; SEE TASK LOG]")
+        self.assertEqual(public["safe_label"], "kept")
+        self.assertNotIn("private mixed-case", json.dumps(public))
+
+
 if __name__ == "__main__":
     unittest.main()
