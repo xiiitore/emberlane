@@ -113,6 +113,13 @@ class GoalPlanner:
             for task in self.queue.list_tasks()
             if task.idempotency_key and task.idempotency_key.startswith(key_prefix)
         }
+        stale_step_ids = sorted(set(existing) - set(normalized))
+        if stale_step_ids:
+            raise PlanValidationError(
+                "goal_id was previously used with a different step set; "
+                f"stale step ids: {', '.join(stale_step_ids)}; use a new goal_id"
+            )
+
         for step_id, step in normalized.items():
             prior = existing.get(step_id)
             if prior is not None and (prior.kind != step["kind"] or prior.payload != step["payload"]):
