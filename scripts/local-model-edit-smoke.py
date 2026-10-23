@@ -21,13 +21,20 @@ def _result_summary(task: Any) -> dict[str, Any]:
     fields = (
         "status", "reason", "stage", "applied", "changed_paths", "test_file",
         "test_returncode", "context_bytes", "context_size_used", "tests",
-        "test_output_bytes",
+        "test_output_bytes", "returncode", "output", "output_preview",
     )
+    summary = {key: result[key] for key in fields if key in result}
+    nested = result.get("proposal_result")
+    if isinstance(nested, dict):
+        nested_fields = ("status", "reason", "returncode", "output", "output_preview")
+        summary["proposal_result"] = {
+            key: nested[key] for key in nested_fields if key in nested
+        }
     return {
         "task_id": task.task_id,
         "task_status": task.status,
         "attempts": task.attempts,
-        "result": {key: result[key] for key in fields if key in result},
+        "result": summary,
     }
 
 
