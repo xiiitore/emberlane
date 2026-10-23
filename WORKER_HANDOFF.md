@@ -7803,3 +7803,40 @@ Loading model...
 Failed to load the model
 
 ~~~
+
+
+### Worker task f303164f-18be-4417-b371-1918746307a7
+
+[Full task output](worker-logs/f303164f-18be-4417-b371-1918746307a7.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:22:07.212071+00:00",
+  "source_comment_id": "6370561834",
+  "task_id": "f303164f-18be-4417-b371-1918746307a7",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/f303164f-18be-4417-b371-1918746307a7.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/f303164f-18be-4417-b371-1918746307a7.md",
+    "dropbox_sha256": "158bcebffe18dce7db0485a853567905bdf92da483c8a240e12f67bb770ceeba",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 114,
+    "full_log_path": "worker-logs/f303164f-18be-4417-b371-1918746307a7.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: emberlane/mailbox.py
+~~~
