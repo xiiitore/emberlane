@@ -115,7 +115,7 @@ def run_supervisor(
             try:
                 mailbox_result = mailbox.run_once(execute_tasks=False)
                 candidate = mailbox_result.get("status") if isinstance(mailbox_result, dict) else None
-                mailbox_status = candidate if candidate in safe_mailbox_statuses else "other"
+                mailbox_status = candidate if isinstance(candidate, str) and candidate in safe_mailbox_statuses else "other"
             except Exception as exc:
                 status = "mailbox_error"
                 if not emit({
@@ -173,7 +173,7 @@ def run_supervisor(
             try:
                 mailbox_result = mailbox.run_once(execute_tasks=False)
                 candidate = mailbox_result.get("status") if isinstance(mailbox_result, dict) else None
-                mailbox_status = candidate if candidate in safe_mailbox_statuses else "other"
+                mailbox_status = candidate if isinstance(candidate, str) and candidate in safe_mailbox_statuses else "other"
             except Exception as exc:
                 status = "mailbox_error"
                 if not emit({
