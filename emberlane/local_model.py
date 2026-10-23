@@ -45,7 +45,11 @@ class LocalModelConfig:
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "LocalModelConfig":
         values = os.environ if env is None else env
-        # Keep compatibility with the existing Termux backend configuration.\n        executable = (\n            values.get("EMBERLANE_LLAMA_CLI", "").strip()\n            or values.get("LLAMA_CLI_BIN", "llama-cli").strip()\n        )
+        # Keep compatibility with the existing Termux backend configuration.
+        executable = (
+            values.get("EMBERLANE_LLAMA_CLI", "").strip()
+            or values.get("LLAMA_CLI_BIN", "llama-cli").strip()
+        )
         raw_model = values.get("EMBERLANE_MODEL_PATH", "").strip()
         if not raw_model:
             raise LocalModelError(
