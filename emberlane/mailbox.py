@@ -54,13 +54,22 @@ def _redact_sensitive_text(value: str) -> str:
 _PUBLIC_RESULT_OMIT_KEYS = {"content", "output", "source_text", "patch"}
 
 
+_PUBLIC_RESULT_SENSITIVE_KEY_MARKERS = (
+    "token", "secret", "password", "passwd", "credential", "apikey",
+    "authorization", "privatekey", "cookie", "bearer",
+)
+
+
 def _public_result(value: Any) -> Any:
-    """Remove raw source and command/model output recursively from issue comments."""
+    """Remove source/output and redact sensitive values recursively for public comments."""
     if isinstance(value, dict):
         cleaned: dict[str, Any] = {}
         for key, item in value.items():
             if key in _PUBLIC_RESULT_OMIT_KEYS:
                 cleaned[key] = "[OMITTED; SEE TASK LOG]" if item is not None else None
+            elif any(marker in re.sub(r"[^a-z0-9]", "", str(key).casefold())
+                     for marker in _PUBLIC_RESULT_SENSITIVE_KEY_MARKERS):
+                cleaned[key] = "[REDACTED]" if item is not None else None
             else:
                 cleaned[key] = _public_result(item)
         return cleaned
