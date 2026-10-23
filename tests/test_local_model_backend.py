@@ -103,7 +103,10 @@ class LocalModelProposalTests(unittest.TestCase):
         (self.root / "src" / "allowed.py").write_text(
             "# " + ("x" * 9000) + "\n", encoding="utf-8"
         )
-        with patch("emberlane.local_model_backend.subprocess.Popen") as popen:
+        with patch.dict(os.environ, {
+            "EMBERLANE_MODEL_PATH": str(self.model),
+            "EMBERLANE_LLAMA_CLI": "llama-cli",
+        }, clear=False), patch("emberlane.local_model_backend.subprocess.Popen") as popen:
             result = run_local_model_edit(
                 self.root,
                 {**self.payload, "context_size": 4096, "auto_context_size": False},
