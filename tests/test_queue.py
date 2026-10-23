@@ -105,7 +105,7 @@ class TaskQueueTests(unittest.TestCase):
     def test_local_model_failure_statuses_do_not_complete_tasks(self):
         queue = TaskQueue(self.state)
         failure_statuses = (
-            "paused", "model_not_configured", "model_not_found", "input_limit",
+            "model_not_configured", "model_not_found", "input_limit",
             "rejected", "backend_unavailable", "timeout", "output_limit",
             "model_failed", "invalid_model_output", "blocked", "no_changes",
             "snapshot_failed", "verification_setup_failed", "patch_rejected",
@@ -120,6 +120,14 @@ class TaskQueueTests(unittest.TestCase):
             self.assertEqual(result.task_id, task.task_id, status)
             self.assertEqual(result.status, "failed", status)
 
+    def test_paused_local_model_result_is_deferred_not_completed(self):
+        queue = TaskQueue(self.state)
+        task = queue.submit("local_model", {"status": "paused"})
+        result = queue.run_one({
+            "local_model": lambda payload: {"status": payload["status"]}
+        })
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "deferred")
     def test_successful_local_model_status_is_not_misclassified(self):
         queue = TaskQueue(self.state)
         task = queue.submit("local_model", {"status": "applied_and_verified"})
