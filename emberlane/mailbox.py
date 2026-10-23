@@ -6,7 +6,6 @@ Requires the GitHub CLI (gh) to be installed and authenticated locally.
 """
 from __future__ import annotations
 
-import base64
 import json
 import re
 import subprocess
@@ -367,19 +366,31 @@ class GitHubIssueMailbox:
             task_log_result = self._publish_task_log(task, comment_id)
         except Exception:
             task_log_result = {"task_log_status": "failed"}
-        if task_log_result.get("task_log_status") not in {"published", "already_present"}:
+        if task_log_result.get("task_log_status") not in {"published", "already_present", "local_only"}:
             return False
         try:
             handoff_result = self._publish_handoff_record(task, comment_id, task_log_result)
         except Exception:
             handoff_result = {"handoff_status": "failed"}
-        # Retain only bounded status values; omit paths, exception text and hashes.
-        for source, key in ((task_log_result, "task_log_status"),
-                            (handoff_result, "handoff_status")):
-            value = source.get(key)
-            if isinstance(value, str) and value in {"published", "already_present", "failed"}:
+        # Publish only safe delivery metadata; never local paths or exception text.
+        task_status = task_log_result.get("task_log_status")
+        if task_status in {"published", "already_present", "local_only"}:
+            safe_result["task_log_status"] = task_status
+        dropbox_status = task_log_result.get("dropbox_status")
+        if dropbox_status in {"published", "failed"}:
+            safe_result["dropbox_status"] = dropbox_status
+        for key in ("dropbox_sha256", "dropbox_bytes"):
+            value = task_log_result.get(key)
+            if isinstance(value, str) and key == "dropbox_sha256" and re.fullmatch(r"[0-9a-f]{64}", value):
                 safe_result[key] = value
-        if handoff_result.get("handoff_status") not in {"published", "already_present"}:
+            elif isinstance(value, int) and not isinstance(value, bool) and value >= 0 and key == "dropbox_bytes":
+                safe_result[key] = value
+        if isinstance(task_log_result.get("dropbox_readback_verified"), bool):
+            safe_result["dropbox_readback_verified"] = task_log_result["dropbox_readback_verified"]
+        handoff_status = handoff_result.get("handoff_status")
+        if handoff_status in {"published", "already_present", "not_required", "failed"}:
+            safe_result["handoff_status"] = handoff_status
+        if handoff_status not in {"published", "already_present", "not_required"}:
             return False
         result = {
             "source_comment_id": comment_id,
