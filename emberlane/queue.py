@@ -223,7 +223,12 @@ class TaskQueue:
             f"{self.state_path.name}.pre-prune-{time.time_ns()}.bak"
         )
         if self.state_path.exists():
-            backup_path.write_bytes(self.state_path.read_bytes())
+            state_bytes = self.state_path.read_bytes()
+            backup_path.write_bytes(state_bytes)
+            # Pruning is destructive to historical records: verify the recovery
+            # copy byte-for-byte before changing in-memory or persisted queue state.
+            if backup_path.read_bytes() != state_bytes:
+                raise OSError("queue archive verification failed; queue was not pruned")
         else:
             raise FileNotFoundError("queue state file disappeared before archival")
 
