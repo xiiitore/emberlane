@@ -11,6 +11,65 @@ from pathlib import Path
 from typing import Any, Callable
 
 
+_FAILURE_STATES = {
+    "failed", "error", "blocked", "cancelled", "canceled", "timeout",
+    "rejected", "invalid_model_output", "input_limit", "model_not_configured",
+    "model_not_found", "model_unreadable", "model_cli_not_found",
+    "model_cli_not_executable", "runtime_loader_failed", "model_load_failed",
+    "backend_unavailable", "model_failed", "output_limit", "stderr_limit",
+    "empty_model_output", "no_changes", "snapshot_failed",
+    "verification_setup_failed", "patch_rejected",
+    "verification_failed", "tests_missing", "tests_failed", "conflict",
+    "apply_failed", "apply_verification_failed", "recovery_required",
+}
+_FAILURE_FLAGS = {"ok", "success", "passed", "synced", "applied", "verified"}
+
+
+def _is_external_wait_exception(exc: Exception) -> bool:
+    """Identify known quota/capacity waits without treating arbitrary errors as waits."""
+    name = type(exc).__name__.casefold()
+    message = str(exc).casefold()
+    if name in {
+        "chatgptagenttoolratelimitexception",
+        "ratelimiterror",
+        "quotaexceedederror",
+        "usage_limit_error",
+    }:
+        return True
+    return any(marker in message for marker in (
+        "chatgptagenttoolratelimit",
+        "rate limit exceeded",
+        "rate limit reached",
+        "usage limit reached",
+        "usage limit exceeded",
+        "quota exceeded",
+        "too many requests",
+        "http 429",
+    ))
+
+
+def _result_has_failure(value: Any) -> bool:
+    """Recognize explicit failure evidence in a JSON-compatible handler result."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            normalized_key = key.lower() if isinstance(key, str) else key
+            if normalized_key in _FAILURE_FLAGS and item is False:
+                return True
+            if normalized_key in {"status", "state"} and isinstance(item, str):
+                if item.strip().lower() in _FAILURE_STATES:
+                    return True
+            if normalized_key in {"returncode", "exit_code"}:
+                if isinstance(item, int) and not isinstance(item, bool) and item != 0:
+                    return True
+            if normalized_key == "error" and item not in (None, "", False):
+                return True
+            if _result_has_failure(item):
+                return True
+    elif isinstance(value, list):
+        return any(_result_has_failure(item) for item in value)
+    return False
+
+
 @dataclass
 class Task:
     task_id: str
@@ -21,6 +80,7 @@ class Task:
     last_error: str | None = None
     created_at: float = 0.0
     updated_at: float = 0.0
+    idempotency_key: str | None = None
     result: Any = None
 
 
@@ -82,13 +142,31 @@ class TaskQueue:
                 pass
             raise
 
-    def submit(self, kind: str, payload: dict[str, Any]) -> Task:
+    def submit(
+        self,
+        kind: str,
+        payload: dict[str, Any],
+        *,
+        idempotency_key: str | None = None,
+    ) -> Task:
         if not kind or not isinstance(kind, str):
             raise ValueError("kind must be a non-empty string")
         if not isinstance(payload, dict):
             raise ValueError("payload must be a dictionary")
+        if idempotency_key is not None:
+            if not isinstance(idempotency_key, str) or not idempotency_key:
+                raise ValueError("idempotency_key must be a non-empty string")
+            for existing in self._tasks.values():
+                if existing.idempotency_key == idempotency_key:
+                    if existing.kind != kind or existing.payload != payload:
+                        raise ValueError("idempotency key already used for a different task")
+                    return existing
         now = time.time()
-        task = Task(str(uuid.uuid4()), kind, payload, created_at=now, updated_at=now)
+        task = Task(
+            str(uuid.uuid4()), kind, payload,
+            created_at=now, updated_at=now,
+            idempotency_key=idempotency_key,
+        )
         self._tasks[task.task_id] = task
         self._save()
         return task
@@ -98,6 +176,78 @@ class TaskQueue:
 
     def list_tasks(self) -> list[Task]:
         return list(self._tasks.values())
+
+    def resume_deferred(self, task_id: str) -> Task:
+        """Explicitly requeue a deferred task after its external dependency recovers."""
+        task = self._tasks.get(task_id)
+        if task is None:
+            raise KeyError(f"unknown task id: {task_id}")
+        if task.status != "deferred":
+            raise ValueError(f"task is not deferred: {task_id}")
+        task.status = "pending"
+        task.last_error = None
+        task.result = None
+        task.updated_at = time.time()
+        self._save()
+        return task
+
+    def prune_terminal(self, keep_terminal: int = 50) -> dict[str, Any]:
+        """Archive the current queue, then remove only old terminal tasks.
+
+        Pending, running and deferred tasks are always preserved. A local backup
+        is written before the atomic queue rewrite; no task payload is published.
+        """
+        if isinstance(keep_terminal, bool) or not isinstance(keep_terminal, int):
+            raise ValueError("keep_terminal must be an integer")
+        if not 0 <= keep_terminal <= 1000:
+            raise ValueError("keep_terminal must be from 0 to 1000")
+
+        terminal_states = {"completed", "failed", "cancelled", "canceled"}
+        terminal = sorted(
+            (task for task in self._tasks.values() if task.status in terminal_states),
+            key=lambda task: (task.updated_at, task.created_at, task.task_id),
+        )
+        remove_count = max(0, len(terminal) - keep_terminal)
+        to_remove = terminal[:remove_count]
+        if not to_remove:
+            return {
+                "pruned_count": 0,
+                "kept_terminal_count": len(terminal),
+                "preserved_active_count": sum(
+                    task.status not in terminal_states for task in self._tasks.values()
+                ),
+                "backup_file": None,
+            }
+
+        backup_path = self.state_path.with_name(
+            f"{self.state_path.name}.pre-prune-{time.time_ns()}.bak"
+        )
+        if self.state_path.exists():
+            state_bytes = self.state_path.read_bytes()
+            backup_path.write_bytes(state_bytes)
+            # Pruning is destructive to historical records: verify the recovery
+            # copy byte-for-byte before changing in-memory or persisted queue state.
+            if backup_path.read_bytes() != state_bytes:
+                raise OSError("queue archive verification failed; queue was not pruned")
+        else:
+            raise FileNotFoundError("queue state file disappeared before archival")
+
+        original_tasks = self._tasks.copy()
+        for task in to_remove:
+            del self._tasks[task.task_id]
+        try:
+            self._save()
+        except BaseException:
+            self._tasks = original_tasks
+            raise
+        return {
+            "pruned_count": len(to_remove),
+            "kept_terminal_count": len(terminal) - len(to_remove),
+            "preserved_active_count": sum(
+                task.status not in terminal_states for task in self._tasks.values()
+            ),
+            "backup_file": backup_path.name,
+        }
 
     def run_one(self, handlers: dict[str, Callable[[dict[str, Any]], Any]]) -> Task | None:
         task = next((t for t in self._tasks.values() if t.status == "pending"), None)
@@ -118,12 +268,34 @@ class TaskQueue:
             # Persist only JSON-compatible results so task state remains portable.
             task.result = json.loads(json.dumps(handler(task.payload), ensure_ascii=False))
         except Exception as exc:
-            task.result = None
-            task.last_error = f"{type(exc).__name__}: {exc}"
-            task.status = "pending" if task.attempts < self.max_attempts else "failed"
+            if _is_external_wait_exception(exc):
+                task.result = {
+                    "status": "deferred",
+                    "reason": "external_capacity_limit",
+                    "exception_type": type(exc).__name__,
+                }
+                task.last_error = None
+                task.status = "deferred"
+            else:
+                task.result = None
+                task.last_error = f"{type(exc).__name__}: {exc}"
+                task.status = "pending" if task.attempts < self.max_attempts else "failed"
         else:
-            task.last_error = None
-            task.status = "completed"
+            result_status = (
+                task.result.get("status", "").strip().lower()
+                if isinstance(task.result, dict)
+                and isinstance(task.result.get("status"), str)
+                else ""
+            )
+            if result_status in {"deferred", "waiting_for_quota", "rate_limited", "paused", "stopped"}:
+                task.last_error = None
+                task.status = "deferred"
+            elif _result_has_failure(task.result):
+                task.last_error = "handler returned explicit failure evidence"
+                task.status = "failed"
+            else:
+                task.last_error = None
+                task.status = "completed"
         task.updated_at = time.time()
         self._save()
         return task

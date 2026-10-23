@@ -7,11 +7,15 @@ Requires the GitHub CLI (gh) to be installed and authenticated locally.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from .dropbox_output import DropboxOutputError, MAX_LOG_BYTES, upload_task_log
 
 TASK_MARKER = "EMBERLANE_TASK_JSON"
 MAX_COMMENT_CHARS = 20_000
@@ -34,8 +38,25 @@ _RETRYABLE_ERRORS = (
     "connection refused",
     "temporary failure",
     "timed out",
+    # gh can expose a truncated/transient HTTP response as this parser error.
+    "unexpected end of json input",
+    "unexpected eof",
 )
 
+
+def _redact_sensitive_text(value: str) -> str:
+    """Redact common GitHub credentials and key/value secrets before publication."""
+    value = re.sub(r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})", "[REDACTED_GITHUB_TOKEN]", value)
+    value = re.sub(r"(?i)(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+", r"\1[REDACTED]", value)
+    value = re.sub(r"(?im)\b(password|passwd|secret|client[_-]?secret|api[_-]?key|access[_-]?token|refresh[_-]?token|auth[_-]?token|token|credential|private[_-]?key)\b(\s*[:=]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)", r"\1\2[REDACTED]", value)
+    value = re.sub(r"(?is)-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----", "[REDACTED_PRIVATE_KEY_BLOCK]", value)
+    return value
+
+
+_PUBLIC_RESULT_SENSITIVE_KEY_MARKERS = (
+    "token", "secret", "password", "passwd", "credential", "apikey",
+    "authorization", "privatekey", "cookie", "bearer",
+)
 
 class MailboxError(RuntimeError):
     pass
@@ -101,6 +122,28 @@ def _gh(args: list[str], *, input_text: str | None = None) -> str:
     raise MailboxError("GitHub CLI failed after bounded retries")
 
 
+def _gh_json(args: list[str]) -> Any:
+    """Fetch and parse JSON with bounded retries for truncated successful responses.
+
+    Use only for read-only API calls: retrying a malformed response must not
+    repeat a write operation.
+    """
+    for attempt in range(MAX_GH_ATTEMPTS):
+        raw = _gh(args)
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as exc:
+            if attempt + 1 >= MAX_GH_ATTEMPTS:
+                raise MailboxError(
+                    f"GitHub returned invalid JSON after {MAX_GH_ATTEMPTS} attempts: {exc}"
+                ) from exc
+            time.sleep(min(
+                BASE_RETRY_DELAY_SECONDS * (2 ** attempt),
+                MAX_RETRY_DELAY_SECONDS,
+            ))
+    raise MailboxError("GitHub returned invalid JSON after bounded retries")
+
+
 def _task_from_comment(body: str) -> dict[str, Any] | None:
     lines = body.splitlines()
     if not lines or lines[0].strip() != TASK_MARKER:
@@ -152,8 +195,33 @@ class GitHubIssueMailbox:
 
     def _comments(self) -> list[dict[str, Any]]:
         endpoint = f"repos/{self.repository}/issues/{self.issue_number}/comments"
-        raw = _gh(["api", endpoint, "--paginate", "--slurp"])
-        pages = json.loads(raw)
+        known_ids = list(self.state.get("handled", [])) + list(self.state.get("active", {}).keys())
+        numeric_ids = [int(value) for value in known_ids if str(value).isdigit()]
+        cursor = max(numeric_ids, default=0)
+
+        # With a persisted high-water mark, fetch newest-first only until the
+        # previous frontier is reached. A fresh/empty state still scans all pages.
+        if cursor > 0:
+            collected: list[dict[str, Any]] = []
+            page = 1
+            while True:
+                query = f"{endpoint}?per_page=100&sort=created&direction=desc&page={page}"
+                batch = _gh_json(["api", query])
+                if not isinstance(batch, list) or any(not isinstance(item, dict) for item in batch):
+                    raise MailboxError("GitHub returned an unexpected comments response")
+                reached_cursor = False
+                for comment in batch:
+                    comment_id = comment.get("id")
+                    if isinstance(comment_id, int) and comment_id <= cursor:
+                        reached_cursor = True
+                        break
+                    collected.append(comment)
+                if reached_cursor or len(batch) < 100:
+                    break
+                page += 1
+            return sorted(collected, key=lambda item: int(item.get("id", 0)))
+
+        pages = _gh_json(["api", endpoint, "--paginate", "--slurp"])
         if not isinstance(pages, list) or any(not isinstance(page, list) for page in pages):
             raise MailboxError("GitHub returned an unexpected comments response")
         return [comment for page in pages for comment in page]
@@ -161,6 +229,122 @@ class GitHubIssueMailbox:
     def _reply(self, body: str) -> None:
         endpoint = f"repos/{self.repository}/issues/{self.issue_number}/comments"
         _gh(["api", "--method", "POST", endpoint, "-f", f"body={body[:MAX_COMMENT_CHARS]}"])
+
+    def _publish_task_log(self, task: Any, comment_id: str) -> dict[str, Any]:
+        """Write a complete sanitized local log and publish it to Dropbox."""
+        task_id = str(task.task_id)
+        if not re.fullmatch(r"[A-Za-z0-9-]{1,100}", task_id):
+            raise MailboxError("task id is not safe for a log path")
+        result = task.result if isinstance(task.result, dict) else {}
+        outputs: list[tuple[str, str]] = []
+
+        def redact(value: str) -> str:
+            return _redact_sensitive_text(value)
+
+        def sanitize(value: Any, path: str) -> Any:
+            if isinstance(value, str):
+                return redact(value)
+            if isinstance(value, list):
+                return [sanitize(item, f"{path}[{index}]") for index, item in enumerate(value)]
+            if isinstance(value, dict):
+                cleaned: dict[str, Any] = {}
+                for key, item in value.items():
+                    child_path = f"{path}.{key}"
+                    normalized_key = re.sub(r"[^a-z0-9]", "", str(key).casefold())
+                    if normalized_key == "content":
+                        cleaned[key] = "[OMITTED_FILE_CONTENT]"
+                    elif normalized_key in {"output", "sourcetext"} and isinstance(item, str):
+                        outputs.append((child_path, redact(item)))
+                        label = "SOURCE TEXT" if normalized_key == "sourcetext" else "FULL OUTPUT"
+                        cleaned[key] = f"[{label} IN SECTION: {child_path}]"
+                    elif any(marker in normalized_key for marker in _PUBLIC_RESULT_SENSITIVE_KEY_MARKERS):
+                        if item is None:
+                            cleaned[key] = None
+                        elif isinstance(item, str):
+                            redacted_value = redact(item)
+                            cleaned[key] = redacted_value if redacted_value != item else "[REDACTED]"
+                        else:
+                            cleaned[key] = "[REDACTED]"
+                    else:
+                        cleaned[key] = sanitize(item, child_path)
+                return cleaned
+            return value
+
+        record = {
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "source_comment_id": str(comment_id),
+            "task_id": task_id,
+            "kind": str(task.kind),
+            "status": str(task.status),
+            "attempts": int(task.attempts),
+            "error_present": bool(task.last_error),
+            "result": sanitize(result, "result"),
+        }
+        content = (
+            "# Emberlane task output\n\n"
+            f"- Task ID: `{task_id}`\n"
+            f"- Kind: `{task.kind}`\n"
+            f"- Status: `{task.status}`\n"
+            f"- Attempts: `{task.attempts}`\n"
+            f"- Source comment: `{comment_id}`\n\n"
+            "## Result metadata\n\n```json\n"
+            + json.dumps(record, ensure_ascii=False, indent=2)
+            + "\n```\n"
+        )
+        for label, output in outputs:
+            content += f"\n## Full output: `{label}`\n\n~~~text\n{output}\n~~~\n"
+        encoded = content.encode("utf-8")
+        if len(encoded) > MAX_LOG_BYTES:
+            raise MailboxError("task log exceeds configured 1 MB limit")
+
+        root = Path(self.worker.root).resolve()
+        logs_dir = root / "worker-logs"
+        if logs_dir.is_symlink():
+            raise MailboxError("worker log directory must not be a symlink")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        if logs_dir.resolve() != logs_dir:
+            raise MailboxError("worker log directory resolves outside its expected path")
+        local_path = logs_dir / f"{task_id}.md"
+        relative_path = f"worker-logs/{task_id}.md"
+        temporary_path = local_path.with_name(f".{task_id}.{time.time_ns()}.tmp")
+        try:
+            with temporary_path.open("wb") as handle:
+                handle.write(encoded)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, local_path)
+        finally:
+            try:
+                temporary_path.unlink()
+            except FileNotFoundError:
+                pass
+
+        try:
+            dropbox_result = upload_task_log(task_id, content)
+        except DropboxOutputError:
+            # Keep the complete local log and finish the task with an explicit
+            # delivery failure; do not block the mailbox on a missing network.
+            return {
+                "task_log_status": "local_only",
+                "dropbox_status": "failed",
+                "dropbox_readback_verified": False,
+                "error_present": True,
+            }
+        return {
+            "task_log_status": "published",
+            "dropbox_status": dropbox_result.get("status"),
+            "dropbox_path": dropbox_result.get("path"),
+            "dropbox_sha256": dropbox_result.get("sha256"),
+            "dropbox_bytes": dropbox_result.get("bytes"),
+            "dropbox_readback_verified": dropbox_result.get("readback_verified") is True,
+        }
+
+    def _publish_handoff_record(
+        self, task: Any, comment_id: str, task_log_result: dict[str, Any] | None = None
+    ) -> dict[str, str]:
+        """Avoid a GitHub commit for every task; issue comments are the status ledger."""
+        del task, comment_id, task_log_result
+        return {"handoff_status": "not_required"}
 
     def _finish_if_terminal(self, comment_id: str, task_id: str) -> bool:
         task = self.worker.queue.get(task_id)
@@ -172,23 +356,55 @@ class GitHubIssueMailbox:
             return True
         if task.status not in {"completed", "failed"}:
             return False
-        safe_result = task.result
-        if isinstance(safe_result, dict):
-            # The mailbox issue may be public: never echo file contents or raw
-            # test output into GitHub comments.
-            safe_result = {
-                key: value for key, value in safe_result.items()
-                if key not in {"content", "output"}
+        # The mailbox issue is public. Emit only explicitly approved scalar
+        # metadata; never serialize arbitrary nested task/log/handoff results.
+        safe_result: dict[str, Any] = {"result_available": task.result is not None}
+        if isinstance(task.result, dict):
+            allowed_scalar_fields = {
+                "ok", "passed", "returncode", "exit_code", "replacements",
+                "bytes_written", "count", "files_changed", "patch_included",
             }
-            if task.kind == "read_file":
-                safe_result["content_returned_to_mailbox"] = False
+            for key in allowed_scalar_fields:
+                value = task.result.get(key)
+                if isinstance(value, (bool, int, float)):
+                    safe_result[key] = value
+        try:
+            task_log_result = self._publish_task_log(task, comment_id)
+        except Exception:
+            task_log_result = {"task_log_status": "failed"}
+        if task_log_result.get("task_log_status") not in {"published", "already_present", "local_only"}:
+            return False
+        try:
+            handoff_result = self._publish_handoff_record(task, comment_id, task_log_result)
+        except Exception:
+            handoff_result = {"handoff_status": "failed"}
+        # Publish only safe delivery metadata; never local paths or exception text.
+        task_status = task_log_result.get("task_log_status")
+        if task_status in {"published", "already_present", "local_only"}:
+            safe_result["task_log_status"] = task_status
+        dropbox_status = task_log_result.get("dropbox_status")
+        if dropbox_status in {"published", "failed"}:
+            safe_result["dropbox_status"] = dropbox_status
+        for key in ("dropbox_sha256", "dropbox_bytes"):
+            value = task_log_result.get(key)
+            if isinstance(value, str) and key == "dropbox_sha256" and re.fullmatch(r"[0-9a-f]{64}", value):
+                safe_result[key] = value
+            elif isinstance(value, int) and not isinstance(value, bool) and value >= 0 and key == "dropbox_bytes":
+                safe_result[key] = value
+        if isinstance(task_log_result.get("dropbox_readback_verified"), bool):
+            safe_result["dropbox_readback_verified"] = task_log_result["dropbox_readback_verified"]
+        handoff_status = handoff_result.get("handoff_status")
+        if handoff_status in {"published", "already_present", "not_required", "failed"}:
+            safe_result["handoff_status"] = handoff_status
+        if handoff_status not in {"published", "already_present", "not_required"}:
+            return False
         result = {
             "source_comment_id": comment_id,
             "task_id": task.task_id,
             "kind": task.kind,
             "status": task.status,
             "attempts": task.attempts,
-            "last_error": task.last_error,
+            "error_present": task.last_error is not None,
             "result": safe_result,
         }
         self._reply("EMBERLANE_RESULT\n" + json.dumps(result, ensure_ascii=False, indent=2)[:MAX_COMMENT_CHARS])
@@ -227,9 +443,12 @@ class GitHubIssueMailbox:
             if task_data is None:
                 continue
             try:
-                task = self.worker.submit(task_data["kind"], task_data["payload"])
+                task = self.worker.submit(
+                    task_data["kind"], task_data["payload"],
+                    idempotency_key=comment_id,
+                )
             except Exception as exc:
-                self._reply(f"EMBERLANE_RESULT {comment_id}\\nREJECTED: {type(exc).__name__}: {exc}")
+                self._reply(f"EMBERLANE_RESULT {comment_id}\nREJECTED: {type(exc).__name__}: {exc}")
                 self.state["handled"].append(comment_id)
                 self._save_state()
                 return {"status": "rejected", "comment_id": comment_id, "error": str(exc)}
