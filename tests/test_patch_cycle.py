@@ -116,6 +116,19 @@ class DisposablePatchCycleTests(unittest.TestCase):
                 with self.assertRaises(PatchCycleError):
                     validate_patch_paths(patch)
 
+    def test_rejects_symlink_and_rename_metadata(self):
+        for metadata in ("new file mode 120000", "old mode 120000", "rename from safe.py"):
+            with self.subTest(metadata=metadata):
+                patch = (
+                    "diff --git a/safe.py b/safe.py\n"
+                    + metadata + "\n"
+                    "--- a/safe.py\n"
+                    "+++ b/safe.py\n"
+                    "@@ -1 +1 @@\n-old\n+new\n"
+                )
+                with self.assertRaises(PatchCycleError):
+                    validate_patch_paths(patch)
+
     def test_rejects_file_header_path_hidden_by_safe_diff_header(self):
         patch = (
             "diff --git a/safe.py b/safe.py\n"
