@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .local_model import LocalModelConfig, LocalModelError, LocalModelRunner
+from .patch_cycle import PatchCycleError, validate_patch_in_worktree
 from .mailbox import GitHubIssueMailbox
 from .planner import GoalPlanner
 from .queue import Task, TaskQueue
@@ -69,7 +70,26 @@ class LocalWorker:
             "diagnostics": self._diagnostics,
             "plan_goal": self._plan_goal,
             "local_model": self._local_model,
+            "validate_patch": self._validate_patch,
         }
+
+    def _validate_patch(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Validate a proposed patch in a disposable worktree; never modify the active checkout."""
+        try:
+            return validate_patch_in_worktree(
+                self.root,
+                payload["patch"],
+                run_tests=payload.get("run_tests", False),
+                test_timeout=payload.get("test_timeout", 120),
+            )
+        except PatchCycleError as exc:
+            return {
+                "ok": False,
+                "passed": False,
+                "stage": "preflight",
+                "error": str(exc),
+                "tests_run": False,
+            }
 
     def _local_model(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Generate text locally; model errors are explicit terminal task failures."""
@@ -527,6 +547,21 @@ class LocalWorker:
                 if len(content.encode("utf-8")) > self.workspace.max_file_bytes:
                     raise WorkspaceError(f"content exceeds configured size limit: {path}")
                 seen.add(path)
+        if kind == "validate_patch":
+            patch = payload.get("patch")
+            if not isinstance(patch, str) or not patch.strip():
+                raise ValueError("validate_patch requires a non-empty patch string")
+            if len(patch.encode("utf-8")) > 256_000:
+                raise ValueError("validate_patch patch exceeds 256000 bytes")
+            run_tests = payload.get("run_tests", False)
+            if not isinstance(run_tests, bool):
+                raise ValueError("validate_patch run_tests must be a boolean")
+            test_timeout = payload.get("test_timeout", 120)
+            if isinstance(test_timeout, bool) or not isinstance(test_timeout, int) or not 1 <= test_timeout <= 300:
+                raise ValueError("validate_patch test_timeout must be an integer from 1 to 300")
+            unexpected = set(payload) - {"patch", "run_tests", "test_timeout"}
+            if unexpected:
+                raise ValueError(f"unsupported validate_patch payload keys: {sorted(unexpected)}")
         if kind == "local_model":
             prompt = payload.get("prompt")
             if not isinstance(prompt, str) or not prompt.strip():
@@ -615,7 +650,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_stash_inspect", "diagnostics", "local_model"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_stash_inspect", "diagnostics", "local_model", "validate_patch"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
