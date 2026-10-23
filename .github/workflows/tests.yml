@@ -1,0 +1,54 @@
+name: tests
+
+on:
+  push:
+    paths-ignore:
+      - 'worker-logs/**'
+      - 'WORKER_HANDOFF.md'
+      - 'docs/**'
+      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - 'worker-logs/**'
+      - 'WORKER_HANDOFF.md'
+      - 'docs/**'
+      - 'README.md'
+
+jobs:
+  # On every development push, run the complete suite once on the primary
+  # supported runtime. Avoid repeating identical tests on three interpreters
+  # for each small commit.
+  push-smoke:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Compile Python modules
+        run: python -m compileall -q emberlane tests
+      - name: Check read-only Termux preflight syntax
+        run: bash -n scripts/termux-preflight.sh
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+  # Preserve the full supported-version matrix as the merge gate. A push whose
+  # commit message contains [full-matrix] opts into the matrix without running it
+  # redundantly for every small development commit.
+  compatibility:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[full-matrix]'))
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile Python modules
+        run: python -m compileall -q emberlane tests
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
