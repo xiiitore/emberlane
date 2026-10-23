@@ -69,7 +69,7 @@ def _run_smoke() -> int:
         )
         state_path = root / ".emberlane" / "queue.json"
         worker = LocalWorker(root, state_path)
-        worker.submit("local_model_edit", {
+        submitted = worker.submit("local_model_edit", {
             "goal": "Change VALUE in src/value.py from 1 to 2. Preserve the file structure.",
             "allowed_paths": ["src/value.py"],
             "context_size": 4096,
@@ -78,7 +78,7 @@ def _run_smoke() -> int:
             "test_file": "test_value.py",
             "test_timeout_seconds": 30,
         })
-        print(json.dumps({"stage": "task_submitted", "task_id": "submitted"}), flush=True)
+        print(json.dumps({"stage": "task_submitted", "task_id": submitted.task_id}), flush=True)
         print(json.dumps({"stage": "model_running", "timeout_seconds": 180}), flush=True)
         task = worker.run_one()
         if task is None:
