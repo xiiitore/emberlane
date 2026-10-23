@@ -20,7 +20,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept
+`run_tests`, `local_model_proposal`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept
 arbitrary shell commands.
 
 ```sh
@@ -92,15 +92,27 @@ before queueing, and a missing test file returns an explicit failed result
 instead of treating zero discovered tests as success. `git_stash_inspect` lists up to ten recent stashes and shows file-change summaries only; it never applies or drops a stash. Project tests are still
 executable code: run the worker only in a repository you trust.
 
+## Offline local-model proposals
+
+The optional `local_model_proposal` task uses a local `llama.cpp` `llama-cli` executable and a local GGUF model. It requires no paid API or network call. Install `llama-cli` separately and set `EMBERLANE_MODEL_PATH` to the model file; `EMBERLANE_LLAMA_CLI` can override the executable name (default `llama-cli`). Source context starts with a 4,096-token budget and automatically grows in powers of two when needed, up to 16,384 tokens, to avoid rejecting ordinary multi-kilobyte files. Set `auto_context_size: false` in a task payload to enforce the requested `context_size` strictly. Larger context increases memory use; if the bounded automatic limit is reached, narrow `allowed_paths` or explicitly choose a supported larger `context_size`. Each proposal reports `context_bytes` and `context_size_used` so logs can distinguish source size from the model context setting.
+
+```sh
+export EMBERLANE_MODEL_PATH="$HOME/models/qwen-coder.gguf"
+export EMBERLANE_LLAMA_CLI="llama-cli"
+python -m emberlane submit local_model_proposal --payload '{"goal":"Make the function handle an empty input","allowed_paths":["src/example.py"]}'
+python -m emberlane run-one
+
+# End-to-end edit: test in a disposable copy and apply only if verification passes
+python -m emberlane submit local_model_edit --payload '{"goal":"Handle an empty input","allowed_paths":["src/example.py"],"test_file":"test_example.py"}'
+python -m emberlane run-one
+python -m emberlane status
+```
+
+The model sees only explicitly allow-listed UTF-8 files, subject to strict context, output, and time limits. The worker rejects paths outside the allow-list, credential-like context/output, malformed responses, and oversized edits. `local_model_proposal` returns an **unapplied patch** for inspection. `local_model_edit` applies a proposal only after the patch applies cleanly and the selected tests pass in a disposable copy; it then verifies that the source files have not changed since proposal generation before applying the patch to the working tree. If `test_file` is omitted, it runs the full unittest suite. It does not commit or push. A small local model may fail to produce valid JSON or useful edits; those failures are reported rather than silently accepted.
+
 ## Security boundary
 
-Workspace path checks protect against accidental path escape and common
-symlink traversal; they are not an OS sandbox. The worker runs with the same
-OS permissions as its owner. It does not provide a network listener, remote
-task submission, automatic Git commits/pushes, or an LLM that independently
-writes code from natural-language specifications. File-writing tasks must
-include the exact file path and content in their payload. Use a separate OS
-account or container for stronger isolation.
+Workspace path checks protect against accidental path escape and common symlink traversal; they are not an OS sandbox. The worker runs with the same OS permissions as its owner. It does not provide a network listener, remote task submission, or automatic Git commits/pushes. The optional local-model task proposes patches but does not apply them. File-writing tasks must include the exact file path and content in their payload. Use a separate OS account or container for stronger isolation.
 
 ## Optional GitHub issue mailbox
 
