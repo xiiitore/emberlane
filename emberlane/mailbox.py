@@ -7,6 +7,7 @@ Requires the GitHub CLI (gh) to be installed and authenticated locally.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import time
@@ -296,15 +297,20 @@ class GitHubIssueMailbox:
         if len(encoded) > MAX_LOG_BYTES:
             raise MailboxError("task log exceeds configured 1 MB limit")
 
+        root = Path(self.worker.root).resolve()
+        logs_dir = root / "worker-logs"
+        if logs_dir.is_symlink():
+            raise MailboxError("worker log directory must not be a symlink")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        if logs_dir.resolve() != logs_dir:
+            raise MailboxError("worker log directory resolves outside its expected path")
+        local_path = logs_dir / f"{task_id}.md"
         relative_path = f"worker-logs/{task_id}.md"
-        local_path = self.worker.root / relative_path
-        local_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_path = local_path.with_name(f".{task_id}.{time.time_ns()}.tmp")
         try:
             with temporary_path.open("wb") as handle:
                 handle.write(encoded)
                 handle.flush()
-                import os
                 os.fsync(handle.fileno())
             os.replace(temporary_path, local_path)
         finally:
