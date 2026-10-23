@@ -8435,3 +8435,35 @@ Allowed source context exceeds the configured context-size budget
 ~~~text
 Allowed file exceeds 20000 bytes: emberlane/local_model_backend.py
 ~~~
+
+
+### Worker task d5279b0f-4c42-40a4-8afe-a5fa4e72ba14
+
+[Full task output](worker-logs/d5279b0f-4c42-40a4-8afe-a5fa4e72ba14.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:36:18.627908+00:00",
+  "source_comment_id": "6370596803",
+  "task_id": "d5279b0f-4c42-40a4-8afe-a5fa4e72ba14",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/d5279b0f-4c42-40a4-8afe-a5fa4e72ba14.md",
+    "dropbox_status": "failed",
+    "dropbox_error": "Dropbox HTTP 500"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/d5279b0f-4c42-40a4-8afe-a5fa4e72ba14.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
