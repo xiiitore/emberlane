@@ -79,6 +79,10 @@ def validate_patch_paths(patch: str) -> list[str]:
 
         if not in_file_headers:
             continue
+        if line.startswith(("rename from ", "rename to ", "copy from ", "copy to ")):
+            raise PatchCycleError("rename/copy metadata is not supported by the safe patch validator")
+        if line.startswith(("new file mode 120000", "old mode 120000", "new mode 120000")):
+            raise PatchCycleError("symbolic-link changes are not supported by the safe patch validator")
         if line.startswith("--- "):
             raw = line[4:].split("\t", 1)[0]
             if raw == "/dev/null":
