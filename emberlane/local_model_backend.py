@@ -273,6 +273,7 @@ def run_local_model_proposal(
 
     with tempfile.TemporaryDirectory(prefix="emberlane-local-model-") as scratch:
         output_path = Path(scratch) / "model-output.txt"
+        stderr_path = Path(scratch) / "model-stderr.txt"
         command = [
             executable, "-m", str(model_path.resolve()), "-p", prompt,
             "-n", str(payload["max_tokens"]), "-c", str(payload["context_size"]),
@@ -281,26 +282,31 @@ def run_local_model_proposal(
         env = {key: os.environ[key] for key in
                ("PATH", "HOME", "TMPDIR", "LD_LIBRARY_PATH", "SYSTEMROOT") if key in os.environ}
         try:
-            process = subprocess.Popen(
-                command, cwd=Path(scratch), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL, shell=False, env=env,
-            )
+            with stderr_path.open("wb") as error_stream:
+                process = subprocess.Popen(
+                    command, cwd=Path(scratch), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                    stderr=error_stream, shell=False, env=env,
+                )
+                capture_status, output_size = _capture_output(
+                    process, output_path, payload["max_output_bytes"], payload["timeout_seconds"])
         except OSError as exc:
             return {"status": "backend_unavailable", "proposal": None,
                     "output": f"Could not start local model executable: {type(exc).__name__}"}
-        capture_status, output_size = _capture_output(
-            process, output_path, payload["max_output_bytes"], payload["timeout_seconds"])
+        stderr_output = stderr_path.read_bytes().decode("utf-8", errors="replace")
         if (source / ".emberlane" / "PAUSED").exists():
             return {"status": "paused", "proposal": None}
         if capture_status == "timeout":
-            return {"status": "timeout", "proposal": None, "output": "Local model timed out"}
+            return {"status": "timeout", "proposal": None,
+                    "output": _redact(stderr_output[-2000:] or "Local model timed out")}
         if capture_status == "output_limit":
             return {"status": "output_limit", "proposal": None,
-                    "output": "Local model output exceeded configured limit"}
+                    "output": _redact(stderr_output[-2000:] or "Local model output exceeded configured limit")}
         raw_output = output_path.read_bytes().decode("utf-8", errors="replace")
         if process.returncode != 0:
+            diagnostic = "\\n".join(part for part in (raw_output.strip(), stderr_output.strip()) if part)
             return {"status": "model_failed", "proposal": None,
-                    "returncode": process.returncode, "output": _redact(raw_output)[:2000]}
+                    "returncode": process.returncode,
+                    "output": _redact(diagnostic or "Local model exited without diagnostic output")[:2000]}
         try:
             response = _parse_model_json(raw_output)
         except ValueError as exc:
