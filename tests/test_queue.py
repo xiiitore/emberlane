@@ -217,15 +217,15 @@ class TaskQueueTests(unittest.TestCase):
         def fail_for_unrelated_resource_reason(payload):
             raise RuntimeError("resource exhausted while allocating memory")
 
-        results = [
-            queue.run_one({"provider": fail_for_unrelated_resource_reason})
-            for _ in range(3)
-        ]
+        statuses = []
+        for _ in range(3):
+            result = queue.run_one({"provider": fail_for_unrelated_resource_reason})
+            self.assertEqual(result.task_id, task.task_id)
+            statuses.append(result.status)
 
-        self.assertTrue(all(result.task_id == task.task_id for result in results))
-        self.assertEqual([result.status for result in results], ["pending", "pending", "failed"])
-        self.assertNotIn("deferred", [result.status for result in results])
-        self.assertIn("resource exhausted", results[-1].last_error)
+        self.assertEqual(statuses, ["pending", "pending", "failed"])
+        self.assertNotIn("deferred", statuses)
+        self.assertIn("resource exhausted", queue.get(task.task_id).last_error)
 
     def test_explicit_negative_result_evidence_fails_closed(self):
         queue = TaskQueue(self.state)
