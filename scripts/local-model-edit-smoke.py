@@ -40,6 +40,20 @@ def main() -> int:
         }, ensure_ascii=False))
         return 2
 
+    print(json.dumps({"stage": "preflight_passed", "python": sys.executable, "model": str(Path(model_value).expanduser())}), flush=True)
+    try:
+        return _run_smoke()
+    except Exception as exc:
+        print(json.dumps({
+            "status": "failed",
+            "stage": "uncaught_exception",
+            "error_type": type(exc).__name__,
+            "error": str(exc)[:2000],
+        }, ensure_ascii=False), flush=True)
+        return 1
+
+
+def _run_smoke() -> int:
     with tempfile.TemporaryDirectory(prefix="emberlane-local-edit-smoke-") as temporary:
         root = Path(temporary) / "fixture"
         (root / "src").mkdir(parents=True)
@@ -64,18 +78,20 @@ def main() -> int:
             "test_file": "test_value.py",
             "test_timeout_seconds": 30,
         })
+        print(json.dumps({"stage": "task_submitted", "task_id": "submitted"}), flush=True)
+        print(json.dumps({"stage": "model_running", "timeout_seconds": 180}), flush=True)
         task = worker.run_one()
         if task is None:
-            print(json.dumps({"status": "failed", "reason": "queue_returned_no_task"}))
+            print(json.dumps({"status": "failed", "reason": "queue_returned_no_task"}), flush=True)
             return 1
-        print(json.dumps(_result_summary(task), ensure_ascii=False, indent=2))
+        print(json.dumps(_result_summary(task), ensure_ascii=False, indent=2), flush=True)
         if task.status != "completed" or not isinstance(task.result, dict):
             return 1
         if task.result.get("status") != "applied_and_verified":
             return 1
         value_file = root / "src" / "value.py"
         if not value_file.is_file() or "VALUE = 2" not in value_file.read_text(encoding="utf-8"):
-            print(json.dumps({"status": "failed", "reason": "postcondition_mismatch"}))
+            print(json.dumps({"status": "failed", "reason": "postcondition_mismatch"}), flush=True)
             return 1
         return 0
 
