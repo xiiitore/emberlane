@@ -326,5 +326,32 @@ class MailboxRejectionTests(unittest.TestCase):
             self.assertNotIn("/secret/path", replies[0])
 
 
+    def test_enqueue_only_mode_leaves_execution_to_supervisor(self):
+        with tempfile.TemporaryDirectory() as temp:
+            worker = LocalWorker(Path(temp))
+            mailbox = GitHubIssueMailbox(worker, "owner/repo", 6, "authorized")
+            mailbox._comments = lambda: [{
+                "id": 126,
+                "user": {"login": "authorized"},
+                "body": 'EMBERLANE_TASK_JSON\n' + json.dumps({
+                    "kind": "write_file",
+                    "payload": {"path": "queued.txt", "content": "queued"},
+                }),
+            }]
+            replies = []
+            mailbox._reply = replies.append
+            worker.run_one = lambda: (_ for _ in ()).throw(AssertionError("mailbox must not execute tasks"))
+
+            result = mailbox.run_once(execute_tasks=False)
+
+            self.assertEqual(result["status"], "pending")
+            task = worker.queue.get(result["task_id"])
+            self.assertEqual(task.status, "pending")
+            self.assertEqual(task.attempts, 0)
+            self.assertFalse((Path(temp) / "queued.txt").exists())
+            self.assertEqual(replies, [])
+
+
+
 if __name__ == "__main__":
     unittest.main()

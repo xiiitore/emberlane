@@ -1,7 +1,8 @@
 """Bounded, auditable supervisor loop for the local Emberlane worker.
 
-This coordinates existing allow-listed tasks; it does not execute shell input,
-resume deferred tasks, or imply that a local model is configured.
+Optional mailbox polling is finite and serial: enqueue one authorized task, run
+one queue task, and let the mailbox publish terminal metadata. No auto-resume,
+arbitrary shell execution, or unbounded polling is performed.
 """
 from __future__ import annotations
 
@@ -49,18 +50,29 @@ def run_supervisor(
     max_tasks: int = 10,
     max_failures: int = 3,
     max_seconds: int = 300,
+    mailbox: Any | None = None,
+    poll_interval_seconds: int = 5,
+    max_idle_polls: int = 1,
 ) -> dict[str, Any]:
-    """Run a finite batch; idle/deferred queues return immediately without polling."""
+    """Run a finite batch; mailbox polling is optional and has an explicit idle budget."""
     max_tasks = _positive_int(max_tasks, "max_tasks", 1000)
     max_failures = _positive_int(max_failures, "max_failures", 100)
     max_seconds = _positive_int(max_seconds, "max_seconds", 86400)
+    poll_interval_seconds = _positive_int(poll_interval_seconds, "poll_interval_seconds", 3600)
+    max_idle_polls = _positive_int(max_idle_polls, "max_idle_polls", 1000)
+    if mailbox is None:
+        max_idle_polls = 1
+
     audit_path = worker.root / ".emberlane" / "supervisor.jsonl"
     started = time.monotonic()
     deadline = started + max_seconds
     task_ids: list[str] = []
     failures = 0
     deferred_ids: list[str] = []
+    idle_polls = 0
     status = "task_limit"
+    mailbox_status: str | None = None
+    safe_mailbox_statuses = {"idle", "pending", "finished", "rejected"}
 
     def emit(event: dict[str, Any]) -> bool:
         try:
@@ -70,7 +82,7 @@ def run_supervisor(
                 **event,
             })
             return True
-        except (OSError, ValueError):
+        except (OSError, ValueError, TypeError):
             return False
 
     if not emit({
@@ -78,6 +90,9 @@ def run_supervisor(
         "max_tasks": max_tasks,
         "max_failures": max_failures,
         "max_seconds": max_seconds,
+        "mailbox_enabled": mailbox is not None,
+        "poll_interval_seconds": poll_interval_seconds if mailbox is not None else None,
+        "max_idle_polls": max_idle_polls,
     }):
         return {"status": "audit_log_error", "processed": 0, "failures": 0, "task_ids": []}
 
@@ -96,19 +111,46 @@ def run_supervisor(
             status = "failure_limit"
             break
 
+        if mailbox is not None:
+            try:
+                mailbox_result = mailbox.run_once(execute_tasks=False)
+                candidate = mailbox_result.get("status") if isinstance(mailbox_result, dict) else None
+                mailbox_status = candidate if isinstance(candidate, str) and candidate in safe_mailbox_statuses else "other"
+            except Exception as exc:
+                status = "mailbox_error"
+                if not emit({
+                    "event": "mailbox_error",
+                    "error_type": type(exc).__name__,
+                }):
+                    status = "audit_log_error"
+                break
+
         task_started = time.monotonic()
         task = worker.run_one()
         elapsed = round(max(0.0, time.monotonic() - task_started), 3)
         if task is None:
             state = control_state(worker.root)
-            status = state if state is not None else "idle"
+            if state is not None:
+                status = state
+                break
+            if mailbox is not None and idle_polls + 1 < max_idle_polls:
+                idle_polls += 1
+                if not emit({
+                    "event": "mailbox_idle_poll",
+                    "idle_poll": idle_polls,
+                    "mailbox_status": mailbox_status,
+                }):
+                    status = "audit_log_error"
+                    break
+                time.sleep(min(poll_interval_seconds, max(0.0, deadline - time.monotonic())))
+                continue
+            status = "idle" if mailbox is None else "mailbox_idle"
             break
 
+        idle_polls = 0
         task_ids.append(task.task_id)
         if task.status == "failed":
             failures += 1
-        if task.status == "deferred":
-            deferred_ids.append(task.task_id)
         result_status = (
             task.result.get("status")
             if isinstance(task.result, dict) and isinstance(task.result.get("status"), str)
@@ -122,9 +164,25 @@ def run_supervisor(
             "attempts": task.attempts,
             "result_status": result_status,
             "duration_seconds": elapsed,
+            "mailbox_status": mailbox_status,
         }):
             status = "audit_log_error"
             break
+
+        if mailbox is not None:
+            try:
+                mailbox_result = mailbox.run_once(execute_tasks=False)
+                candidate = mailbox_result.get("status") if isinstance(mailbox_result, dict) else None
+                mailbox_status = candidate if isinstance(candidate, str) and candidate in safe_mailbox_statuses else "other"
+            except Exception as exc:
+                status = "mailbox_error"
+                if not emit({
+                    "event": "mailbox_error",
+                    "error_type": type(exc).__name__,
+                    "after_task_id": task.task_id,
+                }):
+                    status = "audit_log_error"
+                break
 
     deferred_ids = sorted({task.task_id for task in worker.queue.list_tasks() if task.status == "deferred"})
     report = {
@@ -137,6 +195,9 @@ def run_supervisor(
         "max_failures": max_failures,
         "max_seconds": max_seconds,
         "elapsed_seconds": round(max(0.0, time.monotonic() - started), 3),
+        "mailbox_enabled": mailbox is not None,
+        "mailbox_status": mailbox_status,
+        "idle_polls": idle_polls,
         "audit_log": str(audit_path.relative_to(worker.root)),
     }
     if not emit({
@@ -145,6 +206,7 @@ def run_supervisor(
         "processed": len(task_ids),
         "failures": failures,
         "deferred_count": len(deferred_ids),
+        "mailbox_enabled": mailbox is not None,
     }):
         report["status"] = "audit_log_error"
     return report

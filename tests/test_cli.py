@@ -3,6 +3,7 @@ import io
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from emberlane.worker import LocalWorker, main
@@ -118,6 +119,44 @@ class GoalPlannerCliTests(unittest.TestCase):
                 emitted = json.loads(stdout.getvalue())
                 self.assertEqual(emitted["kind"], kind)
                 self.assertEqual(emitted["status"], "pending")
+
+
+    def test_cli_supervisor_accepts_complete_mailbox_configuration(self):
+        stdout = io.StringIO()
+        report = {
+            "status": "mailbox_idle", "processed": 0, "failures": 0,
+            "task_ids": [], "deferred_task_ids": [], "max_tasks": 5,
+            "max_failures": 2, "max_seconds": 30, "elapsed_seconds": 0.1,
+            "mailbox_enabled": True, "mailbox_status": "idle", "idle_polls": 0,
+            "audit_log": ".emberlane/supervisor.jsonl",
+        }
+        with patch("emberlane.worker.GitHubIssueMailbox") as mailbox_class:
+            with patch("emberlane.supervisor.run_supervisor", return_value=report) as run_supervisor:
+                with contextlib.redirect_stdout(stdout):
+                    code = main([
+                        "--root", str(self.root), "supervise",
+                        "--max-tasks", "5", "--max-failures", "2", "--max-seconds", "30",
+                        "--mailbox-repo", "owner/repo", "--mailbox-issue", "6",
+                        "--mailbox-author", "authorized", "--poll-interval", "7",
+                        "--max-idle-polls", "3",
+                    ])
+        self.assertEqual(code, 0)
+        mailbox_class.assert_called_once()
+        args, _kwargs = mailbox_class.call_args
+        self.assertEqual(args[1:], ("owner/repo", 6, "authorized"))
+        run_supervisor.assert_called_once()
+        self.assertIs(run_supervisor.call_args.kwargs["mailbox"], mailbox_class.return_value)
+        self.assertEqual(run_supervisor.call_args.kwargs["poll_interval_seconds"], 7)
+        self.assertEqual(run_supervisor.call_args.kwargs["max_idle_polls"], 3)
+        self.assertEqual(json.loads(stdout.getvalue())["status"], "mailbox_idle")
+
+    def test_cli_rejects_partial_mailbox_configuration(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            main([
+                "--root", str(self.root), "supervise",
+                "--mailbox-repo", "owner/repo",
+            ])
+
 
 
 if __name__ == "__main__":
