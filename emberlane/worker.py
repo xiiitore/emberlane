@@ -693,6 +693,8 @@ class LocalWorker:
                 raise ValueError("coding_cycle requires a non-empty prompt")
             if len(prompt) > 4_000:
                 raise ValueError("coding_cycle prompt exceeds 4000 characters")
+            if _redact_sensitive_text(prompt) != prompt:
+                raise ValueError("coding_cycle prompt contains a potential credential; remove it before queueing")
             context_files = payload.get("context_files", [])
             if not isinstance(context_files, list) or len(context_files) > 5:
                 raise ValueError("coding_cycle context_files must be a list of at most five paths")
