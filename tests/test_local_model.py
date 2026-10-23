@@ -43,6 +43,17 @@ class LocalModelRunnerTests(unittest.TestCase):
         self.assertEqual(result["returncode"], 0)
         self.assertEqual(result["context_tokens"], 512)
 
+    def test_large_stdout_and_stderr_are_drained_with_bounded_capture(self):
+        self.write_executable(
+            "import sys\\n"
+            "sys.stdout.write('x' * 1000000)\\n"
+            "sys.stderr.write('diagnostic-' * 100000)\\n"
+        )
+        result = LocalModelRunner(self.config).generate("hello")
+        self.assertTrue(result["truncated"])
+        self.assertEqual(len(result["output"]), self.config.max_output_chars)
+        self.assertEqual(result["returncode"], 0)
+
     def test_missing_model_is_reported_before_process_start(self):
         config = LocalModelConfig(
             str(self.executable), self.root / "missing.gguf", timeout_seconds=1
