@@ -14,6 +14,48 @@ MAX_STEPS_PER_CYCLE = 10
 MAX_PLAN_CYCLES = 50
 MAX_FAILURES = 5
 
+_FAILURE_STATES = {"failed", "error", "blocked", "cancelled", "canceled", "timeout"}
+_FAILURE_FLAGS = {"ok", "success", "passed", "synced", "applied", "verified"}
+
+
+def _result_has_failure(value: Any) -> bool:
+    """Detect explicit failure evidence in a handler's JSON-compatible result.
+
+    Queue status "completed" means the handler returned without raising; it does
+    not prove that the operation succeeded. Inspect structured result evidence
+    (including nested command/test summaries) before unlocking dependent steps.
+    """
+    if isinstance(value, dict):
+        for key, item in value.items():
+            normalized_key = key.lower() if isinstance(key, str) else key
+            if normalized_key in _FAILURE_FLAGS and item is False:
+                return True
+            if normalized_key in {"status", "state"} and isinstance(item, str):
+                if item.strip().lower() in _FAILURE_STATES:
+                    return True
+            if normalized_key in {"returncode", "exit_code"}:
+                if isinstance(item, int) and not isinstance(item, bool) and item != 0:
+                    return True
+            if normalized_key == "error" and item not in (None, "", False):
+                return True
+            if _result_has_failure(item):
+                return True
+    elif isinstance(value, list):
+        return any(_result_has_failure(item) for item in value)
+    return False
+
+
+def _task_succeeded(task: Any) -> bool:
+    """True only when execution completed without explicit result-level failure."""
+    return task.status == "completed" and not _result_has_failure(task.result)
+
+
+def _task_failed(task: Any) -> bool:
+    """Treat both executor exceptions and returned failure evidence as failures."""
+    return task.status == "failed" or (
+        task.status == "completed" and _result_has_failure(task.result)
+    )
+
 
 class PlanValidationError(ValueError):
     """Raised when a goal plan is malformed or unsafe."""
@@ -106,7 +148,7 @@ class GoalPlanner:
                     f"step {step_id} conflicts with a previously queued task; use a new goal_id"
                 )
 
-        failed = [step_id for step_id, task in existing.items() if task.status == "failed"]
+        failed = [step_id for step_id, task in existing.items() if _task_failed(task)]
         if len(failed) >= max_failures:
             return {
                 "goal_id": goal_id, "status": "blocked", "cycle": cycle,
@@ -127,7 +169,7 @@ class GoalPlanner:
             if step_id in existing:
                 continue
             dep_tasks = [existing.get(dep) for dep in step["depends_on"]]
-            if any(task is None or task.status != "completed" for task in dep_tasks):
+            if any(task is None or not _task_succeeded(task) for task in dep_tasks):
                 continue
             if len(scheduled) >= max_steps:
                 break
@@ -139,7 +181,7 @@ class GoalPlanner:
             scheduled.append(step_id)
 
         completed = self._completed(existing)
-        failed = sorted(step_id for step_id, task in existing.items() if task.status == "failed")
+        failed = sorted(step_id for step_id, task in existing.items() if _task_failed(task))
         all_completed = len(completed) == len(normalized)
         if all_completed:
             status = "completed"
@@ -178,4 +220,4 @@ class GoalPlanner:
 
     @staticmethod
     def _completed(existing: dict[str, Any]) -> list[str]:
-        return sorted(step_id for step_id, task in existing.items() if task.status == "completed")
+        return sorted(step_id for step_id, task in existing.items() if _task_succeeded(task))
