@@ -17,7 +17,7 @@ from typing import Any
 
 from .local_model import LocalModelConfig, LocalModelError, LocalModelRunner
 from .patch_cycle import PatchCycleError, validate_patch_in_worktree
-from .mailbox import GitHubIssueMailbox
+from .mailbox import GitHubIssueMailbox, _redact_sensitive_text
 from .planner import GoalPlanner
 from .queue import Task, TaskQueue
 from .workspace import Workspace, WorkspaceError
@@ -95,12 +95,19 @@ class LocalWorker:
         """Generate text locally; model errors are explicit terminal task failures."""
         try:
             config = LocalModelConfig.from_env()
-            return LocalModelRunner(config).generate(payload["prompt"])
+            result = LocalModelRunner(config).generate(payload["prompt"])
+            output = result.get("output")
+            if isinstance(output, str):
+                redacted = _redact_sensitive_text(output)
+                if redacted != output:
+                    result["output"] = redacted
+                    result["output_redacted"] = True
+            return result
         except LocalModelError as exc:
             return {
                 "ok": False,
                 "error_code": exc.code,
-                "error": str(exc),
+                "error": _redact_sensitive_text(str(exc)),
                 "returncode": exc.returncode,
             }
 
