@@ -100,9 +100,9 @@ def _access_token(cfg: dict[str, str]) -> str:
         result = json.loads(data)
         if not isinstance(result, dict):
             raise ValueError("OAuth response must be an object")
-        token = [REDACTED]
+        token = result.get("access_token")
         if not isinstance(token, str) or not token:
-            [REDACTED] ValueError("missing access token")
+            raise ValueError("missing access token")
         return token
     except (ValueError, TypeError, UnicodeDecodeError):
         raise DropboxOutputError("Dropbox OAuth response was invalid") from None
@@ -128,7 +128,7 @@ def upload_task_log(task_id: str, text: str, *, timeout: float = 20.0) -> dict[s
         raise ValueError("task log exceeds configured size limit")
     digest = hashlib.sha256(content).hexdigest()
     cfg = _config()
-    token = [REDACTED]
+    token = _access_token(cfg)
     root = cfg["root"]
     if root:
         try:
