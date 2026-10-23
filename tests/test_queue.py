@@ -297,6 +297,13 @@ class TaskQueueTests(unittest.TestCase):
         archived = json.loads((self.state.parent / result["backup_file"]).read_text(encoding="utf-8"))
         self.assertEqual(len(archived), 5)
 
+        # A second prune is a no-op: it must not create a redundant backup.
+        second = queue.prune_terminal(keep_terminal=1)
+        self.assertEqual(second["pruned_count"], 0)
+        self.assertEqual(second["kept_terminal_count"], 1)
+        self.assertEqual(second["preserved_active_count"], 2)
+        self.assertIsNone(second["backup_file"])
+
     def test_prune_terminal_rejects_invalid_retention_limit(self):
         queue = TaskQueue(self.state)
         with self.assertRaises(ValueError):
