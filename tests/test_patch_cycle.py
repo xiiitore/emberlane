@@ -1,0 +1,101 @@
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+from emberlane.patch_cycle import PatchCycleError, validate_patch_in_worktree, validate_patch_paths
+
+
+class DisposablePatchCycleTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name) / "repo"
+        self.root.mkdir()
+        self.git("init", "-q")
+        self.git("config", "user.email", "emberlane-test@example.invalid")
+        self.git("config", "user.name", "Emberlane Tests")
+        (self.root / "example.py").write_text("VALUE = 1\n", encoding="utf-8")
+        tests = self.root / "tests"
+        tests.mkdir()
+        (tests / "test_ok.py").write_text(
+            "import unittest\n"
+            "class T(unittest.TestCase):\n"
+            "    def test_ok(self): self.assertEqual(1 + 1, 2)\n",
+            encoding="utf-8",
+        )
+        self.git("add", "example.py", "tests/test_ok.py")
+        self.git("commit", "-qm", "baseline")
+
+    def git(self, *args):
+        return subprocess.run(
+            ["git", *args],
+            cwd=self.root,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=True,
+            shell=False,
+        )
+
+    def patch(self):
+        return (
+            "diff --git a/example.py b/example.py\n"
+            "--- a/example.py\n"
+            "+++ b/example.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            "+VALUE = 2\n"
+        )
+
+    def test_validates_patch_in_disposable_worktree_without_touching_original(self):
+        before = self.git("rev-parse", "HEAD").stdout.strip()
+        result = validate_patch_in_worktree(self.root, self.patch())
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["status"], "validated")
+        self.assertIsNone(result["passed"])
+        self.assertFalse(result["tests_run"])
+        self.assertTrue(result["worktree_discarded"])
+        self.assertFalse(result["original_worktree_modified"])
+        self.assertEqual(result["base_sha"], before)
+        self.assertIn("example.py", result["touched_paths"])
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+        self.assertEqual(self.git("status", "--porcelain").stdout, "")
+        self.assertEqual(self.git("worktree", "list", "--porcelain").stdout.count("worktree "), 1)
+
+    def test_optional_tests_run_in_disposable_worktree(self):
+        result = validate_patch_in_worktree(self.root, self.patch(), run_tests=True)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["passed"])
+        self.assertTrue(result["tests_run"])
+        self.assertEqual(result["test_returncode"], 0)
+        self.assertIn("Ran 1 test", result["test_output"])
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+
+    def test_rejects_protected_and_traversal_paths(self):
+        for path in (".env", ".git/config", ".emberlane/queue.json", "../outside.py"):
+            with self.subTest(path=path):
+                patch = (
+                    f"diff --git a/{path} b/{path}\n"
+                    f"--- a/{path}\n+++ b/{path}\n"
+                    "@@ -1 +1 @@\n-old\n+new\n"
+                )
+                with self.assertRaises(PatchCycleError):
+                    validate_patch_paths(patch)
+
+    def test_refuses_dirty_original_worktree(self):
+        (self.root / "example.py").write_text("LOCAL CHANGE\n", encoding="utf-8")
+        with self.assertRaisesRegex(PatchCycleError, "worktree is dirty"):
+            validate_patch_in_worktree(self.root, self.patch())
+        self.assertEqual((self.root / "example.py").read_text(), "LOCAL CHANGE\n")
+
+    def test_rejects_empty_or_oversized_patch(self):
+        with self.assertRaises(PatchCycleError):
+            validate_patch_paths("")
+        with self.assertRaisesRegex(PatchCycleError, "exceeds"):
+            validate_patch_paths(self.patch() + ("x" * 256_000))
+
+
+if __name__ == "__main__":
+    unittest.main()
