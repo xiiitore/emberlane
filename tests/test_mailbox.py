@@ -242,6 +242,8 @@ class MailboxPublicationRetryTests(unittest.TestCase):
 
         self.assertTrue(mailbox._finish_if_terminal("123", task.task_id))
         reply = replies[0]
+        self.assertTrue(reply.startswith("EMBERLANE_RESULT\n{"))
+        self.assertFalse(reply.startswith("EMBERLANE_RESULT\\n{"))
         for private_value in (
             "PRIVATE_EXCEPTION", "PRIVATE_OUTPUT", "PRIVATE_TOKEN",
             "/private/local/path", "PRIVATE_LOG_ERROR",
