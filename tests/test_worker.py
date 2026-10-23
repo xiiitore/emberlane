@@ -1,3 +1,4 @@
+import hashlib
 import subprocess
 import tempfile
 import unittest
@@ -466,7 +467,7 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(result.result["status"], "validated")
         self.assertEqual(result.result["generation_elapsed_seconds"], 0.02)
         self.assertEqual(result.result["generated_patch"], patch_text)
-        self.assertEqual(result.result["patch_sha256"], __import__("hashlib").sha256(patch_text.encode()).hexdigest())
+        self.assertEqual(result.result["patch_sha256"], hashlib.sha256(patch_text.encode()).hexdigest())
         self.assertIn("+VALUE = 2", result.result["diff_preview"])
         self.assertFalse(result.result["original_worktree_modified"])
         self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
