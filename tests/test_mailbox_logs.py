@@ -134,7 +134,7 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertIn("[REDACTED_PRIVATE_KEY_BLOCK]", cleaned)
 
 
-    def test_terminal_result_redacts_sensitive_last_error_before_comment(self):
+    def test_terminal_result_omits_sensitive_last_error_from_public_comment(self):
         token = "ghp_" + "C" * 35
         task = SimpleNamespace(
             task_id="task-456", kind="write_file", status="failed",
@@ -156,7 +156,9 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertTrue(mailbox._finish_if_terminal("comment-8", "task-456"))
         self.assertEqual(len(replies), 1)
         self.assertNotIn(token, replies[0])
-        self.assertIn("[REDACTED_GITHUB_TOKEN]", replies[0])
+        self.assertNotIn("[REDACTED_GITHUB_TOKEN]", replies[0])
+        self.assertNotIn(token, replies[0])
+        self.assertIn('"error_present": true', replies[0])
 
 
     def test_public_result_recursively_omits_nested_source_output_and_patch(self):
