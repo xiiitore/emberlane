@@ -391,5 +391,107 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(result.result["latest_commit"]["returncode"], 0)
 
 
+    def test_git_commit_refuses_preexisting_staged_changes(self):
+        self.worker.submit("git_commit", {"expected_branch": "feature", "paths": ["src/a.py"], "message": "fix"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain", "--untracked-files=all"], 0, "M  src/a.py\n"),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--quiet"], 1, ""),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertFalse(result.result["committed"])
+        self.assertEqual(result.result["stage"], "preflight_staged")
+        self.assertEqual(run.call_count, 2)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+    def test_git_commit_requires_tests_to_pass_before_staging(self):
+        self.worker.submit("git_commit", {"expected_branch": "feature", "paths": ["src/a.py"], "message": "fix"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain", "--untracked-files=all"], 0, " M src/a.py\n"),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--quiet"], 0, ""),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain", "--", "src/a.py"], 0, " M src/a.py\n"),
+                subprocess.CompletedProcess(["python", "-m", "unittest", "discover", "-s", "tests", "-v"], 1, "FAIL\n"),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertFalse(result.result["committed"])
+        self.assertEqual(result.result["stage"], "tests")
+        self.assertEqual(run.call_count, 5)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+    def test_git_commit_tests_stages_exact_paths_and_commits(self):
+        self.worker.submit("git_commit", {
+            "expected_branch": "feature",
+            "paths": ["src/a.py"],
+            "message": "fix: sample",
+        })
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain", "--untracked-files=all"], 0, " M src/a.py\n"),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--quiet"], 0, ""),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "status", "--porcelain", "--", "src/a.py"], 0, " M src/a.py\n"),
+                subprocess.CompletedProcess(["python", "-m", "unittest", "discover", "-s", "tests", "-v"], 0, "Ran 69 tests\nOK\n"),
+                subprocess.CompletedProcess(["git", "add", "--", "src/a.py"], 0, ""),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--name-only"], 0, "src/a.py\n"),
+                subprocess.CompletedProcess(["git", "diff", "--cached", "--check"], 0, ""),
+                subprocess.CompletedProcess(["git", "commit", "-m", "fix: sample"], 0, "[feature abc123] fix: sample\n"),
+                subprocess.CompletedProcess(["git", "log", "-1", "--format=%H%n%s"], 0, "abc123def456\nfix: sample\n"),
+                subprocess.CompletedProcess(["git", "status", "--short", "--branch"], 0, "## feature\n"),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertTrue(result.result["committed"])
+        self.assertEqual(result.result["stage"], "complete")
+        self.assertEqual(result.result["paths"], ["src/a.py"])
+        self.assertEqual(run.call_count, 11)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+        self.assertEqual(run.call_args_list[5].args[0], ["git", "add", "--", "src/a.py"])
+        self.assertEqual(run.call_args_list[8].args[0], ["git", "commit", "-m", "fix: sample"])
+
+    def test_git_push_verifies_non_force_remote_update(self):
+        self.worker.submit("git_push", {"expected_branch": "feature"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            side_effect=[
+                subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, ""),
+                subprocess.CompletedProcess(["git", "branch", "--show-current"], 0, "feature\n"),
+                subprocess.CompletedProcess(["git", "fetch", "origin", "feature"], 0, "fetched\n"),
+                subprocess.CompletedProcess(["git", "merge-base", "--is-ancestor", "FETCH_HEAD", "HEAD"], 0, ""),
+                subprocess.CompletedProcess(["git", "rev-parse", "HEAD"], 0, "abc123\n"),
+                subprocess.CompletedProcess(["git", "push", "origin", "HEAD:refs/heads/feature"], 0, "pushed\n"),
+                subprocess.CompletedProcess(["git", "ls-remote", "--heads", "origin", "refs/heads/feature"], 0, "abc123\trefs/heads/feature\n"),
+            ],
+        ) as run:
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "completed")
+        self.assertTrue(result.result["pushed"])
+        self.assertEqual(result.result["stage"], "complete")
+        self.assertEqual(result.result["remote_head"], "abc123")
+        self.assertEqual(run.call_count, 7)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+        self.assertEqual(run.call_args_list[5].args[0], ["git", "push", "origin", "HEAD:refs/heads/feature"])
+
+    def test_git_push_refuses_dirty_worktree_before_fetch(self):
+        self.worker.submit("git_push", {"expected_branch": "feature"})
+        with patch(
+            "emberlane.worker.subprocess.run",
+            return_value=subprocess.CompletedProcess(["git", "status", "--porcelain"], 0, " M src/a.py\n"),
+        ) as run:
+            result = self.worker.run_one()
+        self.assertFalse(result.result["pushed"])
+        self.assertEqual(result.result["stage"], "preflight_dirty")
+        self.assertEqual(run.call_count, 1)
+        self.assertTrue(all(call.kwargs["shell"] is False for call in run.call_args_list))
+
+
+
 if __name__ == "__main__":
     unittest.main()
