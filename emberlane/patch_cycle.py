@@ -150,10 +150,15 @@ def validate_patch_in_worktree(
         raise PatchCycleError(f"test_timeout must be an integer from 1 to {MAX_TEST_TIMEOUT}")
     touched_paths = validate_patch_paths(patch)
 
-    status = _run_git(["status", "--porcelain"], cwd=repo)
+    status = _run_git(["status", "--porcelain", "--untracked-files=all"], cwd=repo)
     if status.returncode != 0:
         raise PatchCycleError("repository status check failed")
-    if status.stdout.strip():
+    # Emberlane's own queue/state files are runtime artifacts, not source changes.
+    dirty_source_lines = [
+        line for line in status.stdout.splitlines()
+        if not line[3:].replace("\\\\", "/").startswith(".emberlane/")
+    ]
+    if dirty_source_lines:
         raise PatchCycleError("original worktree is dirty; refusing to validate against ambiguous state")
     root_result = _run_git(["rev-parse", "--show-toplevel"], cwd=repo)
     head_result = _run_git(["rev-parse", "HEAD"], cwd=repo)
