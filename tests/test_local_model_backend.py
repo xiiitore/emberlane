@@ -305,6 +305,16 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertIn("--- /dev/null", result["proposal"]["patch"])
         self.assertIn("+++ b/src/new.py", result["proposal"]["patch"])
 
+    def test_model_timeout_is_distinguished_from_other_failures(self):
+        class HangingProcess(FakeProcess):
+            def poll(self):
+                return None if self.returncode == 0 else self.returncode
+
+        result = self.run_with_fake(
+            HangingProcess, payload={**self.payload, "timeout_seconds": 1}
+        )
+        self.assertEqual(result["status"], "timeout")
+        self.assertIsNone(result.get("returncode"))
     def test_enforces_streamed_output_limit(self):
         class BurstProcess(FakeProcess):
             output_bytes = b"x" * 128
