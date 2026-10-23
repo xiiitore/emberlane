@@ -297,9 +297,12 @@ def run_local_model_proposal(
         after[name] = content
 
     changed = sorted(name for name in after if name not in before or before[name] != after[name])
+    if not changed and response["summary"].strip().upper().startswith("BLOCKED:"):
+        return {"status": "blocked", "proposal": None,
+                "output": _redact(response["summary"])[:2000], "output_bytes": output_size}
     if not changed:
         return {"status": "no_changes", "proposal": None,
-                "output": response["summary"][:2000], "output_bytes": output_size}
+                "output": _redact(response["summary"])[:2000], "output_bytes": output_size}
     if len(changed) > payload["max_changed_files"]:
         return {"status": "rejected", "reason": "changed_file_limit",
                 "proposal": None, "changed_paths": changed}
