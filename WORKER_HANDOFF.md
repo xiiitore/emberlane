@@ -8581,3 +8581,40 @@ Loading model...
 Failed to load the model
 
 ~~~
+
+
+### Worker task 6c8332aa-44b1-45cb-8a11-35b3531a510b
+
+[Full task output](worker-logs/6c8332aa-44b1-45cb-8a11-35b3531a510b.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:40:06.110804+00:00",
+  "source_comment_id": "6370603465",
+  "task_id": "6c8332aa-44b1-45cb-8a11-35b3531a510b",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/6c8332aa-44b1-45cb-8a11-35b3531a510b.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/6c8332aa-44b1-45cb-8a11-35b3531a510b.md",
+    "dropbox_sha256": "bb4b1297ee45a4fe7de43c162da2b426fc908e034852366b5cad4a1a24102fb7",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 114,
+    "full_log_path": "worker-logs/6c8332aa-44b1-45cb-8a11-35b3531a510b.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: tests/test_worker.py
+~~~
