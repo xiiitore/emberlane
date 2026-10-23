@@ -69,7 +69,13 @@ def _public_result(value: Any) -> Any:
                 cleaned[key] = "[OMITTED; SEE TASK LOG]" if item is not None else None
             elif any(marker in re.sub(r"[^a-z0-9]", "", str(key).casefold())
                      for marker in _PUBLIC_RESULT_SENSITIVE_KEY_MARKERS):
-                cleaned[key] = "[REDACTED]" if item is not None else None
+                if item is None:
+                    cleaned[key] = None
+                elif isinstance(item, str):
+                    redacted = _redact_sensitive_text(item)
+                    cleaned[key] = redacted if redacted != item else "[REDACTED]"
+                else:
+                    cleaned[key] = "[REDACTED]"
             else:
                 cleaned[key] = _public_result(item)
         return cleaned
