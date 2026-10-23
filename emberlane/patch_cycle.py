@@ -156,7 +156,7 @@ def validate_patch_in_worktree(
     # Emberlane's own queue/state files are runtime artifacts, not source changes.
     dirty_source_lines = [
         line for line in status.stdout.splitlines()
-        if not line[3:].replace("\\\\", "/").startswith(".emberlane/")
+        if not line[3:].replace("\\", "/").startswith(".emberlane/")
     ]
     if dirty_source_lines:
         raise PatchCycleError("original worktree is dirty; refusing to validate against ambiguous state")
