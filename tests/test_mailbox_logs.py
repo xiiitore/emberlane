@@ -160,10 +160,7 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertEqual(len(replies), 1)
         self.assertNotIn(token, replies[0])
         self.assertNotIn("[REDACTED_GITHUB_TOKEN]", replies[0])
-        self.assertNotIn(token, replies[0])
         self.assertIn('"error_present": true', replies[0])
-
-
 
 
 if __name__ == "__main__":
