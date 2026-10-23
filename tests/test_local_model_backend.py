@@ -133,10 +133,11 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_model_loader_failure_preserves_stderr_diagnostic(self):
         class FailedProcess(FakeProcess):
+            stderr_bytes = b"error while loading shared libraries: libllama.so\\n"
+
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
                 self.returncode = 1
-                self.stderr_bytes = b"error while loading shared libraries: libllama.so\\n"
 
         result = self.run_with_fake(FailedProcess)
         self.assertEqual(result["status"], "runtime_loader_failed")
@@ -187,10 +188,11 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_model_load_failure_is_distinguished_from_runtime_loader_failure(self):
         class FailedModelLoadProcess(FakeProcess):
+            stderr_bytes = b"Failed to load the model"
+
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
                 self.returncode = 1
-                self.stderr_bytes = b"Failed to load the model"
 
         result = self.run_with_fake(FailedModelLoadProcess)
         self.assertEqual(result["status"], "model_load_failed")
@@ -199,10 +201,11 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_generic_nonzero_exit_is_not_misclassified_as_loader_failure(self):
         class GenericFailureProcess(FakeProcess):
+            stderr_bytes = b"generic execution failure"
+
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
                 self.returncode = 2
-                self.stderr_bytes = b"generic execution failure"
 
         result = self.run_with_fake(GenericFailureProcess)
         self.assertEqual(result["status"], "model_failed")
