@@ -20,8 +20,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept
-arbitrary shell commands.
+`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, `diagnostics`, `local_model`, and `validate_patch`. It does not accept arbitrary shell commands.
 
 ```sh
 # Queue a file-writing task (quote the JSON as one argument)
@@ -101,6 +100,16 @@ task submission, automatic Git commits/pushes, or an LLM that independently
 writes code from natural-language specifications. File-writing tasks must
 include the exact file path and content in their payload. Use a separate OS
 account or container for stronger isolation.
+
+## Local model and disposable patch validation
+
+`local_model` runs an explicitly configured local llama.cpp executable and stores bounded, redacted generated text as task output. It does not write model output into source files. Configure `EMBERLANE_MODEL_PATH` and optionally `LLAMA_CLI_BIN`, then run the opt-in real-inference smoke test:
+
+```sh
+python scripts/local-model-smoke.py
+```
+
+`validate_patch` accepts a unified Git diff and checks it in a detached disposable worktree. It requires a clean original Git checkout, rejects protected/traversal/symlink targets, and never modifies the original checkout or commits/pushes/merges. Tests are opt-in because patch code can execute with the worker's OS permissions; a Git worktree is not a sandbox. See [Local model adapter](docs/LOCAL_MODEL_ADAPTER.md) and [Disposable patch validation](docs/DISPOSABLE_PATCH_VALIDATION.md).
 
 ## Optional GitHub issue mailbox
 
