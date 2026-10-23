@@ -7,43 +7,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from .queue import TaskQueue
+from .queue import TaskQueue, _result_has_failure
 
 MAX_PLAN_STEPS = 50
 MAX_STEPS_PER_CYCLE = 10
 MAX_PLAN_CYCLES = 50
 MAX_FAILURES = 5
-
-_FAILURE_STATES = {"failed", "error", "blocked", "cancelled", "canceled", "timeout"}
-_FAILURE_FLAGS = {"ok", "success", "passed", "synced", "applied", "verified"}
-
-
-def _result_has_failure(value: Any) -> bool:
-    """Detect explicit failure evidence in a handler's JSON-compatible result.
-
-    Queue status "completed" means the handler returned without raising; it does
-    not prove that the operation succeeded. Inspect structured result evidence
-    (including nested command/test summaries) before unlocking dependent steps.
-    """
-    if isinstance(value, dict):
-        for key, item in value.items():
-            normalized_key = key.lower() if isinstance(key, str) else key
-            if normalized_key in _FAILURE_FLAGS and item is False:
-                return True
-            if normalized_key in {"status", "state"} and isinstance(item, str):
-                if item.strip().lower() in _FAILURE_STATES:
-                    return True
-            if normalized_key in {"returncode", "exit_code"}:
-                if isinstance(item, int) and not isinstance(item, bool) and item != 0:
-                    return True
-            if normalized_key == "error" and item not in (None, "", False):
-                return True
-            if _result_has_failure(item):
-                return True
-    elif isinstance(value, list):
-        return any(_result_has_failure(item) for item in value)
-    return False
-
 
 def _task_succeeded(task: Any) -> bool:
     """True only when execution completed without explicit result-level failure."""
