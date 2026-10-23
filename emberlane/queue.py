@@ -189,6 +189,54 @@ class TaskQueue:
         self._save()
         return task
 
+    def prune_terminal(self, keep_terminal: int = 50) -> dict[str, Any]:
+        """Archive the current queue, then remove only old terminal tasks.
+
+        Pending, running and deferred tasks are always preserved. A local backup
+        is written before the atomic queue rewrite; no task payload is published.
+        """
+        if isinstance(keep_terminal, bool) or not isinstance(keep_terminal, int):
+            raise ValueError("keep_terminal must be an integer")
+        if not 0 <= keep_terminal <= 1000:
+            raise ValueError("keep_terminal must be from 0 to 1000")
+
+        terminal_states = {"completed", "failed", "cancelled", "canceled"}
+        terminal = sorted(
+            (task for task in self._tasks.values() if task.status in terminal_states),
+            key=lambda task: (task.updated_at, task.created_at, task.task_id),
+        )
+        remove_count = max(0, len(terminal) - keep_terminal)
+        to_remove = terminal[:remove_count]
+        if not to_remove:
+            return {
+                "pruned_count": 0,
+                "kept_terminal_count": len(terminal),
+                "preserved_active_count": sum(
+                    task.status not in terminal_states for task in self._tasks.values()
+                ),
+                "backup_file": None,
+            }
+
+        backup_path = self.state_path.with_name(
+            f"{self.state_path.name}.pre-prune-{time.time_ns()}.bak"
+        )
+        if self.state_path.exists():
+            backup_path.write_bytes(self.state_path.read_bytes())
+        else:
+            raise FileNotFoundError("queue state file disappeared before archival")
+
+        for task in to_remove:
+            del self._tasks[task.task_id]
+        self._save()
+        return {
+            "pruned_count": len(to_remove),
+            "kept_terminal_count": len(terminal) - len(to_remove),
+            "preserved_active_count": sum(
+                task.status not in terminal_states for task in self._tasks.values()
+            ),
+            "backup_file": backup_path.name,
+        }
+
     def run_one(self, handlers: dict[str, Callable[[dict[str, Any]], Any]]) -> Task | None:
         task = next((t for t in self._tasks.values() if t.status == "pending"), None)
         if task is None:
