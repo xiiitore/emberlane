@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,6 +69,89 @@ class LocalModelConfig:
         return cls(executable, Path(raw_model).expanduser().resolve(), context, tokens, timeout)
 
 
+def _read_bounded_stream(stream, limit: int, *, keep_tail: bool = False) -> tuple[bytes, bool]:
+    """Drain a child pipe fully while retaining only a bounded amount of data."""
+    retained = bytearray()
+    truncated = False
+    while True:
+        chunk = stream.read(4096)
+        if not chunk:
+            break
+        if len(retained) + len(chunk) <= limit:
+            retained.extend(chunk)
+        else:
+            truncated = True
+            if keep_tail:
+                retained.extend(chunk)
+                if len(retained) > limit:
+                    del retained[:-limit]
+            else:
+                remaining = max(0, limit - len(retained))
+                if remaining:
+                    retained.extend(chunk[:remaining])
+    return bytes(retained), truncated
+
+
+def _run_bounded_process(command: list[str], *, timeout: int, stdout_limit: int) -> tuple[int, str, str, bool]:
+    """Run a child with concurrent, bounded stdout/stderr capture and a hard timeout."""
+    try:
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=False,
+            env=os.environ.copy(),
+        )
+    except OSError as exc:
+        raise LocalModelError(
+            "execution_error",
+            f"could not start local model ({type(exc).__name__})",
+        ) from exc
+
+    assert process.stdout is not None
+    assert process.stderr is not None
+    captured: dict[str, tuple[bytes, bool]] = {}
+
+    def drain(name: str, stream, limit: int, keep_tail: bool = False) -> None:
+        try:
+            captured[name] = _read_bounded_stream(stream, limit, keep_tail=keep_tail)
+        finally:
+            stream.close()
+
+    readers = [
+        threading.Thread(target=drain, args=("stdout", process.stdout, stdout_limit), daemon=True),
+        threading.Thread(target=drain, args=("stderr", process.stderr, 8192, True), daemon=True),
+    ]
+    for reader in readers:
+        reader.start()
+    try:
+        returncode = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        process.kill()
+        process.wait()
+        for reader in readers:
+            reader.join()
+        raise LocalModelError(
+            "timeout",
+            f"local model exceeded {timeout}-second timeout",
+        ) from exc
+    for reader in readers:
+        reader.join()
+
+    stdout_bytes, stdout_truncated = captured.get("stdout", (b"", False))
+    stderr_bytes, stderr_truncated = captured.get("stderr", (b"", False))
+    stderr = stderr_bytes.decode("utf-8", errors="replace")
+    if stderr_truncated:
+        stderr = "[stderr tail retained; earlier bytes omitted]\n" + stderr
+    return (
+        returncode,
+        stdout_bytes.decode("utf-8", errors="replace"),
+        stderr,
+        stdout_truncated,
+    )
+
+
 class LocalModelRunner:
     def __init__(self, config: LocalModelConfig):
         self.config = config
@@ -99,51 +183,38 @@ class LocalModelRunner:
         ]
         started = time.monotonic()
         try:
-            completed = subprocess.run(
+            returncode, stdout, stderr, capture_truncated = _run_bounded_process(
                 command,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
                 timeout=self.config.timeout_seconds,
-                check=False,
-                shell=False,
-                env=os.environ.copy(),
+                stdout_limit=self.config.max_output_chars * 4 + 4,
             )
-        except subprocess.TimeoutExpired as exc:
-            raise LocalModelError(
-                "timeout",
-                f"local model exceeded {self.config.timeout_seconds}-second timeout",
-            ) from exc
-        except OSError as exc:
-            raise LocalModelError("execution_error", f"could not start local model ({type(exc).__name__})") from exc
+        except LocalModelError:
+            raise
 
         elapsed = round(time.monotonic() - started, 3)
-        stdout = completed.stdout or ""
-        stderr = completed.stderr or ""
-        if completed.returncode != 0:
+        stdout = stdout or ""
+        stderr = stderr or ""
+        if returncode != 0:
             lowered = stderr.lower()
             code = "model_load_failed" if any(
                 marker in lowered for marker in ("failed to load", "error loading model", "cannot open model")
             ) else "nonzero_exit"
             raise LocalModelError(
                 code,
-                f"llama.cpp exited with code {completed.returncode}; stderr: {stderr[-2000:]}",
-                returncode=completed.returncode,
+                f"llama.cpp exited with code {returncode}; stderr: {stderr[-2000:]}",
+                returncode=returncode,
             )
         output = stdout.strip()
         if not output:
             raise LocalModelError("empty_output", "llama.cpp returned no generated text")
-        truncated = len(output) > self.config.max_output_chars
+        truncated = capture_truncated or len(output) > self.config.max_output_chars
         if truncated:
             output = output[:self.config.max_output_chars]
         return {
             "ok": True,
             "output": output,
             "truncated": truncated,
-            "returncode": completed.returncode,
+            "returncode": returncode,
             "elapsed_seconds": elapsed,
             "model_path": str(model),
             "context_tokens": self.config.context_tokens,
