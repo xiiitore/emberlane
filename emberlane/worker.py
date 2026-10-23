@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .local_model import LocalModelConfig, LocalModelError, LocalModelRunner
 from .mailbox import GitHubIssueMailbox
 from .planner import GoalPlanner
 from .queue import Task, TaskQueue
@@ -67,7 +68,21 @@ class LocalWorker:
             "git_sync": self._git_sync,
             "diagnostics": self._diagnostics,
             "plan_goal": self._plan_goal,
+            "local_model": self._local_model,
         }
+
+    def _local_model(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Generate text locally; model errors are explicit terminal task failures."""
+        try:
+            config = LocalModelConfig.from_env()
+            return LocalModelRunner(config).generate(payload["prompt"])
+        except LocalModelError as exc:
+            return {
+                "ok": False,
+                "error_code": exc.code,
+                "error": str(exc),
+                "returncode": exc.returncode,
+            }
 
     def _plan_goal(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Advance a bounded plan using only the worker's registered handlers."""
@@ -512,6 +527,15 @@ class LocalWorker:
                 if len(content.encode("utf-8")) > self.workspace.max_file_bytes:
                     raise WorkspaceError(f"content exceeds configured size limit: {path}")
                 seen.add(path)
+        if kind == "local_model":
+            prompt = payload.get("prompt")
+            if not isinstance(prompt, str) or not prompt.strip():
+                raise ValueError("local_model requires a non-empty prompt")
+            if len(prompt) > 16_000:
+                raise ValueError("local_model prompt exceeds 16000 characters")
+            unexpected = set(payload) - {"prompt"}
+            if unexpected:
+                raise ValueError(f"unsupported local_model payload keys: {sorted(unexpected)}")
         if kind == "run_tests":
             test_file = payload.get("test_file")
             if test_file is not None and (
@@ -591,7 +615,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_stash_inspect", "diagnostics"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_stash_inspect", "diagnostics", "local_model"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
