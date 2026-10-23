@@ -325,6 +325,7 @@ def run_local_model_proposal(
             )
             model_loader_markers = (
                 "failed to load model",
+                "failed to load the model",
                 "unable to load model",
                 "could not load model",
             )
