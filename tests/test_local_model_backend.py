@@ -292,6 +292,10 @@ class LocalModelProposalTests(unittest.TestCase):
             worker.submit("local_model_proposal", {
                 **self.payload, "max_tokens": True,
             })
+        with self.assertRaisesRegex(ValueError, "test_timeout_seconds must be an integer"):
+            worker.submit("local_model_edit", {
+                **self.payload, "test_timeout_seconds": True,
+            })
         self.assertEqual(worker.queue.list_tasks(), [])
 
 
