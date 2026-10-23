@@ -208,6 +208,51 @@ class MailboxPublicationRetryTests(unittest.TestCase):
         self.assertEqual(replies, [])
 
 
+    def test_public_result_only_contains_allowlisted_scalars_and_statuses(self):
+        from types import SimpleNamespace
+
+        task = SimpleNamespace(
+            task_id="task-1",
+            kind="git_diff",
+            status="completed",
+            attempts=1,
+            last_error="PRIVATE_EXCEPTION /private/local/path",
+            result={
+                "passed": True,
+                "returncode": 0,
+                "nested": {"output": "PRIVATE_OUTPUT", "token": "PRIVATE_TOKEN"},
+                "local_path": "/private/local/path",
+            },
+        )
+        mailbox = GitHubIssueMailbox.__new__(GitHubIssueMailbox)
+        mailbox.worker = SimpleNamespace(queue=SimpleNamespace(get=lambda task_id: task))
+        mailbox.state = {"handled": [], "active": {"123": "task-1"}}
+        mailbox._publish_task_log = lambda *_: {
+            "task_log_status": "published",
+            "task_log_path": "/private/local/path/log.md",
+            "task_log_error": "PRIVATE_LOG_ERROR",
+        }
+        mailbox._publish_handoff_record = lambda *_: {
+            "handoff_status": "published",
+            "local_path": "/private/local/path",
+        }
+        mailbox._save_state = lambda: None
+        replies = []
+        mailbox._reply = replies.append
+
+        self.assertTrue(mailbox._finish_if_terminal("123", task.task_id))
+        reply = replies[0]
+        for private_value in (
+            "PRIVATE_EXCEPTION", "PRIVATE_OUTPUT", "PRIVATE_TOKEN",
+            "/private/local/path", "PRIVATE_LOG_ERROR",
+        ):
+            self.assertNotIn(private_value, reply)
+        self.assertIn('"passed": true', reply)
+        self.assertIn('"returncode": 0', reply)
+        self.assertIn('"error_present": true', reply)
+        self.assertIn('"task_log_status": "published"', reply)
+        self.assertIn('"handoff_status": "published"', reply)
+
 class MailboxRejectionTests(unittest.TestCase):
     def test_invalid_task_kind_reply_uses_real_newline(self):
         with tempfile.TemporaryDirectory() as temp:
