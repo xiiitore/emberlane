@@ -73,6 +73,23 @@ class DisposablePatchCycleTests(unittest.TestCase):
         self.assertIn("Ran 1 test", result["test_output"])
         self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
 
+    def test_test_output_is_bounded_at_capture_boundary(self):
+        output_test = self.root / "tests" / "test_output_volume.py"
+        output_test.write_text(
+            "import unittest\n"
+            "class OutputVolume(unittest.TestCase):\n"
+            "    def test_large_output(self): print('x' * 200000)\n",
+            encoding="utf-8",
+        )
+        self.git("add", "tests/test_output_volume.py")
+        self.git("commit", "-qm", "add output-volume fixture")
+        result = validate_patch_in_worktree(self.root, self.patch(), run_tests=True)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["test_output_truncated"])
+        self.assertLessEqual(len(result["test_output"]), 20_000)
+        self.assertIn("Ran 2 tests", result["test_output"])
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+
     def test_rejects_protected_and_traversal_paths(self):
         for path in (".env", ".git/config", ".emberlane/queue.json", "../outside.py", "src/./outside.py"):
             with self.subTest(path=path):
