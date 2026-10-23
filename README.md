@@ -20,7 +20,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept
+`run_tests`, `local_model_proposal`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept
 arbitrary shell commands.
 
 ```sh
@@ -92,7 +92,23 @@ before queueing, and a missing test file returns an explicit failed result
 instead of treating zero discovered tests as success. `git_stash_inspect` lists up to ten recent stashes and shows file-change summaries only; it never applies or drops a stash. Project tests are still
 executable code: run the worker only in a repository you trust.
 
+## Offline local-model proposals
+
+The optional `local_model_proposal` task uses a local `llama.cpp` `llama-cli` executable and a local GGUF model. It requires no paid API or network call. Install `llama-cli` separately and set `EMBERLANE_MODEL_PATH` to the model file; `EMBERLANE_LLAMA_CLI` can override the executable name (default `llama-cli`).
+
+```sh
+export EMBERLANE_MODEL_PATH="$HOME/models/qwen-coder.gguf"
+export EMBERLANE_LLAMA_CLI="llama-cli"
+python -m emberlane submit local_model_proposal --payload '{"goal":"Make the function handle an empty input","allowed_paths":["src/example.py"]}'
+python -m emberlane run-one
+python -m emberlane status
+```
+
+The model sees only explicitly allow-listed UTF-8 files, subject to strict context, output, and time limits. The worker rejects paths outside the allow-list, credential-like context/output, malformed responses, and oversized edits. The result is an **unapplied patch proposal**; this task does not modify source files. A separate verifier/apply stage is still required before the proposal becomes a working-tree change. A small local model may fail to produce valid JSON or useful edits; those failures are reported rather than silently accepted.
+
 ## Security boundary
+
+Workspace path checks protect against accidental path escape and common symlink traversal; they are not an OS sandbox. The worker runs with the same OS permissions as its owner. It does not provide a network listener, remote task submission, or automatic Git commits/pushes. The optional local-model task proposes patches but does not apply them. File-writing tasks must include the exact file path and content in their payload. Use a separate OS account or container for stronger isolation.
 
 Workspace path checks protect against accidental path escape and common
 symlink traversal; they are not an OS sandbox. The worker runs with the same
