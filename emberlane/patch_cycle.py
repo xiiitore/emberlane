@@ -6,6 +6,9 @@ because test code in an untrusted patch executes with the worker's permissions.
 from __future__ import annotations
 
 import hashlib
+import os
+import signal
+import threading
 import shutil
 import subprocess
 import sys
@@ -129,6 +132,62 @@ def _run_git(args: list[str], *, cwd: Path, timeout: int = 15, input_text: str |
         raise PatchCycleError(f"could not run git ({type(exc).__name__})") from exc
 
 
+
+def _run_bounded_tests(checkout: Path, timeout: int) -> tuple[int, str, bool]:
+    """Run the fixed unittest command with bounded in-memory output and timeout."""
+    command = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"]
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=checkout,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=False,
+            shell=False,
+            start_new_session=True,
+        )
+    except OSError as exc:
+        raise PatchCycleError(f"could not start test runner ({type(exc).__name__})") from exc
+
+    assert process.stdout is not None
+    retained = bytearray()
+    truncated = False
+
+    def drain() -> None:
+        nonlocal truncated
+        while True:
+            chunk = process.stdout.read(4096)
+            if not chunk:
+                break
+            retained.extend(chunk)
+            if len(retained) > MAX_RESULT_CHARS:
+                truncated = True
+                del retained[:-MAX_RESULT_CHARS]
+        process.stdout.close()
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    try:
+        returncode = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            process.kill()
+        process.wait()
+        reader.join(timeout=5)
+        raise PatchCycleError(f"test command exceeded {timeout}-second timeout") from exc
+    reader.join(timeout=5)
+    if reader.is_alive():
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        raise PatchCycleError("test output pipe did not close after child exit")
+    return returncode, retained.decode("utf-8", errors="replace"), truncated
+
+
 def validate_patch_in_worktree(
     root: str | Path,
     patch: str,
@@ -228,28 +287,15 @@ def validate_patch_in_worktree(
             "original_worktree_modified": False,
         }
         if run_tests:
-            tests = subprocess.run(
-                [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
-                cwd=checkout,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=test_timeout,
-                check=False,
-                shell=False,
-            )
-            output = tests.stdout or ""
+            test_returncode, output, output_truncated = _run_bounded_tests(checkout, test_timeout)
             result.update({
-                "ok": tests.returncode == 0,
-                "passed": tests.returncode == 0,
-                "stage": "tests_passed" if tests.returncode == 0 else "tests_failed",
+                "ok": test_returncode == 0,
+                "passed": test_returncode == 0,
+                "stage": "tests_passed" if test_returncode == 0 else "tests_failed",
                 "tests_run": True,
-                "test_returncode": tests.returncode,
-                "test_output": output[-MAX_RESULT_CHARS:],
-                "test_output_truncated": len(output) > MAX_RESULT_CHARS,
+                "test_returncode": test_returncode,
+                "test_output": output,
+                "test_output_truncated": output_truncated,
             })
         return result
     except subprocess.TimeoutExpired:
