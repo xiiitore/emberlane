@@ -20,8 +20,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `local_model_proposal`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept
-arbitrary shell commands.
+`run_tests`, `local_model_proposal`, `local_model_edit`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept arbitrary shell commands.
 
 ```sh
 # Queue a file-writing task (quote the JSON as one argument)
@@ -112,7 +111,7 @@ The model sees only explicitly allow-listed UTF-8 files, subject to strict conte
 
 ## Security boundary
 
-Workspace path checks protect against accidental path escape and common symlink traversal; they are not an OS sandbox. The worker runs with the same OS permissions as its owner. It does not provide a network listener, remote task submission, or automatic Git commits/pushes. The optional local-model task proposes patches but does not apply them. File-writing tasks must include the exact file path and content in their payload. Use a separate OS account or container for stronger isolation.
+Workspace path checks protect against accidental path escape and common symlink traversal; they are not an OS sandbox. The worker runs with the same OS permissions as its owner. The GitHub issue mailbox is an optional remote task-submission bridge, not a network listener or remote shell. The `local_model_proposal` task returns an unapplied patch; `local_model_edit` may apply a patch only after disposable-copy tests pass and source-integrity checks succeed. Neither task commits or pushes automatically. Explicit file-writing tasks must include the exact file path and content in their payload. Use a separate OS account or container for stronger isolation.
 
 ## Optional GitHub issue mailbox
 
