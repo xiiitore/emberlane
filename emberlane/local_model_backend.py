@@ -14,6 +14,7 @@ import re
 import selectors
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path, PurePosixPath
@@ -320,6 +321,11 @@ def run_local_model_proposal(
         "proposal": {
             "changed_paths": changed, "patch": patch,
             "patch_bytes": len(patch.encode("utf-8")),
+            "base_sha256": {
+                name: hashlib.sha256((source / name).read_bytes()).hexdigest()
+                if (source / name).is_file() else None
+                for name in changed
+            },
             "output": _redact(response["summary"])[:2000], "output_bytes": output_size,
             "applied": False,
         },
@@ -377,11 +383,16 @@ def _fixed_command(
     input_bytes: bytes | None = None,
 ) -> subprocess.CompletedProcess[bytes] | None:
     try:
-        return subprocess.run(
-            command, cwd=cwd, stdin=subprocess.DEVNULL if input_bytes is None else subprocess.PIPE,
-            input=input_bytes, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            timeout=timeout_seconds, check=False, shell=False, env=_safe_process_env(),
-        )
+        options: dict[str, Any] = {
+            "cwd": cwd, "stdout": subprocess.PIPE, "stderr": subprocess.STDOUT,
+            "timeout": timeout_seconds, "check": False, "shell": False,
+            "env": _safe_process_env(),
+        }
+        if input_bytes is None:
+            options["stdin"] = subprocess.DEVNULL
+        else:
+            options["input"] = input_bytes
+        return subprocess.run(command, **options)
     except (OSError, subprocess.TimeoutExpired):
         return None
 
@@ -457,7 +468,7 @@ def run_local_model_edit(
         if git_init is None or git_init.returncode != 0:
             return {"status": "verification_setup_failed", "applied": False,
                     "stage": "git_init"}
-        git_add = _fixed_command(["git", "add", "-A"], temp_root)
+        git_add = _fixed_command(["git", "add", "--force", "-A"], temp_root)
         if git_add is None or git_add.returncode != 0:
             return {"status": "verification_setup_failed", "applied": False,
                     "stage": "git_add"}
@@ -490,7 +501,7 @@ def run_local_model_edit(
                     "stage": "diff_check", "output": "Temporary diff failed whitespace checks"}
         if test_file is not None and not (temp_root / "tests" / test_file).is_file():
             return {"status": "tests_missing", "applied": False, "test_file": test_file}
-        test_command = [os.environ.get("PYTHON", "python"), "-m", "unittest",
+        test_command = [sys.executable, "-m", "unittest",
                         "discover", "-s", "tests", "-v"]
         if test_file is not None:
             test_command.extend(["-p", test_file])
