@@ -57,6 +57,23 @@ class GoalPlannerTests(unittest.TestCase):
         result = self.planner.advance(self.plan(cycle=1))
         self.assertEqual(result["scheduled"], ["edit"])
 
+    def test_rejects_goal_id_reuse_with_different_step_set(self):
+        original = self.plan()
+        self.planner.advance(original)
+        replacement_steps = [
+            {"id": "new-inspect", "kind": "diagnostics", "payload": {}},
+            {"id": "new-edit", "kind": "write_file",
+             "payload": {"path": "out.txt", "content": "new"},
+             "depends_on": ["new-inspect"]},
+            {"id": "new-verify", "kind": "run_tests", "payload": {},
+             "depends_on": ["new-edit"]},
+        ]
+        before = [(task.task_id, task.kind, task.idempotency_key) for task in self.queue.list_tasks()]
+        with self.assertRaisesRegex(PlanValidationError, "different step set"):
+            self.planner.advance(self.plan(steps=replacement_steps, cycle=1))
+        after = [(task.task_id, task.kind, task.idempotency_key) for task in self.queue.list_tasks()]
+        self.assertEqual(after, before)
+
     def test_rejects_unknown_task_kind_before_enqueuing(self):
         with self.assertRaisesRegex(PlanValidationError, "not allowed"):
             self.planner.advance(self.plan(steps=[{"id": "bad", "kind": "shell", "payload": {}}]))
