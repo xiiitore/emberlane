@@ -111,7 +111,15 @@ class LocalModelRunnerTests(unittest.TestCase):
                 LocalModelConfig.from_env()
         self.assertEqual(caught.exception.code, "not_configured")
 
-    def test_environment_accepts_emberlane_cli_alias(self):\n        config = LocalModelConfig.from_env({\n            "EMBERLANE_MODEL_PATH": str(self.model),\n            "EMBERLANE_LLAMA_CLI": str(self.executable),\n            "LLAMA_CLI_BIN": "/ignored/alternative",\n        })\n        self.assertEqual(config.executable, str(self.executable))\n\n    def test_environment_rejects_out_of_range_limits(self):
+    def test_environment_accepts_emberlane_cli_alias(self):
+        config = LocalModelConfig.from_env({
+            "EMBERLANE_MODEL_PATH": str(self.model),
+            "EMBERLANE_LLAMA_CLI": str(self.executable),
+            "LLAMA_CLI_BIN": "/ignored/alternative",
+        })
+        self.assertEqual(config.executable, str(self.executable))
+
+    def test_environment_rejects_out_of_range_limits(self):
         with self.assertRaises(LocalModelError) as caught:
             LocalModelConfig.from_env({
                 "EMBERLANE_MODEL_PATH": str(self.model),
