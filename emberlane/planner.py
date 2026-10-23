@@ -120,6 +120,12 @@ class GoalPlanner:
                     f"step {step_id} conflicts with a previously queued task; use a new goal_id"
                 )
 
+        stale_steps = sorted(set(existing) - set(normalized))
+        if stale_steps:
+            raise PlanValidationError(
+                "goal_id already has queued steps not present in this plan; use a new goal_id"
+            )
+
         deferred = sorted(step_id for step_id, task in existing.items() if _task_deferred(task))
         if deferred:
             return {
