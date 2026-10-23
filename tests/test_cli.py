@@ -83,5 +83,42 @@ class GoalPlannerCliTests(unittest.TestCase):
         self.assertIn("not allowed", tasks[0].last_error)
 
 
+    def test_cli_exposes_bounded_supervisor_and_audits_one_task(self):
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.assertEqual(main([
+                "--root", str(self.root), "submit", "diagnostics",
+                "--payload", "{}",
+            ]), 0)
+            stdout.seek(0)
+            stdout.truncate(0)
+            code = main([
+                "--root", str(self.root), "supervise",
+                "--max-tasks", "1", "--max-failures", "2", "--max-seconds", "30",
+            ])
+        self.assertEqual(code, 0)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual(report["status"], "task_limit")
+        self.assertEqual(report["processed"], 1)
+        self.assertTrue((self.root / ".emberlane" / "supervisor.jsonl").is_file())
+
+    def test_cli_allows_guarded_git_publish_task_kinds(self):
+        for kind, payload in (
+            ("git_commit", {"expected_branch": "feature", "paths": ["src/a.py"], "message": "fix"}),
+            ("git_push", {"expected_branch": "feature"}),
+        ):
+            with self.subTest(kind=kind):
+                stdout = io.StringIO()
+                with contextlib.redirect_stdout(stdout):
+                    code = main([
+                        "--root", str(self.root), "submit", kind,
+                        "--payload", json.dumps(payload),
+                    ])
+                self.assertEqual(code, 0)
+                emitted = json.loads(stdout.getvalue())
+                self.assertEqual(emitted["kind"], kind)
+                self.assertEqual(emitted["status"], "pending")
+
+
 if __name__ == "__main__":
     unittest.main()

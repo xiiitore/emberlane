@@ -820,10 +820,14 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_stash_inspect", "diagnostics", "local_model_proposal", "local_model_edit", "plan_goal", "queue_prune"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_stash_inspect", "git_commit", "git_push", "diagnostics", "local_model_proposal", "local_model_edit", "plan_goal", "queue_prune"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
+    supervise_parser = sub.add_parser("supervise", help="run a bounded, audited worker batch")
+    supervise_parser.add_argument("--max-tasks", type=int, default=10)
+    supervise_parser.add_argument("--max-failures", type=int, default=3)
+    supervise_parser.add_argument("--max-seconds", type=int, default=300)
     resume_parser = sub.add_parser(
         "resume-deferred", help="resume a deferred task after its external wait clears"
     )
@@ -865,6 +869,20 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         _print_task(task)
         return 1 if task.status == "failed" else 0
+
+    if args.command == "supervise":
+        from .supervisor import run_supervisor
+        try:
+            report = run_supervisor(
+                worker,
+                max_tasks=args.max_tasks,
+                max_failures=args.max_failures,
+                max_seconds=args.max_seconds,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 1 if report["status"] in {"failure_limit", "audit_log_error"} else 0
 
     if args.command == "resume-deferred":
         try:
