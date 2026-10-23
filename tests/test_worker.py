@@ -465,6 +465,8 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(result.status, "completed")
         self.assertEqual(result.result["status"], "validated")
         self.assertEqual(result.result["generation_elapsed_seconds"], 0.02)
+        self.assertEqual(result.result["generated_patch"], patch_text)
+        self.assertEqual(result.result["patch_sha256"], __import__("hashlib").sha256(patch_text.encode()).hexdigest())
         self.assertIn("+VALUE = 2", result.result["diff_preview"])
         self.assertFalse(result.result["original_worktree_modified"])
         self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
@@ -483,6 +485,33 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertEqual(result.status, "failed")
         self.assertEqual(result.attempts, 1)
         self.assertEqual(result.result["stage"], "model_output_validation")
+        self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
+
+    def test_coding_cycle_rejects_patch_containing_detected_github_token(self):
+        self._initialize_git_repo()
+        token = "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"
+        patch_text = (
+            "diff --git a/example.py b/example.py\n"
+            "--- a/example.py\n"
+            "+++ b/example.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            f"+VALUE = '{token}'\n"
+        )
+        self.worker.submit("coding_cycle", {"prompt": "Add this value", "context_files": ["example.py"]})
+        with patch("emberlane.worker.LocalModelConfig.from_env", return_value=object()), patch(
+            "emberlane.worker.LocalModelRunner"
+        ) as runner:
+            runner.return_value.generate.return_value = {
+                "ok": True, "output": patch_text, "truncated": False,
+                "elapsed_seconds": 0.01, "model_path": "/models/fake.gguf",
+            }
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.result["stage"], "model_output_validation")
+        self.assertTrue(result.result["output_redacted"])
+        self.assertNotIn(token, result.result["generated_output"])
+        self.assertIn("[REDACTED_GITHUB_TOKEN]", result.result["generated_output"])
         self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
 
     def test_coding_cycle_rejects_truncated_model_output(self):
