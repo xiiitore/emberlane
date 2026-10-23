@@ -248,7 +248,7 @@ def run_local_model_proposal(
                ("PATH", "HOME", "TMPDIR", "LD_LIBRARY_PATH", "SYSTEMROOT") if key in os.environ}
         try:
             process = subprocess.Popen(
-                command, cwd=source, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                command, cwd=Path(scratch), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL, shell=False, env=env,
             )
         except OSError as exc:
