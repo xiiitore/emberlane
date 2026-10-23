@@ -51,6 +51,26 @@ def _redact_sensitive_text(value: str) -> str:
     return value
 
 
+_PUBLIC_RESULT_OMIT_KEYS = {"content", "output", "source_text", "patch"}
+
+
+def _public_result(value: Any) -> Any:
+    """Remove raw source and command/model output recursively from issue comments."""
+    if isinstance(value, dict):
+        cleaned: dict[str, Any] = {}
+        for key, item in value.items():
+            if key in _PUBLIC_RESULT_OMIT_KEYS:
+                cleaned[key] = "[OMITTED; SEE TASK LOG]" if item is not None else None
+            else:
+                cleaned[key] = _public_result(item)
+        return cleaned
+    if isinstance(value, list):
+        return [_public_result(item) for item in value]
+    if isinstance(value, str):
+        return _redact_sensitive_text(value)
+    return value
+
+
 class MailboxError(RuntimeError):
     pass
 
@@ -357,13 +377,9 @@ class GitHubIssueMailbox:
             return True
         if task.status not in {"completed", "failed"}:
             return False
-        safe_result = task.result
-        if isinstance(safe_result, dict):
-            # Do not publish file contents or raw command output in public comments.
-            safe_result = {
-                key: value for key, value in safe_result.items()
-                if key not in {"content", "output", "source_text"}
-            }
+        # Public issue comments contain metadata only. Full sanitized output is
+        # retained in the linked task log, so nested fields must be filtered too.
+        safe_result = _public_result(task.result)
         try:
             task_log_result = self._publish_task_log(task, comment_id)
         except Exception as exc:
