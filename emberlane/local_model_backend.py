@@ -56,7 +56,7 @@ def _safe_relative(value: Any, workspace: Workspace) -> str:
         part in {"", ".", ".."} for part in path.parts
     ):
         raise ValueError("allowed_paths must contain clean relative paths")
-    if any(part.casefold() in _SKIP_COMPONENTS for part in path.parts):
+    if any(_excluded_snapshot_name(part) for part in path.parts):
         raise ValueError("allowed_paths contains a protected path")
     workspace.validate_write_path(value)
     return path.as_posix()
@@ -339,7 +339,8 @@ def _excluded_snapshot_name(name: str) -> bool:
         or lower.startswith(".env")
         or lower.endswith(("~", ".bak", ".backup", ".orig", ".old", ".swp", ".swo",
                            ".pem", ".key", ".p12", ".pfx", ".keystore"))
-        or any(marker in lower for marker in ("secret", "credential", "private_key", "token"))
+        or any(marker in lower for marker in ("secret", "credential", "private_key"))
+        or lower in {"token", "tokens", "access_token", "refresh_token", "token.json", "tokens.json"}
     )
 
 
