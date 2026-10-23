@@ -99,6 +99,18 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertNotIn("API_SECRET", process.kwargs["env"])
         self.assertEqual(process.kwargs["env"].get("LD_LIBRARY_PATH"), "/test/lib")
 
+    def test_local_model_edit_accepts_strict_context_option(self):
+        (self.root / "src" / "allowed.py").write_text(
+            "# " + ("x" * 9000) + "\n", encoding="utf-8"
+        )
+        with patch("emberlane.local_model_backend.subprocess.Popen") as popen:
+            result = run_local_model_edit(
+                self.root,
+                {**self.payload, "context_size": 4096, "auto_context_size": False},
+                workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "input_limit")
+        popen.assert_not_called()
     def test_context_budget_grows_automatically_within_termux_limit(self):
         # The default budget is 2 bytes per context token. A source file larger
         # than 8192 bytes should select a larger bounded context, not fail before
