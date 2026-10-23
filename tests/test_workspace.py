@@ -12,6 +12,18 @@ class WorkspaceTests(unittest.TestCase):
         self.root = Path(self.temp.name) / "workspace"
         self.ws = Workspace(self.root, max_file_bytes=16)
 
+    def test_write_preflight_rejects_nul_and_backslash(self):
+        for path in ("bad\x00name.txt", "bad\\name.txt"):
+            with self.subTest(path=repr(path)):
+                with self.assertRaises(WorkspaceError):
+                    self.ws.validate_write_path(path)
+
+    def test_write_preflight_rejects_nul_before_filesystem_changes(self):
+        invalid_path = "nested\x00dir/file.txt"
+        with self.assertRaises(WorkspaceError):
+            self.ws.validate_write_path(invalid_path)
+        self.assertFalse((self.root / "nested").exists())
+
     def test_write_read_and_list(self):
         self.ws.write_text("src/main.py", "print('ok')\n")
         self.assertEqual(self.ws.read_text("src/main.py"), "print('ok')\n")
