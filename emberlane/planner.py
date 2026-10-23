@@ -31,6 +31,11 @@ def _task_failed(task: Any) -> bool:
     )
 
 
+def _task_deferred(task: Any) -> bool:
+    """An expected external wait is neither success nor an execution failure."""
+    return task.status == "deferred"
+
+
 class PlanValidationError(ValueError):
     """Raised when a goal plan is malformed or unsafe."""
 
@@ -121,6 +126,15 @@ class GoalPlanner:
                 raise PlanValidationError(
                     f"step {step_id} conflicts with a previously queued task; use a new goal_id"
                 )
+
+        deferred = sorted(step_id for step_id, task in existing.items() if _task_deferred(task))
+        if deferred:
+            return {
+                "goal_id": goal_id, "status": "waiting", "cycle": cycle,
+                "reason": "external_dependency_deferred", "deferred_steps": deferred,
+                "failed_steps": [], "scheduled": [],
+                "completed_steps": self._completed(existing),
+            }
 
         failed = [step_id for step_id, task in existing.items() if _task_failed(task)]
         if len(failed) >= max_failures:
