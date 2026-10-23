@@ -43,7 +43,6 @@ def _is_external_wait_exception(exc: Exception) -> bool:
         "usage limit reached",
         "usage limit exceeded",
         "quota exceeded",
-        "resource exhausted",
         "too many requests",
         "http 429",
     ))
