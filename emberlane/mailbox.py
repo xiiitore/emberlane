@@ -51,7 +51,7 @@ def _redact_sensitive_text(value: str) -> str:
     return value
 
 
-_PUBLIC_RESULT_OMIT_KEYS = {"content", "output", "source_text", "patch"}
+_PUBLIC_RESULT_OMIT_KEYS_NORMALIZED = {"content", "output", "sourcetext", "patch"}
 
 
 _PUBLIC_RESULT_SENSITIVE_KEY_MARKERS = (
@@ -65,10 +65,10 @@ def _public_result(value: Any) -> Any:
     if isinstance(value, dict):
         cleaned: dict[str, Any] = {}
         for key, item in value.items():
-            if key in _PUBLIC_RESULT_OMIT_KEYS:
+            normalized_key = re.sub(r"[^a-z0-9]", "", str(key).casefold())
+            if normalized_key in _PUBLIC_RESULT_OMIT_KEYS_NORMALIZED:
                 cleaned[key] = "[OMITTED; SEE TASK LOG]" if item is not None else None
-            elif any(marker in re.sub(r"[^a-z0-9]", "", str(key).casefold())
-                     for marker in _PUBLIC_RESULT_SENSITIVE_KEY_MARKERS):
+            elif any(marker in normalized_key for marker in _PUBLIC_RESULT_SENSITIVE_KEY_MARKERS):
                 if item is None:
                     cleaned[key] = None
                 elif isinstance(item, str):
