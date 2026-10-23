@@ -565,6 +565,10 @@ def main(argv: list[str] | None = None) -> int:
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
+    resume_parser = sub.add_parser(
+        "resume-deferred", help="explicitly resume a task after its external wait clears"
+    )
+    resume_parser.add_argument("task_id", help="task identifier reported by status")
     mailbox_parser = sub.add_parser(
         "mailbox-once", help="poll one GitHub issue for one authorized task"
     )
@@ -591,6 +595,14 @@ def main(argv: list[str] | None = None) -> int:
         task = worker.run_one()
         _print_task(task)
         return 1 if task is not None and task.status == "failed" else 0
+
+    if args.command == "resume-deferred":
+        try:
+            task = worker.queue.resume_deferred(args.task_id)
+        except (KeyError, ValueError) as exc:
+            parser.error(str(exc))
+        _print_task(task)
+        return 0
 
     if args.command == "mailbox-once":
         mailbox = GitHubIssueMailbox(
