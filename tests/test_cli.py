@@ -53,6 +53,18 @@ class GoalPlannerCliTests(unittest.TestCase):
         self.assertTrue(any(t.kind == "diagnostics" and t.status == "pending" for t in tasks))
         self.assertTrue(any(t.kind == "plan_goal" and t.status == "pending" for t in tasks[1:]))
 
+    def test_cli_accepts_queue_prune_task(self):
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            code = main([
+                "--root", str(self.root), "submit", "queue_prune",
+                "--payload", json.dumps({"keep_terminal": 5}),
+            ])
+        self.assertEqual(code, 0)
+        emitted = json.loads(stdout.getvalue())
+        self.assertEqual(emitted["kind"], "queue_prune")
+        self.assertEqual(emitted["status"], "pending")
+
     def test_invalid_goal_is_failed_by_planner_not_executed_as_shell(self):
         payload = {"goal_id": "invalid", "steps": [
             {"id": "bad", "kind": "shell", "payload": {"command": "id"}}
