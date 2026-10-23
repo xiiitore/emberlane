@@ -45,12 +45,12 @@ def main() -> int:
         (root / "src").mkdir(parents=True)
         (root / "tests").mkdir()
         (root / "src" / "__init__.py").write_text("", encoding="utf-8")
-        (root / "src" / "value.py").write_text("VALUE = 1\\n", encoding="utf-8")
+        (root / "src" / "value.py").write_text("VALUE = 1\n", encoding="utf-8")
         (root / "tests" / "test_value.py").write_text(
-            "import unittest\\n"
-            "from src.value import VALUE\\n"
-            "class ValueTests(unittest.TestCase):\\n"
-            "    def test_value_is_two(self): self.assertEqual(VALUE, 2)\\n",
+            "import unittest\n"
+            "from src.value import VALUE\n"
+            "class ValueTests(unittest.TestCase):\n"
+            "    def test_value_is_two(self): self.assertEqual(VALUE, 2)\n",
             encoding="utf-8",
         )
         state_path = root / ".emberlane" / "queue.json"
