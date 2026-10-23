@@ -3,6 +3,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from emberlane import TaskQueue
@@ -303,6 +304,30 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(second["kept_terminal_count"], 1)
         self.assertEqual(second["preserved_active_count"], 2)
         self.assertIsNone(second["backup_file"])
+
+    def test_prune_terminal_refuses_to_prune_if_archive_verification_fails(self):
+        queue = TaskQueue(self.state)
+        old = queue.submit("done", {})
+        old.status = "completed"
+        old.updated_at = 1.0
+        queue.submit("pending", {})
+        queue._save()
+        original_state = self.state.read_bytes()
+        original_write_bytes = Path.write_bytes
+
+        def corrupt_archive(path, data):
+            if ".pre-prune-" in path.name:
+                return original_write_bytes(path, b"corrupt archive")
+            return original_write_bytes(path, data)
+
+        with patch.object(Path, "write_bytes", corrupt_archive):
+            with self.assertRaisesRegex(OSError, "archive verification failed"):
+                queue.prune_terminal(keep_terminal=0)
+
+        self.assertEqual(self.state.read_bytes(), original_state)
+        self.assertIsNotNone(queue.get(old.task_id))
+        self.assertEqual(queue.get(old.task_id).status, "completed")
+        self.assertEqual(len(queue.list_tasks()), 2)
 
     def test_prune_terminal_rejects_invalid_retention_limit(self):
         queue = TaskQueue(self.state)
