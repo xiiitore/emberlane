@@ -8917,3 +8917,42 @@ Allowed source context exceeds the configured context-size budget
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/4ba941b2-c7db-4493-b0d4-aa193efda314.md).
+
+
+### Worker task 0ab577aa-1efa-4b96-8889-e6ef36a36b11
+
+[Full task output](worker-logs/0ab577aa-1efa-4b96-8889-e6ef36a36b11.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T19:38:52.494339+00:00",
+  "source_comment_id": "6373204628",
+  "task_id": "0ab577aa-1efa-4b96-8889-e6ef36a36b11",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/0ab577aa-1efa-4b96-8889-e6ef36a36b11.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/0ab577aa-1efa-4b96-8889-e6ef36a36b11.md",
+    "dropbox_sha256": "7a9f0f67351a3e599fc721b268fa2bf314dbd0b8d0c3d980a44e9a2d6d0c0791",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "passed": true,
+    "returncode": 0,
+    "output_publication": "full_log_only",
+    "output_note": "Full sanitized output was not copied inline"
+  },
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/0ab577aa-1efa-4b96-8889-e6ef36a36b11.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/0ab577aa-1efa-4b96-8889-e6ef36a36b11.md).
