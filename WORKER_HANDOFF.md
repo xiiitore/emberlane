@@ -8880,3 +8880,40 @@ Allowed file exceeds 20000 bytes: emberlane/worker.py
 ~~~text
 Allowed source context exceeds the configured context-size budget
 ~~~
+
+
+### Worker task 4ba941b2-c7db-4493-b0d4-aa193efda314
+
+[Full task output](worker-logs/4ba941b2-c7db-4493-b0d4-aa193efda314.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T19:33:39.283891+00:00",
+  "source_comment_id": "6373120989",
+  "task_id": "4ba941b2-c7db-4493-b0d4-aa193efda314",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/4ba941b2-c7db-4493-b0d4-aa193efda314.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/4ba941b2-c7db-4493-b0d4-aa193efda314.md",
+    "dropbox_sha256": "8cddedb390b5402730776cfb9b90445112ae4b1e7ddc81a444981ddc4aa9e1e3",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0",
+    "platform": "Android-14-aarch64-64bit-ELF"
+  },
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/4ba941b2-c7db-4493-b0d4-aa193efda314.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/4ba941b2-c7db-4493-b0d4-aa193efda314.md).
