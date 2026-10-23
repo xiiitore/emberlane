@@ -225,9 +225,14 @@ class TaskQueue:
         else:
             raise FileNotFoundError("queue state file disappeared before archival")
 
+        original_tasks = self._tasks.copy()
         for task in to_remove:
             del self._tasks[task.task_id]
-        self._save()
+        try:
+            self._save()
+        except BaseException:
+            self._tasks = original_tasks
+            raise
         return {
             "pruned_count": len(to_remove),
             "kept_terminal_count": len(terminal) - len(to_remove),
