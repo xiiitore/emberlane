@@ -12,7 +12,7 @@ from typing import Any, Callable
 
 
 _FAILURE_STATES = {
-    "failed", "error", "blocked", "cancelled", "canceled", "timeout", "paused",
+    "failed", "error", "blocked", "cancelled", "canceled", "timeout",
     "rejected", "invalid_model_output", "input_limit", "model_not_configured",
     "model_not_found", "backend_unavailable", "model_failed", "output_limit",
     "no_changes", "snapshot_failed", "verification_setup_failed", "patch_rejected",
@@ -227,7 +227,7 @@ class TaskQueue:
                 and isinstance(task.result.get("status"), str)
                 else ""
             )
-            if result_status in {"deferred", "waiting_for_quota", "rate_limited"}:
+            if result_status in {"deferred", "waiting_for_quota", "rate_limited", "paused"}:
                 task.last_error = None
                 task.status = "deferred"
             elif _result_has_failure(task.result):
