@@ -2,7 +2,7 @@
 
 ## Status
 
-The `emberlane.local_model` module provides a bounded subprocess adapter for a locally installed llama.cpp CLI. It does not download weights or install software. This module is currently a library component; it is **not yet registered as a worker task handler** and does not constitute an end-to-end coding agent.
+The `emberlane.local_model` module provides a bounded subprocess adapter for a locally installed llama.cpp CLI. It does not download weights or install software. The `local_model` task is registered with the worker and CLI, but it only generates text: it does not edit files or constitute an end-to-end coding agent.
 
 ## Configuration
 
@@ -22,11 +22,11 @@ The adapter validates configuration and the model path before starting the proce
 
 Expected errors use `LocalModelError.code` to distinguish invalid configuration, missing executable, missing/unreadable model, invalid or oversized prompt, timeout, loader failure, non-zero exit and empty output. A caller should persist the error code and exit status; it must not turn any adapter error into a successful task.
 
-The process is invoked with an argument vector and `shell=False`; stdin is closed. The configured generation and timeout bounds limit normal work, and returned text is capped. The adapter is not a security sandbox and does not prove that generated code is correct or safe.
+The process is invoked with an argument vector and `shell=False`; stdin is closed. Stdout and stderr are drained concurrently, with retained output bounded while the child runs; stderr retains only a bounded tail for diagnostics. The configured timeout kills the child process. This is process-output control, not a security sandbox, and it does not prove that generated code is correct or safe.
 
 ## Validation
 
-`tests/test_local_model.py` uses a fake executable and a placeholder model file. These tests verify adapter behavior without downloading a model or requiring a GPU. They do not prove that a real llama.cpp binary can load the user's model.
+`tests/test_local_model.py` uses a fake executable and placeholder model file, including a large stdout/stderr regression case. `tests/test_worker.py` verifies task registration, success persistence, payload validation and terminal error classification. These deterministic tests do not prove that a real llama.cpp binary can load the user's model.
 
 Before declaring local inference ready:
 
@@ -36,12 +36,31 @@ Before declaring local inference ready:
 4. Record the command, exit code, elapsed time, and bounded output.
 5. Run a separate disposable-worktree edit-and-test exercise before claiming coding-agent readiness.
 
-## Integration still required
+## Run it
 
-- Register a dedicated worker task kind and validate the prompt payload.
-- Ensure adapter errors become explicit failed task results rather than generic retries.
-- Keep model generation separate from file writes; generated patches must be validated and applied through the workspace policy.
-- Add output-size enforcement at the process capture boundary, not only after stdout has been collected.
-- Test real Termux inference, cancellation, quota/stop behavior and the full isolated edit/test cycle.
+Configure the exact model path in the same shell that runs Emberlane:
 
-Until those gates pass, the status of end-to-end local model execution is UNKNOWN.
+```sh
+export EMBERLANE_MODEL_PATH="/absolute/path/to/model.gguf"
+export LLAMA_CLI_BIN="llama-cli"
+python scripts/local-model-smoke.py
+```
+
+The smoke test performs one short inference and prints a JSON result; it does not modify files. The worker task can also be queued explicitly:
+
+```sh
+python -m emberlane --root . submit local_model --payload '{"prompt":"Reply with exactly: hello"}'
+python -m emberlane --root . run-one
+```
+
+The worker stores generated text as task output only. Model/configuration errors are returned as explicit failed results, not successful completions or generic retry loops. Do not submit secrets in prompts.
+
+## Remaining readiness gates
+
+- Run hosted tests on supported Python versions and inspect the exact workflow jobs.
+- Run `llama-cli --version` and the smoke test on the target Termux environment; record the real exit code, elapsed time and output.
+- Test cancellation/stop behavior during a running model process.
+- Build a separate disposable-worktree coding cycle where generated changes are treated as untrusted, reviewed as a diff, and tested before any file application.
+- Verify quota handling and interrupted-task recovery in the complete supervisor path.
+
+The worker integration and capture-boundary output limit are implemented in this branch; real Termux inference and end-to-end isolated coding remain UNKNOWN.
