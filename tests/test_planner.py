@@ -91,6 +91,15 @@ class GoalPlannerTests(unittest.TestCase):
         self.assertEqual(result["failed_steps"], ["inspect"])
         self.assertEqual(result["scheduled"], [])
 
+    def test_missing_result_does_not_unlock_dependent_steps(self):
+        self.planner.advance(self.plan())
+        self.queue.run_one({"diagnostics": lambda payload: None})
+        result = self.planner.advance(self.plan(cycle=1))
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["completed_steps"], [])
+        self.assertEqual(result["failed_steps"], ["inspect"])
+        self.assertEqual(result["scheduled"], [])
+
     def test_nonzero_nested_returncode_is_not_success(self):
         self.planner.advance(self.plan())
         self.queue.run_one({"diagnostics": lambda payload: {
