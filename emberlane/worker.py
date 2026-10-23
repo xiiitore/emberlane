@@ -19,6 +19,7 @@ from .mailbox import GitHubIssueMailbox
 from .planner import GoalPlanner
 from .queue import Task, TaskQueue
 from .workspace import Workspace, WorkspaceError
+from .pause import control_state
 from .local_model_backend import (
     run_local_model_edit,
     run_local_model_proposal,
@@ -84,7 +85,7 @@ class LocalWorker:
 
     def _plan_goal(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Advance a bounded plan using only the worker's registered handlers."""
-        planner = GoalPlanner(self.queue, set(self.handlers) - {"plan_goal"})
+        planner = GoalPlanner(self.queue, set(self.handlers) - {"plan_goal"}, root=self.root)
         return planner.advance(payload)
 
     def _local_model_proposal(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -575,6 +576,10 @@ class LocalWorker:
         return self.queue.submit(kind, payload, idempotency_key=idempotency_key)
 
     def run_one(self) -> Task | None:
+        # Check immediately before claiming so a persistent marker leaves all
+        # pending task records untouched.
+        if control_state(self.root) is not None:
+            return None
         return self.queue.run_one(self.handlers)
 
     def resume_deferred(self, task_id: str) -> Task:
@@ -660,9 +665,20 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "run-one":
+        state = control_state(worker.root)
+        if state is not None:
+            print(json.dumps({"status": state, "claimed": False}))
+            return 0
         task = worker.run_one()
+        if task is None:
+            state = control_state(worker.root)
+            if state is not None:
+                print(json.dumps({"status": state, "claimed": False}))
+            else:
+                _print_task(None)
+            return 0
         _print_task(task)
-        return 1 if task is not None and task.status == "failed" else 0
+        return 1 if task.status == "failed" else 0
 
     if args.command == "resume-deferred":
         try:
