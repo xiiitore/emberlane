@@ -210,6 +210,44 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(completed.attempts, 2)
         self.assertEqual(completed.result, {"ok": True, "resumed": "bounded"})
 
+    def test_explicit_negative_result_evidence_fails_closed(self):
+        queue = TaskQueue(self.state)
+        failures = [
+            {"ok": False},
+            {"passed": False},
+            {"status": "failed"},
+            {"state": "error"},
+            {"returncode": 1},
+            {"nested": {"exit_code": 2}},
+            {"nested": {"error": "handler failed"}},
+        ]
+        for index, result_value in enumerate(failures):
+            task = queue.submit("result", {"value": result_value, "index": index})
+            result = queue.run_one({"result": lambda payload: payload["value"]})
+            self.assertEqual(result.task_id, task.task_id)
+            self.assertEqual(result.status, "failed", result_value)
+
+    def test_success_metadata_is_not_misclassified_as_failure(self):
+        queue = TaskQueue(self.state)
+        successful = [
+            {"ok": True},
+            {"passed": True, "returncode": 0},
+            {"status": "completed", "metadata": {"verified": True}},
+        ]
+        for index, result_value in enumerate(successful):
+            task = queue.submit("result", {"value": result_value, "index": index})
+            result = queue.run_one({"result": lambda payload: payload["value"]})
+            self.assertEqual(result.task_id, task.task_id)
+            self.assertEqual(result.status, "completed", result_value)
+
+    def test_returned_rate_limit_status_is_deferred(self):
+        queue = TaskQueue(self.state)
+        for status in ("deferred", "waiting_for_quota", "rate_limited", "paused"):
+            task = queue.submit("result", {"status": status})
+            result = queue.run_one({"result": lambda payload: payload})
+            self.assertEqual(result.task_id, task.task_id)
+            self.assertEqual(result.status, "deferred", status)
+
     def test_unknown_handler_fails_closed(self):
         queue = TaskQueue(self.state)
         queue.submit("unregistered", {})
