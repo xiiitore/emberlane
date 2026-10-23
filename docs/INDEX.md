@@ -20,6 +20,7 @@ This index separates current implementation instructions from design contracts a
 
 - [Security model](SECURITY_MODEL.md) — assets, threat scenarios, current safeguards, known limitations and release blockers.
 - [Testing and release gates](TESTING_AND_RELEASE_GATES.md) — evidence levels E0–E8 and merge/local readiness criteria.
+- [Tracked implementation status](IMPLEMENTATION_STATUS.md) — current PASS/PENDING/BLOCKED/UNKNOWN gates with exact revision and evidence boundaries.
 
 ## How to interpret claims
 
