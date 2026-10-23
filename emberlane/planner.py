@@ -5,8 +5,10 @@ itself; it submits work to the worker's existing handler registry and queue.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
+from .pause import control_state
 from .queue import TaskQueue, _result_has_failure
 
 MAX_PLAN_STEPS = 50
@@ -34,9 +36,16 @@ class PlanValidationError(ValueError):
 
 
 class GoalPlanner:
-    def __init__(self, queue: TaskQueue, allowed_kinds: set[str]):
+    def __init__(
+        self, queue: TaskQueue, allowed_kinds: set[str], *, root: str | Path | None = None
+    ):
         self.queue = queue
         self.allowed_kinds = set(allowed_kinds)
+        if root is not None:
+            self.root = Path(root).resolve()
+        else:
+            queue_dir = self.queue.state_path.parent
+            self.root = queue_dir.parent if queue_dir.name == ".emberlane" else queue_dir
 
     @staticmethod
     def _bounded_int(value: Any, name: str, low: int, high: int) -> int:
@@ -161,6 +170,14 @@ class GoalPlanner:
                 continue
             if len(scheduled) >= max_steps:
                 break
+            state = control_state(self.root)
+            if state is not None:
+                return {
+                    "goal_id": goal_id, "status": state, "cycle": cycle,
+                    "reason": "control_marker_present", "scheduled": scheduled,
+                    "completed_steps": self._completed(existing),
+                    "failed_steps": sorted(failed),
+                }
             task = self.queue.submit(
                 step["kind"], step["payload"],
                 idempotency_key=f"{key_prefix}{step_id}",
@@ -182,12 +199,16 @@ class GoalPlanner:
         # Continuations are queued after the tasks scheduled this cycle, so the
         # worker drains ready work before the planner evaluates dependencies again.
         if status == "active" and cycle < max_cycles:
-            next_task = self.queue.submit(
-                "plan_goal",
-                {**payload, "cycle": cycle + 1},
-                idempotency_key=f"goal:{goal_id}:planner:cycle:{cycle + 1}",
-            )
-            next_cycle_task_id = next_task.task_id
+            state = control_state(self.root)
+            if state is not None:
+                status = state
+            else:
+                next_task = self.queue.submit(
+                    "plan_goal",
+                    {**payload, "cycle": cycle + 1},
+                    idempotency_key=f"goal:{goal_id}:planner:cycle:{cycle + 1}",
+                )
+                next_cycle_task_id = next_task.task_id
         elif status == "active" and cycle >= max_cycles:
             status = "blocked"
 
