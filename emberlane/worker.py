@@ -102,17 +102,28 @@ class LocalWorker:
 
     def _coding_cycle(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Generate a proposed diff from bounded context, then validate it without applying to the active checkout."""
-        status = subprocess.run(
-            ["git", "status", "--porcelain", "--untracked-files=all"],
-            cwd=self.root,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=10,
-            check=False,
-            shell=False,
-        )
+        try:
+            status = subprocess.run(
+                ["git", "status", "--porcelain", "--untracked-files=all"],
+                cwd=self.root,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=10,
+                check=False,
+                shell=False,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "ok": False, "passed": False, "stage": "source_preflight",
+                "error": "git status exceeded the 10-second preflight timeout", "tests_run": False,
+            }
+        except OSError as exc:
+            return {
+                "ok": False, "passed": False, "stage": "source_preflight",
+                "error": f"could not start git status ({type(exc).__name__})", "tests_run": False,
+            }
         if status.returncode != 0:
             return {
                 "ok": False, "passed": False, "stage": "source_preflight",
@@ -129,7 +140,8 @@ class LocalWorker:
                 "tests_run": False,
             }
 
-        task_prompt = payload["prompt"]
+        task_prompt = _redact_sensitive_text(payload["prompt"])
+        prompt_redacted = task_prompt != payload["prompt"]
         context_files = payload.get("context_files", [])
         context_sections: list[str] = []
         total_context_chars = 0
@@ -209,6 +221,7 @@ class LocalWorker:
         validation["generation_elapsed_seconds"] = generated.get("elapsed_seconds")
         validation["model_path"] = generated.get("model_path")
         validation["model_output_truncated"] = False
+        validation["prompt_redacted"] = prompt_redacted
         return validation
 
     def _local_model(self, payload: dict[str, Any]) -> dict[str, Any]:
