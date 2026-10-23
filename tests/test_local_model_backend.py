@@ -99,6 +99,19 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertNotIn("API_SECRET", process.kwargs["env"])
         self.assertEqual(process.kwargs["env"].get("LD_LIBRARY_PATH"), "/test/lib")
 
+    def test_model_failure_preserves_stderr_diagnostic(self):
+        class FailedProcess(FakeProcess):
+            def __init__(self, command, *, cwd, stdout, **kwargs):
+                super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
+                self.returncode = 1
+                self.kwargs["stderr"].write(b"error while loading shared libraries: libllama.so\\n")
+                self.kwargs["stderr"].flush()
+
+        result = self.run_with_fake(FailedProcess)
+        self.assertEqual(result["status"], "model_failed")
+        self.assertEqual(result["returncode"], 1)
+        self.assertIn("libllama.so", result["output"])
+
     def test_local_model_edit_accepts_strict_context_option(self):
         (self.root / "src" / "allowed.py").write_text(
             "# " + ("x" * 9000) + "\n", encoding="utf-8"
