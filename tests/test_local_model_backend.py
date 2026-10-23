@@ -17,19 +17,24 @@ class FakeProcess:
         "files": [{"path": "src/allowed.py", "content": "VALUE = 2\n"}],
         "summary": "Changed the value",
     }).encode()
+    stderr_bytes = b""
 
-    def __init__(self, command, *, cwd, stdout, **kwargs):
+    @staticmethod
+    def _pipe(payload):
+        read_fd, write_fd = os.pipe()
+        reader = os.fdopen(read_fd, "rb", buffering=0)
+        if payload:
+            os.write(write_fd, payload)
+        os.close(write_fd)
+        return reader
+
+    def __init__(self, command, *, cwd, stdout, stderr, **kwargs):
         self.command = command
         self.cwd = Path(cwd)
-        self.kwargs = {**kwargs, "cwd": cwd}
+        self.kwargs = {**kwargs, "cwd": cwd, "stderr": stderr}
         self.returncode = 0
-        if stdout == subprocess.PIPE:
-            read_fd, write_fd = os.pipe()
-            self.stdout = os.fdopen(read_fd, "rb", buffering=0)
-            os.write(write_fd, self.output_bytes)
-            os.close(write_fd)
-        else:
-            self.stdout = stdout
+        self.stdout = self._pipe(self.output_bytes) if stdout == subprocess.PIPE else stdout
+        self.stderr = self._pipe(self.stderr_bytes) if stderr == subprocess.PIPE else stderr
 
     def poll(self):
         return self.returncode
@@ -131,8 +136,7 @@ class LocalModelProposalTests(unittest.TestCase):
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
                 self.returncode = 1
-                self.kwargs["stderr"].write(b"error while loading shared libraries: libllama.so\\n")
-                self.kwargs["stderr"].flush()
+                self.stderr_bytes = b"error while loading shared libraries: libllama.so\\n"
 
         result = self.run_with_fake(FailedProcess)
         self.assertEqual(result["status"], "runtime_loader_failed")
@@ -164,6 +168,15 @@ class LocalModelProposalTests(unittest.TestCase):
         finally:
             self.model.chmod(0o600)
 
+    def test_stderr_capture_is_bounded(self):
+        class BurstStderrProcess(FakeProcess):
+            stderr_bytes = b"E" * 128
+
+        with patch("emberlane.local_model_backend.MAX_STDERR_BYTES", 64):
+            result = self.run_with_fake(BurstStderrProcess)
+        self.assertEqual(result["status"], "stderr_limit")
+        self.assertLessEqual(result["stderr_bytes"], 65)
+
     def test_empty_successful_model_output_has_distinct_status(self):
         class EmptyOutputProcess(FakeProcess):
             output_bytes = b""
@@ -177,8 +190,7 @@ class LocalModelProposalTests(unittest.TestCase):
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
                 self.returncode = 1
-                self.kwargs["stderr"].write(b"Failed to load the model")
-                self.kwargs["stderr"].flush()
+                self.stderr_bytes = b"Failed to load the model"
 
         result = self.run_with_fake(FailedModelLoadProcess)
         self.assertEqual(result["status"], "model_load_failed")
@@ -190,8 +202,7 @@ class LocalModelProposalTests(unittest.TestCase):
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
                 self.returncode = 2
-                self.kwargs["stderr"].write(b"generic execution failure")
-                self.kwargs["stderr"].flush()
+                self.stderr_bytes = b"generic execution failure"
 
         result = self.run_with_fake(GenericFailureProcess)
         self.assertEqual(result["status"], "model_failed")
