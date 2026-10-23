@@ -16,6 +16,28 @@ class LocalWorkerTests(unittest.TestCase):
         (self.root / "tests").mkdir()
         self.worker = LocalWorker(self.root)
 
+    def test_pause_and_stop_markers_leave_pending_task_unclaimed(self):
+        for marker_name, expected_status in (("PAUSED", "paused"), ("STOP", "stopped")):
+            with self.subTest(marker=marker_name):
+                marker_dir = self.root / ".emberlane"
+                marker_dir.mkdir(exist_ok=True)
+                for old_marker in ("PAUSED", "STOP"):
+                    (marker_dir / old_marker).unlink(missing_ok=True)
+                task = self.worker.submit("write_file", {
+                    "path": f"{marker_name.lower()}-must-not-write.txt",
+                    "content": "not executed",
+                })
+                (marker_dir / marker_name).touch()
+
+                result = self.worker.run_one()
+
+                self.assertIsNone(result)
+                queued = self.worker.queue.get(task.task_id)
+                self.assertEqual(queued.status, "pending")
+                self.assertEqual(queued.attempts, 0)
+                self.assertFalse((self.root / f"{marker_name.lower()}-must-not-write.txt").exists())
+                (marker_dir / marker_name).unlink()
+
     def test_write_read_and_result_persists(self):
         task = self.worker.submit("write_file", {
             "path": "src/example.py", "content": "VALUE = 42\n"
