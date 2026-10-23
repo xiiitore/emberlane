@@ -7951,3 +7951,40 @@ Allowed file exceeds 20000 bytes: emberlane/worker.py
 ~~~text
 Allowed source context exceeds the configured context-size budget
 ~~~
+
+
+### Worker task 30c1b886-acca-4347-a53d-f7330926b2cb
+
+[Full task output](worker-logs/30c1b886-acca-4347-a53d-f7330926b2cb.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:25:01.134163+00:00",
+  "source_comment_id": "6370573980",
+  "task_id": "30c1b886-acca-4347-a53d-f7330926b2cb",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/30c1b886-acca-4347-a53d-f7330926b2cb.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/30c1b886-acca-4347-a53d-f7330926b2cb.md",
+    "dropbox_sha256": "f50d2ba2a870f05225154c7bd286039ffcefc987417310dc823370d974afed07",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 111,
+    "full_log_path": "worker-logs/30c1b886-acca-4347-a53d-f7330926b2cb.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Set EMBERLANE_MODEL_PATH to a local GGUF model file
+~~~
