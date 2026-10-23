@@ -78,7 +78,7 @@ class DropboxOutputTests(unittest.TestCase):
         )
 
     def test_http_error_does_not_expose_response_body(self):
-        secret = [REDACTED]
+        secret = "private-response-body"
         response_error = urllib.error.HTTPError(
             "https://api.dropboxapi.com/2/upload", 401, "Unauthorized", {},
             io.BytesIO(secret.encode("utf-8")),
@@ -96,7 +96,7 @@ class DropboxOutputTests(unittest.TestCase):
         self.assertNotIn(secret, str(caught.exception))
 
     def test_incomplete_response_is_sanitized(self):
-        secret = [REDACTED] refresh_token=[REDACTED]
+        secret = b"private-partial-response"
 
         class Response:
             headers = {}
