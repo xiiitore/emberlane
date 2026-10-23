@@ -20,7 +20,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept
+`run_tests`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, `diagnostics`, and `plan_goal`. See the [goal planning guide](docs/GOAL_PLANNING_GUIDE.md). It does not accept
 arbitrary shell commands.
 
 ```sh
@@ -58,6 +58,11 @@ python -m emberlane run-one
 # Run only one test file (filename must be test_*.py directly inside tests/)
 python -m emberlane submit run_tests --payload '{"test_file":"test_worker.py"}'
 python -m emberlane run-one
+
+# Submit a bounded dependency-aware goal plan
+python -m emberlane submit plan_goal --payload '{"goal_id":"inspect-and-test","steps":[{"id":"inspect","kind":"diagnostics","payload":{}},{"id":"tests","kind":"run_tests","payload":{},"depends_on":["inspect"]}],"max_steps_per_cycle":2,"max_cycles":5}'
+python -m emberlane run-one
+python -m emberlane status
 
 # Inspect queue state and task results
 python -m emberlane status
