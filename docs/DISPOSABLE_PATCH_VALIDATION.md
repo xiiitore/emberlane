@@ -15,8 +15,8 @@ The `validate_patch` worker task validates a proposed unified Git diff in a temp
 - `patch` is required and limited to 256,000 UTF-8 bytes.
 - `run_tests` defaults to false. Set it to true only when authorized to execute code from the patch; tests run with the worker's operating-system permissions.
 - `test_timeout` is an integer from 1 to 300 seconds.
-- Only standard, unquoted Git diff path headers are accepted. Absolute paths, traversal, Windows-style paths, and protected paths (`.git`, `.emberlane`, `.venv`, secret/key filenames), symlink targets, and mismatched diff/file headers are rejected.
-- The original checkout must be a clean Git worktree root. If it is dirty, validation fails closed instead of guessing which state to test.
+- Only standard, unquoted Git diff path headers are accepted. Absolute paths, traversal, Windows-style paths, protected paths (`.git`, `.emberlane`, `.venv`, secret/key filenames), symlink targets, and mismatched diff/file headers are rejected.
+- The original checkout must be a Git worktree root with no source changes. The worker's own `.emberlane/` runtime queue/state is excluded from the dirty check; other modified or untracked files make validation fail closed.
 - The patch is checked and applied in a detached worktree at the original HEAD. The worker reports the base SHA, patch SHA-256, touched paths, diff summary, test status and bounded test-output preview. The temporary worktree is removed in cleanup.
 - With `run_tests: false`, status `validated` means only that the patch applies cleanly and passes `git diff --check`; it does not mean the code works.
 - With `run_tests: true`, a fixed `python -m unittest discover -s tests -v` command runs in the temporary worktree. Test failures are terminal failures.
