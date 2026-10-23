@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import subprocess
@@ -6,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from emberlane.local_model_backend import run_local_model_proposal
+from emberlane.local_model_backend import run_local_model_edit, run_local_model_proposal
 from emberlane.workspace import Workspace
 from emberlane.worker import LocalWorker
 
@@ -73,6 +74,10 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertEqual(result["proposal"]["changed_paths"], ["src/allowed.py"])
         self.assertIn("VALUE = 2", result["proposal"]["patch"])
         self.assertFalse(result["proposal"]["applied"])
+        self.assertEqual(
+            result["proposal"]["base_sha256"]["src/allowed.py"],
+            hashlib.sha256(original.encode("utf-8")).hexdigest(),
+        )
         self.assertEqual((self.root / "src" / "allowed.py").read_text(encoding="utf-8"), original)
 
     def test_fixed_cli_and_filtered_environment(self):
@@ -179,6 +184,100 @@ class LocalModelProposalTests(unittest.TestCase):
         result = self.run_with_fake(PauseDuringProcess)
         self.assertEqual(result["status"], "paused")
         self.assertIsNone(result["proposal"])
+
+    def _initialize_git(self):
+        subprocess.run(["git", "init", "--quiet"], cwd=self.root, check=True)
+        subprocess.run(["git", "add", "--force", "-A"], cwd=self.root, check=True)
+        subprocess.run([
+            "git", "-c", "user.name=Test", "-c", "user.email=test@localhost",
+            "commit", "--quiet", "--allow-empty", "-m", "test baseline",
+        ], cwd=self.root, check=True)
+
+    def _proposal_for_value(self, value, *, base_hash=None):
+        original = (self.root / "src" / "allowed.py").read_bytes()
+        patch = (
+            "--- a/src/allowed.py\n"
+            "+++ b/src/allowed.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            f"+VALUE = {value}\n"
+        )
+        return {
+            "status": "proposal",
+            "proposal": {
+                "changed_paths": ["src/allowed.py"],
+                "patch": patch,
+                "patch_bytes": len(patch.encode("utf-8")),
+                "base_sha256": {
+                    "src/allowed.py": base_hash or hashlib.sha256(original).hexdigest()
+                },
+                "output": "changed value",
+                "output_bytes": 10,
+                "applied": False,
+            },
+        }
+
+    def test_edit_applies_only_after_targeted_tests_pass(self):
+        self._initialize_git()
+        tests = self.root / "tests"
+        tests.mkdir()
+        (tests / "test_feature.py").write_text(
+            "import unittest\nfrom src.allowed import VALUE\n"
+            "class FeatureTests(unittest.TestCase):\n"
+            " def test_value(self): self.assertEqual(VALUE, 2)\n",
+            encoding="utf-8",
+        )
+        proposal = self._proposal_for_value(2)
+        with patch("emberlane.local_model_backend.run_local_model_proposal", return_value=proposal):
+            result = run_local_model_edit(
+                self.root,
+                {**self.payload, "test_file": "test_feature.py"},
+                workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "applied_and_verified")
+        self.assertTrue(result["applied"])
+        self.assertEqual((self.root / "src" / "allowed.py").read_text(), "VALUE = 2\n")
+
+    def test_failed_tests_leave_working_tree_unchanged(self):
+        self._initialize_git()
+        tests = self.root / "tests"
+        tests.mkdir()
+        (tests / "test_feature.py").write_text(
+            "import unittest\nfrom src.allowed import VALUE\n"
+            "class FeatureTests(unittest.TestCase):\n"
+            " def test_value(self): self.assertEqual(VALUE, 999)\n",
+            encoding="utf-8",
+        )
+        proposal = self._proposal_for_value(2)
+        with patch("emberlane.local_model_backend.run_local_model_proposal", return_value=proposal):
+            result = run_local_model_edit(
+                self.root,
+                {**self.payload, "test_file": "test_feature.py"},
+                workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "tests_failed")
+        self.assertFalse(result["applied"])
+        self.assertEqual((self.root / "src" / "allowed.py").read_text(), "VALUE = 1\n")
+
+    def test_edit_refuses_source_changed_since_proposal(self):
+        self._initialize_git()
+        tests = self.root / "tests"
+        tests.mkdir()
+        (tests / "test_feature.py").write_text(
+            "import unittest\nclass FeatureTests(unittest.TestCase):\n"
+            " def test_ok(self): self.assertEqual(1, 1)\n",
+            encoding="utf-8",
+        )
+        proposal = self._proposal_for_value(2, base_hash="0" * 64)
+        with patch("emberlane.local_model_backend.run_local_model_proposal", return_value=proposal):
+            result = run_local_model_edit(
+                self.root,
+                {**self.payload, "test_file": "test_feature.py"},
+                workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "conflict")
+        self.assertFalse(result["applied"])
+        self.assertEqual((self.root / "src" / "allowed.py").read_text(), "VALUE = 1\n")
 
     def test_invalid_model_json_is_rejected(self):
         class InvalidJsonProcess(FakeProcess):
