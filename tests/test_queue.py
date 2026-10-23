@@ -102,6 +102,52 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(completed.status, "completed")
         self.assertEqual(completed.attempts, 2)
 
+    def test_explicit_failure_results_are_terminal_on_first_attempt(self):
+        failures = [
+            {"ok": False},
+            {"passed": False},
+            {"status": "failed"},
+            {"state": "blocked"},
+            {"returncode": 7},
+            {"nested": {"error": "operation failed"}},
+        ]
+        for index, failure in enumerate(failures):
+            with self.subTest(result=failure):
+                state = self.state.parent / f"failure-{index}.json"
+                queue = TaskQueue(state, max_attempts=3)
+                task = queue.submit("handler", {})
+                result = queue.run_one({"handler": lambda payload, value=failure: value})
+                self.assertEqual(result.task_id, task.task_id)
+                self.assertEqual(result.status, "failed")
+                self.assertEqual(result.attempts, 1)
+                self.assertIn("explicit failure evidence", result.last_error)
+
+    def test_non_failure_metadata_does_not_mark_result_failed(self):
+        queue = TaskQueue(self.state)
+        task = queue.submit("handler", {})
+        result = queue.run_one({"handler": lambda payload: {
+            "ok": True,
+            "passed": True,
+            "status": "completed",
+            "returncode": 0,
+            "error": "",
+        }})
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "completed")
+        self.assertIsNone(result.last_error)
+
+    def test_returned_deferred_status_does_not_retry_immediately(self):
+        queue = TaskQueue(self.state, max_attempts=3)
+        task = queue.submit("provider", {})
+        result = queue.run_one({"provider": lambda payload: {
+            "status": "rate_limited",
+            "reason": "provider requested a wait",
+        }})
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "deferred")
+        self.assertEqual(result.attempts, 1)
+        self.assertIsNone(queue.run_one({"provider": lambda payload: {"ok": True}}))
+
     def test_unknown_handler_fails_closed(self):
         queue = TaskQueue(self.state)
         queue.submit("unregistered", {})
