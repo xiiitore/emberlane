@@ -8210,3 +8210,43 @@ No stdout/stderr output field was retained for inline publication.
 ~~~text
 Allowed file exceeds 20000 bytes: tests/test_queue.py
 ~~~
+
+
+### Worker task ed81df56-d501-4aa0-8d50-9afca910bd2a
+
+[Full task output](worker-logs/ed81df56-d501-4aa0-8d50-9afca910bd2a.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:30:56.027655+00:00",
+  "source_comment_id": "6370588149",
+  "task_id": "ed81df56-d501-4aa0-8d50-9afca910bd2a",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ed81df56-d501-4aa0-8d50-9afca910bd2a.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/ed81df56-d501-4aa0-8d50-9afca910bd2a.md",
+    "dropbox_sha256": "02883fffe58f9fc13f741408d73a53852740c254ab4965e386a74775b30baa32",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 104,
+    "full_log_path": "worker-logs/ed81df56-d501-4aa0-8d50-9afca910bd2a.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+
+Loading model... 
+Failed to load the model
+
+~~~
