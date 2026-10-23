@@ -62,7 +62,9 @@ class GoalPlannerCliTests(unittest.TestCase):
                 "--root", str(self.root), "submit", "plan_goal",
                 "--payload", json.dumps(payload),
             ]), 0)
-            result = main(["--root", str(self.root), "run-one"])
+            result = 0
+            for _ in range(3):
+                result = main(["--root", str(self.root), "run-one"])
         self.assertEqual(result, 1)
         tasks = LocalWorker(self.root).queue.list_tasks()
         self.assertEqual(tasks[0].status, "failed")
