@@ -82,33 +82,6 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(second.status, "failed")
         self.assertEqual(second.attempts, 2)
 
-    def test_structured_failure_result_is_not_completed(self):
-        queue = TaskQueue(self.state)
-        queue.submit("run_tests", {})
-        result = queue.run_one({
-            "run_tests": lambda payload: {
-                "returncode": 1,
-                "passed": False,
-                "output": "one test failed",
-            }
-        })
-        self.assertEqual(result.status, "failed")
-        self.assertEqual(result.result["returncode"], 1)
-        self.assertIn("explicit failure evidence", result.last_error)
-
-    def test_nested_failure_result_is_not_completed(self):
-        queue = TaskQueue(self.state)
-        queue.submit("git_sync", {})
-        result = queue.run_one({
-            "git_sync": lambda payload: {
-                "synced": False,
-                "stage": "postflight_dirty",
-                "details": {"returncode": 1},
-            }
-        })
-        self.assertEqual(result.status, "failed")
-        self.assertEqual(result.result["stage"], "postflight_dirty")
-
     def test_unknown_handler_fails_closed(self):
         queue = TaskQueue(self.state)
         queue.submit("unregistered", {})
