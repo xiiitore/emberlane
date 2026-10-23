@@ -445,7 +445,7 @@ def run_local_model_edit(
     allowed_edit_fields = {
         "goal", "allowed_paths", "max_changed_files", "max_patch_bytes",
         "max_output_bytes", "timeout_seconds", "max_tokens", "context_size",
-        "test_file", "test_timeout_seconds",
+        "auto_context_size", "test_file", "test_timeout_seconds",
     }
     if set(raw_payload) - allowed_edit_fields:
         raise ValueError("local_model_edit payload contains unsupported fields")
