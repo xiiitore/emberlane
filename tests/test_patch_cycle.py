@@ -102,6 +102,27 @@ class DisposablePatchCycleTests(unittest.TestCase):
             validate_patch_in_worktree(self.root, self.patch())
         self.assertEqual((self.root / "example.py").read_text(), "LOCAL CHANGE\n")
 
+    def test_rejects_symlinked_patch_target(self):
+        (self.root / "link.py").symlink_to("example.py")
+        self.git("add", "link.py")
+        self.git("commit", "-qm", "add symlink")
+        patch = (
+            "diff --git a/link.py b/link.py\n"
+            "--- a/link.py\n"
+            "+++ b/link.py\n"
+            "@@ -1 +1 @@\n"
+            "-example.py\n"
+            "+changed.py\n"
+        )
+        with self.assertRaisesRegex(PatchCycleError, "symlink"):
+            validate_patch_in_worktree(self.root, patch)
+        self.assertTrue((self.root / "link.py").is_symlink())
+        self.assertEqual(self.git("status", "--porcelain").stdout, "")
+
+    def test_rejects_boolean_test_timeout(self):
+        with self.assertRaisesRegex(PatchCycleError, "integer"):
+            validate_patch_in_worktree(self.root, self.patch(), test_timeout=True)
+
     def test_rejects_empty_or_oversized_patch(self):
         with self.assertRaises(PatchCycleError):
             validate_patch_paths("")
