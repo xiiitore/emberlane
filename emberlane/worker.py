@@ -71,10 +71,16 @@ class LocalWorker:
             "git_diff": self._git_diff,
             "git_sync": self._git_sync,
             "diagnostics": self._diagnostics,
+            "queue_prune": self._queue_prune,
             "plan_goal": self._plan_goal,
             "local_model_proposal": self._local_model_proposal,
             "local_model_edit": self._local_model_edit,
         }
+
+    def _queue_prune(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Archive and prune old terminal queue records without touching active work."""
+        keep_terminal = payload.get("keep_terminal", 50)
+        return {"status": "completed", **self.queue.prune_terminal(keep_terminal)}
 
     def _plan_goal(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Advance a bounded plan using only the worker's registered handlers."""
@@ -623,7 +629,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     submit_parser = sub.add_parser("submit", help="enqueue one allow-listed task")
-    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_stash_inspect", "diagnostics", "local_model_proposal", "local_model_edit", "plan_goal"))
+    submit_parser.add_argument("kind", choices=("write_file", "write_files", "replace_text", "read_file", "list_files", "run_tests", "git_status", "git_diff", "git_sync", "git_stash_inspect", "diagnostics", "local_model_proposal", "local_model_edit", "plan_goal", "queue_prune"))
     submit_parser.add_argument("--payload", default="{}", help="task payload as JSON object")
 
     sub.add_parser("run-one", help="execute at most one pending task")
