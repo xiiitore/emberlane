@@ -279,8 +279,7 @@ def run_local_model_proposal(
             "-n", str(payload["max_tokens"]), "-c", str(payload["context_size"]),
             "--temp", "0.1", "--no-display-prompt", "--simple-io",
         ]
-        env = {key: os.environ[key] for key in
-               ("PATH", "HOME", "TMPDIR", "LD_LIBRARY_PATH", "SYSTEMROOT") if key in os.environ}
+        env = _safe_process_env()
         try:
             with stderr_path.open("wb") as error_stream:
                 process = subprocess.Popen(
@@ -303,7 +302,7 @@ def run_local_model_proposal(
                     "output": _redact(stderr_output[-2000:] or "Local model output exceeded configured limit")}
         raw_output = output_path.read_bytes().decode("utf-8", errors="replace")
         if process.returncode != 0:
-            diagnostic = "\\n".join(part for part in (raw_output.strip(), stderr_output.strip()) if part)
+            diagnostic = "\n".join(part for part in (raw_output.strip(), stderr_output.strip()) if part)
             return {"status": "model_failed", "proposal": None,
                     "returncode": process.returncode,
                     "output": _redact(diagnostic or "Local model exited without diagnostic output")[:2000]}
@@ -407,11 +406,21 @@ def _snapshot_for_tests(source: Path, target: Path) -> None:
 
 
 def _safe_process_env() -> dict[str, str]:
-    return {
+    """Pass only required process variables and recover Termux's default library path."""
+    env = {
         key: os.environ[key]
         for key in ("PATH", "HOME", "TMPDIR", "LD_LIBRARY_PATH", "SYSTEMROOT")
-        if key in os.environ
+        if key in os.environ and (key != "LD_LIBRARY_PATH" or os.environ[key].strip())
     }
+    if not env.get("LD_LIBRARY_PATH"):
+        # Termux's llama.cpp builds may need PREFIX/lib when the interactive shell
+        # has not exported LD_LIBRARY_PATH to the worker process.
+        prefix = os.environ.get("PREFIX", "").strip()
+        if prefix:
+            library_dir = Path(prefix).expanduser() / "lib"
+            if library_dir.is_dir():
+                env["LD_LIBRARY_PATH"] = str(library_dir)
+    return env
 
 
 def _fixed_command(
