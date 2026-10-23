@@ -248,6 +248,45 @@ class TaskQueueTests(unittest.TestCase):
             self.assertEqual(result.task_id, task.task_id)
             self.assertEqual(result.status, "deferred", status)
 
+    def test_prune_terminal_archives_state_and_preserves_active_tasks(self):
+        queue = TaskQueue(self.state)
+        completed = queue.submit("done", {})
+        failed = queue.submit("bad", {})
+        cancelled = queue.submit("cancelled", {})
+        pending = queue.submit("pending", {})
+        deferred = queue.submit("deferred", {})
+        for task, status, stamp in (
+            (completed, "completed", 10.0),
+            (failed, "failed", 20.0),
+            (cancelled, "cancelled", 30.0),
+            (pending, "pending", 40.0),
+            (deferred, "deferred", 50.0),
+        ):
+            task.status = status
+            task.updated_at = stamp
+        queue._save()
+
+        result = queue.prune_terminal(keep_terminal=1)
+
+        self.assertEqual(result["pruned_count"], 2)
+        self.assertEqual(result["kept_terminal_count"], 1)
+        self.assertEqual(result["preserved_active_count"], 2)
+        self.assertTrue((self.state.parent / result["backup_file"]).is_file())
+        self.assertIsNone(queue.get(completed.task_id))
+        self.assertIsNone(queue.get(failed.task_id))
+        self.assertIsNotNone(queue.get(cancelled.task_id))
+        self.assertEqual(queue.get(pending.task_id).status, "pending")
+        self.assertEqual(queue.get(deferred.task_id).status, "deferred")
+        archived = json.loads((self.state.parent / result["backup_file"]).read_text(encoding="utf-8"))
+        self.assertEqual(len(archived), 5)
+
+    def test_prune_terminal_rejects_invalid_retention_limit(self):
+        queue = TaskQueue(self.state)
+        with self.assertRaises(ValueError):
+            queue.prune_terminal(keep_terminal=True)
+        with self.assertRaises(ValueError):
+            queue.prune_terminal(keep_terminal=1001)
+
     def test_unknown_handler_fails_closed(self):
         queue = TaskQueue(self.state)
         queue.submit("unregistered", {})
