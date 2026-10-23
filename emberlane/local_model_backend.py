@@ -202,11 +202,11 @@ def run_local_model_proposal(
 
     before: dict[str, str] = {}
     total_context = 0
+    max_context_bytes = min(MAX_CONTEXT_BYTES, payload["context_size"] * 2)
     try:
         for name in payload["allowed_paths"]:
             path = workspace.validate_write_path(name)
             if not path.exists():
-                before[name] = ""
                 continue
             if path.stat().st_size > MAX_CONTEXT_FILE_BYTES:
                 return {"status": "input_limit", "proposal": None,
@@ -216,9 +216,9 @@ def run_local_model_proposal(
                 return {"status": "rejected", "reason": "credential_like_or_binary_context",
                         "proposal": None, "changed_paths": []}
             total_context += len(text.encode("utf-8"))
-            if total_context > MAX_CONTEXT_BYTES:
+            if total_context > max_context_bytes:
                 return {"status": "input_limit", "proposal": None,
-                        "output": "Allowed source context exceeds the configured byte limit"}
+                        "output": "Allowed source context exceeds the configured context-size budget"}
             before[name] = text
     except (WorkspaceError, UnicodeError, OSError) as exc:
         return {"status": "rejected", "reason": "unsafe_context",
@@ -234,7 +234,7 @@ def run_local_model_proposal(
         "If the goal cannot be completed safely, return {\"files\":[],\"summary\":\"BLOCKED: reason\"}.\n\n"
         f"GOAL:\n{payload['goal']}\n\n"
         f"ALLOWED_PATHS:\n{json.dumps(payload['allowed_paths'], ensure_ascii=False)}\n\n"
-        f"SOURCE_FILES_JSON:\n{json.dumps([{'path': k, 'content': v} for k, v in before.items()], ensure_ascii=False)}\n"
+        f"SOURCE_FILES_JSON:\n{json.dumps([{'path': k, 'exists': k in before, 'content': before.get(k, '')} for k in payload['allowed_paths']], ensure_ascii=False)}\n"
     )
 
     with tempfile.TemporaryDirectory(prefix="emberlane-local-model-") as scratch:
@@ -261,15 +261,15 @@ def run_local_model_proposal(
         if capture_status == "output_limit":
             return {"status": "output_limit", "proposal": None,
                     "output": "Local model output exceeded configured limit"}
-        output_text = _redact(output_path.read_bytes().decode("utf-8", errors="replace"))
+        raw_output = output_path.read_bytes().decode("utf-8", errors="replace")
         if process.returncode != 0:
             return {"status": "model_failed", "proposal": None,
-                    "returncode": process.returncode, "output": output_text}
+                    "returncode": process.returncode, "output": _redact(raw_output)[:2000]}
         try:
-            response = _parse_model_json(output_text)
+            response = _parse_model_json(raw_output)
         except ValueError as exc:
             return {"status": "invalid_model_output", "proposal": None,
-                    "output": str(exc), "output_preview": output_text[:2000]}
+                    "output": str(exc), "output_preview": _redact(raw_output)[:2000]}
 
     after = dict(before)
     seen: set[str] = set()
@@ -296,7 +296,7 @@ def run_local_model_proposal(
         seen.add(name)
         after[name] = content
 
-    changed = sorted(name for name in after if before.get(name) != after[name])
+    changed = sorted(name for name in after if name not in before or before[name] != after[name])
     if not changed:
         return {"status": "no_changes", "proposal": None,
                 "output": response["summary"][:2000], "output_bytes": output_size}
@@ -313,7 +313,7 @@ def run_local_model_proposal(
         "proposal": {
             "changed_paths": changed, "patch": patch,
             "patch_bytes": len(patch.encode("utf-8")),
-            "output": response["summary"][:2000], "output_bytes": output_size,
+            "output": _redact(response["summary"])[:2000], "output_bytes": output_size,
             "applied": False,
         },
     }
