@@ -7653,3 +7653,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 17d5b601-c5fc-44b0-a026-8847cc910b73
+
+[Full task output](worker-logs/17d5b601-c5fc-44b0-a026-8847cc910b73.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T11:20:19.695157+00:00",
+  "source_comment_id": "6363111121",
+  "task_id": "17d5b601-c5fc-44b0-a026-8847cc910b73",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/17d5b601-c5fc-44b0-a026-8847cc910b73.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/17d5b601-c5fc-44b0-a026-8847cc910b73.md",
+    "dropbox_sha256": "ab9d5ca172b361f208a72757f686e00b2433cc0952ad187cfe9b24fbb1d21cbc",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/worker.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/17d5b601-c5fc-44b0-a026-8847cc910b73.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
