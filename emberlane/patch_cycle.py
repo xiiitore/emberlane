@@ -38,28 +38,74 @@ def _validate_repo_path(value: str) -> None:
 
 
 def validate_patch_paths(patch: str) -> list[str]:
-    """Validate standard git diff headers and return unique touched paths."""
+    """Validate Git diff and file headers, returning unique touched paths."""
     if not isinstance(patch, str) or not patch.strip():
         raise PatchCycleError("patch must be a non-empty string")
     if len(patch.encode("utf-8")) > MAX_PATCH_BYTES:
         raise PatchCycleError(f"patch exceeds {MAX_PATCH_BYTES} bytes")
+
     paths: list[str] = []
+    expected_old: str | None = None
+    expected_new: str | None = None
+    old_seen = False
+    new_seen = False
+    in_file_headers = False
+
     for line in patch.splitlines():
-        if not line.startswith("diff --git "):
+        if line.startswith("diff --git "):
+            header = line[len("diff --git "):]
+            if not header.startswith("a/") or " b/" not in header:
+                raise PatchCycleError("patch contains a malformed or unsupported diff header")
+            left, right = header[2:].split(" b/", 1)
+            if '"' in left or '"' in right:
+                raise PatchCycleError("quoted/ambiguous patch paths are not supported")
+            _validate_repo_path(left)
+            _validate_repo_path(right)
+            paths.extend((left, right))
+            expected_old, expected_new = left, right
+            old_seen = new_seen = False
+            in_file_headers = True
             continue
-        header = line[len("diff --git "):]
-        if not header.startswith("a/") or " b/" not in header:
-            raise PatchCycleError("patch contains a malformed or unsupported diff header")
-        left, right = header[2:].split(" b/", 1)
-        if '"' in left or '"' in right:
-            raise PatchCycleError("quoted/ambiguous patch paths are not supported")
-        _validate_repo_path(left)
-        _validate_repo_path(right)
-        paths.extend((left, right))
+
+        if in_file_headers and line.startswith("@@"):
+            in_file_headers = False
+            continue
+        if in_file_headers and line == "GIT binary patch":
+            in_file_headers = False
+            continue
+
+        if not in_file_headers:
+            continue
+        if line.startswith("--- "):
+            raw = line[4:].split("\t", 1)[0]
+            if raw == "/dev/null":
+                old_seen = True
+                continue
+            if not raw.startswith("a/") or '"' in raw:
+                raise PatchCycleError("patch contains a malformed old-file header")
+            value = raw[2:]
+            _validate_repo_path(value)
+            if expected_old != value:
+                raise PatchCycleError("old-file header does not match diff path")
+            old_seen = True
+            paths.append(value)
+        elif line.startswith("+++ "):
+            raw = line[4:].split("\t", 1)[0]
+            if raw == "/dev/null":
+                new_seen = True
+                continue
+            if not raw.startswith("b/") or '"' in raw:
+                raise PatchCycleError("patch contains a malformed new-file header")
+            value = raw[2:]
+            _validate_repo_path(value)
+            if expected_new != value:
+                raise PatchCycleError("new-file header does not match diff path")
+            new_seen = True
+            paths.append(value)
+
     if not paths:
         raise PatchCycleError("patch contains no supported git diff headers")
     return list(dict.fromkeys(paths))
-
 
 def _run_git(args: list[str], *, cwd: Path, timeout: int = 15, input_text: str | None = None) -> subprocess.CompletedProcess[str]:
     try:
