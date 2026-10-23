@@ -74,7 +74,7 @@ class DisposablePatchCycleTests(unittest.TestCase):
         self.assertEqual((self.root / "example.py").read_text(), "VALUE = 1\n")
 
     def test_rejects_protected_and_traversal_paths(self):
-        for path in (".env", ".git/config", ".emberlane/queue.json", "../outside.py"):
+        for path in (".env", ".git/config", ".emberlane/queue.json", "../outside.py", "src/./outside.py"):
             with self.subTest(path=path):
                 patch = (
                     f"diff --git a/{path} b/{path}\n"
@@ -83,6 +83,18 @@ class DisposablePatchCycleTests(unittest.TestCase):
                 )
                 with self.assertRaises(PatchCycleError):
                     validate_patch_paths(patch)
+
+    def test_rejects_file_header_path_hidden_by_safe_diff_header(self):
+        patch = (
+            "diff --git a/safe.py b/safe.py\n"
+            "--- a/.git/config\n"
+            "+++ b/.git/config\n"
+            "@@ -1 +1 @@\n"
+            "-old\n"
+            "+new\n"
+        )
+        with self.assertRaises(PatchCycleError):
+            validate_patch_paths(patch)
 
     def test_refuses_dirty_original_worktree(self):
         (self.root / "example.py").write_text("LOCAL CHANGE\n", encoding="utf-8")
