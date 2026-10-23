@@ -22,6 +22,17 @@ Known external capacity limits, including a Codex usage limit, become `deferred`
 - [ ] Independently inspect the published task result, changed paths, test status, redaction, and truncation.
 - [ ] Report PASS/FAIL/BLOCKED/UNKNOWN from evidence; never infer success from process exit or a queue label alone.
 
+## Real-model Termux smoke test
+
+Run this only after the unit suite passes. It performs one actual `local_model_edit` against a temporary fixture and deletes that fixture on exit; it does not edit the repository checkout.
+
+```sh
+export EMBERLANE_MODEL_PATH="$HOME/models/qwen2.5-coder-0.5b-instruct-q4_0.gguf"
+export EMBERLANE_LLAMA_CLI="$(command -v llama-cli)"
+python scripts/local-model-edit-smoke.py
+```
+
+Keep any `LD_LIBRARY_PATH` required by the local llama.cpp build in the invoking shell. Exit code `0` plus result status `applied_and_verified` is the acceptance condition; a CLI load test alone is not proof of the coding cycle.
 ## Operating discipline
 
 Reuse prior evidence unless code, configuration, inputs, or environment changed. Run the smallest test that can falsify the current hypothesis, then the existing suite after relevant changes. Preserve the user's working tree. A remote GitHub edit does not prove the local Termux checkout or local model is working.
