@@ -23,7 +23,8 @@ Prevent routine coding tasks from escaping the configured workspace, executing p
 | Compromised dependency/tool | arbitrary code execution | minimal dependencies, verified releases, no secrets in test environment |
 | External API/provider | quota, stale result, duplicate request | explicit wait state, bounded retries, idempotency/reconciliation |
 | Concurrent workers | lost queue updates | enforce one writer or use transactional storage |
-| Logs and comments | source or secret disclosure | allow-listed fields, redaction, bounded output |
+| Logs and comments | source or secret disclosure | allow-listed public metadata, recursive secret redaction, bounded output; raw exception text omitted |
+| Task-log delivery | lost logs or commit amplification | local log first, Dropbox upload with SHA-256 read-back verification; no per-task GitHub file commits |
 | Device pressure | runaway loops, full storage, battery drain | finite budgets, pause marker, deadlines, log rotation |
 
 ## Safeguards visible in current source
