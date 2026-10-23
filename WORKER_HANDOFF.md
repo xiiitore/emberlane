@@ -7763,3 +7763,43 @@ Allowed source context exceeds the configured context-size budget
 ~~~text
 Allowed source context exceeds the configured context-size budget
 ~~~
+
+
+### Worker task 9c8e3c94-b712-462b-8a31-b52ba17c9094
+
+[Full task output](worker-logs/9c8e3c94-b712-462b-8a31-b52ba17c9094.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:21:18.798649+00:00",
+  "source_comment_id": "6370560636",
+  "task_id": "9c8e3c94-b712-462b-8a31-b52ba17c9094",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/9c8e3c94-b712-462b-8a31-b52ba17c9094.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/9c8e3c94-b712-462b-8a31-b52ba17c9094.md",
+    "dropbox_sha256": "dc0d4ef8bc56483afe678e1cfa0c2b5c607a93e858202b99902af0d55aff1740",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 104,
+    "full_log_path": "worker-logs/9c8e3c94-b712-462b-8a31-b52ba17c9094.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+
+Loading model... 
+Failed to load the model
+
+~~~
