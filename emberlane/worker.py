@@ -828,6 +828,11 @@ def main(argv: list[str] | None = None) -> int:
     supervise_parser.add_argument("--max-tasks", type=int, default=10)
     supervise_parser.add_argument("--max-failures", type=int, default=3)
     supervise_parser.add_argument("--max-seconds", type=int, default=300)
+    supervise_parser.add_argument("--mailbox-repo", default=None, help="optional GitHub owner/repository to poll")
+    supervise_parser.add_argument("--mailbox-issue", type=int, default=None, help="authorized task mailbox issue number")
+    supervise_parser.add_argument("--mailbox-author", default=None, help="only accept tasks from this GitHub login")
+    supervise_parser.add_argument("--poll-interval", type=int, default=5, help="seconds between bounded idle mailbox polls")
+    supervise_parser.add_argument("--max-idle-polls", type=int, default=1, help="maximum mailbox polls without runnable work")
     resume_parser = sub.add_parser(
         "resume-deferred", help="resume a deferred task after its external wait clears"
     )
@@ -872,12 +877,24 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "supervise":
         from .supervisor import run_supervisor
+        mailbox_values = (args.mailbox_repo, args.mailbox_issue, args.mailbox_author)
+        if any(value is not None for value in mailbox_values) and not all(value is not None for value in mailbox_values):
+            parser.error("--mailbox-repo, --mailbox-issue, and --mailbox-author must be supplied together")
+        mailbox = None
+        if all(value is not None for value in mailbox_values):
+            try:
+                mailbox = GitHubIssueMailbox(worker, args.mailbox_repo, args.mailbox_issue, args.mailbox_author)
+            except ValueError as exc:
+                parser.error(str(exc))
         try:
             report = run_supervisor(
                 worker,
                 max_tasks=args.max_tasks,
                 max_failures=args.max_failures,
                 max_seconds=args.max_seconds,
+                mailbox=mailbox,
+                poll_interval_seconds=args.poll_interval,
+                max_idle_polls=args.max_idle_polls,
             )
         except ValueError as exc:
             parser.error(str(exc))
