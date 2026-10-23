@@ -276,12 +276,21 @@ class GitHubIssueMailbox:
                 cleaned = {}
                 for key, item in value.items():
                     child_path = f"{path}.{key}"
-                    if key == "content":
+                    normalized_key = re.sub(r"[^a-z0-9]", "", str(key).casefold())
+                    if normalized_key == "content":
                         cleaned[key] = "[OMITTED_FILE_CONTENT]"
-                    elif key in {"output", "source_text"} and isinstance(item, str):
+                    elif normalized_key in {"output", "sourcetext"} and isinstance(item, str):
                         outputs.append((child_path, redact(item)))
-                        label = "SOURCE TEXT" if key == "source_text" else "FULL OUTPUT"
+                        label = "SOURCE TEXT" if normalized_key == "sourcetext" else "FULL OUTPUT"
                         cleaned[key] = f"[{label} IN SECTION: {child_path}]"
+                    elif any(marker in normalized_key for marker in _PUBLIC_RESULT_SENSITIVE_KEY_MARKERS):
+                        if item is None:
+                            cleaned[key] = None
+                        elif isinstance(item, str):
+                            redacted_value = redact(item)
+                            cleaned[key] = redacted_value if redacted_value != item else "[REDACTED]"
+                        else:
+                            cleaned[key] = "[REDACTED]"
                     else:
                         cleaned[key] = sanitize(item, child_path)
                 return cleaned
