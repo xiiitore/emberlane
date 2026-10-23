@@ -111,11 +111,18 @@ class LocalModelRunnerTests(unittest.TestCase):
                 LocalModelConfig.from_env()
         self.assertEqual(caught.exception.code, "not_configured")
 
+    def test_environment_configures_output_limit(self):
+        config = LocalModelConfig.from_env({
+            "EMBERLANE_MODEL_PATH": str(self.model),
+            "EMBERLANE_MODEL_MAX_OUTPUT": "1234",
+        })
+        self.assertEqual(config.max_output_chars, 1234)
+
     def test_environment_rejects_out_of_range_limits(self):
         with self.assertRaises(LocalModelError) as caught:
             LocalModelConfig.from_env({
                 "EMBERLANE_MODEL_PATH": str(self.model),
-                "EMBERLANE_MODEL_CONTEXT": "999999",
+                "EMBERLANE_MODEL_MAX_OUTPUT": "200001",
             })
         self.assertEqual(caught.exception.code, "invalid_configuration")
 
