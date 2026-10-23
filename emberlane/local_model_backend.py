@@ -318,17 +318,22 @@ def run_local_model_proposal(
         if process.returncode != 0:
             diagnostic = "\n".join(part for part in (raw_output.strip(), stderr_output.strip()) if part)
             lowered_diagnostic = diagnostic.casefold()
-            loader_markers = (
-                "failed to load model",
+            runtime_loader_markers = (
                 "error while loading shared libraries",
+                "cannot open shared object file",
+                "symbol lookup error",
+            )
+            model_loader_markers = (
+                "failed to load model",
                 "unable to load model",
                 "could not load model",
             )
-            failure_status = (
-                "model_load_failed"
-                if any(marker in lowered_diagnostic for marker in loader_markers)
-                else "model_failed"
-            )
+            if any(marker in lowered_diagnostic for marker in runtime_loader_markers):
+                failure_status = "runtime_loader_failed"
+            elif any(marker in lowered_diagnostic for marker in model_loader_markers):
+                failure_status = "model_load_failed"
+            else:
+                failure_status = "model_failed"
             return {"status": failure_status, "proposal": None,
                     "returncode": process.returncode,
                     "output": _redact(diagnostic or "Local model exited without diagnostic output")[:2000]}
