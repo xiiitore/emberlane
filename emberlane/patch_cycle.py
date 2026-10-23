@@ -276,6 +276,14 @@ def validate_patch_in_worktree(
         stat = _run_git(["diff", "--stat"], cwd=checkout)
         if stat.returncode != 0:
             raise PatchCycleError("could not inspect disposable-worktree diff")
+        if not stat.stdout.strip():
+            return {
+                "ok": False, "passed": False, "stage": "no_changes",
+                "error": "patch produced no changes in the disposable worktree",
+                "base_sha": base_sha, "patch_sha256": patch_sha256,
+                "touched_paths": touched_paths, "tests_run": False,
+                "worktree_discarded": True, "original_worktree_modified": False,
+            }
 
         result: dict[str, Any] = {
             "ok": True,
