@@ -167,7 +167,18 @@ class TaskQueue:
             task.last_error = f"{type(exc).__name__}: {exc}"
             task.status = "pending" if task.attempts < self.max_attempts else "failed"
         else:
-            if _result_has_failure(task.result):
+            result_status = (
+                task.result.get("status", "").strip().lower()
+                if isinstance(task.result, dict)
+                and isinstance(task.result.get("status"), str)
+                else ""
+            )
+            if result_status in {"deferred", "waiting_for_quota", "rate_limited"}:
+                # External capacity limits are waiting states, not code failures.
+                # Do not retry automatically or label the task successful.
+                task.last_error = None
+                task.status = "deferred"
+            elif _result_has_failure(task.result):
                 # A handler may return normally while reporting a failed operation.
                 # Preserve its structured result, but do not label the task successful.
                 task.last_error = "handler returned explicit failure evidence"
