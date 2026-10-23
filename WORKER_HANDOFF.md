@@ -7726,3 +7726,40 @@ No stdout/stderr output field was retained for inline publication.
 ~~~text
 Allowed source context exceeds the configured context-size budget
 ~~~
+
+
+### Worker task bf5f87ea-b172-4114-84d8-76df6cb4a8df
+
+[Full task output](worker-logs/bf5f87ea-b172-4114-84d8-76df6cb4a8df.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:12:22.046256+00:00",
+  "source_comment_id": "6370486965",
+  "task_id": "bf5f87ea-b172-4114-84d8-76df6cb4a8df",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/bf5f87ea-b172-4114-84d8-76df6cb4a8df.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/bf5f87ea-b172-4114-84d8-76df6cb4a8df.md",
+    "dropbox_sha256": "c0d9760c94de9d392d1ceb3b1f617211ea62f16e378af41ab054aa06c843edde",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 125,
+    "full_log_path": "worker-logs/bf5f87ea-b172-4114-84d8-76df6cb4a8df.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed source context exceeds the configured context-size budget
+~~~
