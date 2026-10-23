@@ -1,9 +1,9 @@
 # Tracked implementation status
 
-Last evidence review: 2026-10-23 23:05 Europe/Zagreb  
+Last evidence review: 2026-10-23 23:08 Europe/Zagreb  
 Repository: `xiiitore/emberlane`  
 Working branch: `feat/local-coding-worker`  
-Latest verified hosted-test head at review time: `2577f39e9758f79822e5aedd7d42fbe44e9587f5`
+Latest verified hosted-test head at review time: `5b94680c5e3506ef5c91fd24b01d87b3ac076177`
 
 This file records observed evidence, not intended capability. Update it whenever a gate changes. Do not mark device gates PASS from hosted CI or mock-runtime tests.
 
@@ -11,12 +11,12 @@ This file records observed evidence, not intended capability. Update it whenever
 
 | Gate | Status | Evidence / limitation |
 |---|---|---|
-| Hosted push test suite | PASS | Run [40023983088](https://github.com/xiiitore/emberlane/actions/runs/40023983088): 153 tests passed on Python 3.11, 3.12 and 3.13; all four jobs (including push-smoke) succeeded. |
+| Hosted push test suite | PASS | Run [40024215793](https://github.com/xiiitore/emberlane/actions/runs/40024215793): 154 tests passed on Python 3.11, 3.12 and 3.13; all four jobs (including push-smoke) succeeded. |
 | Quota classification regression | PASS | Generic `resource exhausted` is no longer sufficient for a quota wait. The regression checks ordinary retry/failure behavior and ensures the task is never `deferred`. Included in the 153-test run above. |
 | Local model adapter — deterministic tests | PASS (hosted only) | Fake-process tests cover configuration, CLI/model path errors, bounded stdout/stderr, timeout, parse failures, pause behavior and patch-validation paths. Does not prove inference on the target model. |
 | Queue prune implementation | PASS (code/hosted tests only) | `queue_prune` archives the queue before deleting older terminal records, retains a configurable number of terminal tasks, and preserves pending/running/deferred work. |
 | Mailbox result publication | PASS (hosted code/CI only) | Public comments use an allow-list of metadata; full sanitized logs are sent to Dropbox, with a local-only fallback if Dropbox is unavailable. |
-| Python 3.11/3.12/3.13 matrix on latest verified code head | PASS | Run [40023983088](https://github.com/xiiitore/emberlane/actions/runs/40023983088): all three versions passed 153 tests each. The matrix was triggered by the explicit `[full-matrix]` commit marker. Later status-document-only commits do not change code and are ignored by unit CI. |
+| Python 3.11/3.12/3.13 matrix on latest verified code head | PASS | Run [40024215793](https://github.com/xiiitore/emberlane/actions/runs/40024215793): all three versions passed 154 tests each. The matrix was triggered by the explicit `[full-matrix]` commit marker. Later status-document-only commits do not change code and are ignored by unit CI. |
 | Local Termux queue prune | BLOCKED / UNKNOWN | A `queue_prune` request is still pending on GitHub issue #6; no worker result has confirmed backup path, pruned count, retained terminal count and preserved active-task count. |
 | Active Termux checkout reconciliation | BLOCKED | Last observed local status: dirty worktree and 364 commits behind remote. Do not reset, clean, force-sync, or overwrite untracked/local-only files. |
 | Termux read-only preflight on target device | UNKNOWN | No fresh result for the current remote revision. |
