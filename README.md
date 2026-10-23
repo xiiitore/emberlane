@@ -24,7 +24,7 @@ python -m emberlane --help
 
 The worker processes a durable JSON queue. It supports only explicit task kinds:
 `write_file`, `write_files`, `replace_text`, `read_file`, `list_files`,
-`run_tests`, `local_model_proposal`, `local_model_edit`, `plan_goal`, `queue_prune`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, and `diagnostics`. It does not accept arbitrary shell commands.
+`run_tests`, `local_model_proposal`, `local_model_edit`, `plan_goal`, `queue_prune`, `git_status`, `git_diff`, `git_sync`, `git_stash_inspect`, `git_commit`, `git_push`, and `diagnostics`. It does not accept arbitrary shell commands.
 
 ```sh
 # Queue a file-writing task (quote the JSON as one argument)
@@ -32,6 +32,9 @@ python -m emberlane submit write_file --payload '{"path":"src/example.py","conte
 
 # Execute one queued task
 python -m emberlane run-one
+
+# Run a finite supervised batch: task, failure and wall-clock budgets are mandatory
+python -m emberlane supervise --max-tasks 10 --max-failures 3 --max-seconds 300
 
 # Opt in to publishing a redacted source preview in the task's private-to-repo Markdown log
 # Only use this for files safe to expose to people with repository access.
@@ -52,6 +55,14 @@ python -m emberlane submit git_diff
 python -m emberlane submit git_sync --payload '{"expected_branch":"feat/local-coding-worker"}'
 python -m emberlane submit git_stash_inspect
 python -m emberlane run-one
+
+# Commit only explicit changed paths, and only after the full test suite passes
+python -m emberlane submit git_commit --payload '{"expected_branch":"feature","paths":["src/example.py","tests/test_example.py"],"message":"fix: handle empty input"}'
+python -m emberlane run-one
+
+# Push only a clean branch that can fast-forward; remote SHA is verified afterward
+python -m emberlane submit git_push --payload '{"expected_branch":"feature"}'
+python -m emberlane run-one
 python -m emberlane submit diagnostics
 
 # Queue and execute the full unittest suite
@@ -69,6 +80,8 @@ python -m emberlane status
 python -m emberlane submit queue_prune --payload '{"keep_terminal":50}'
 python -m emberlane run-one
 ```
+
+The `supervise` command runs a finite batch, checks `PAUSED`/`STOP` before claiming each task, and exits immediately when no runnable work remains. It never auto-resumes deferred tasks or busy-polls an idle queue. Metadata-only audit events are appended and fsynced to `.emberlane/supervisor.jsonl`; task payloads, source text and raw exception messages are excluded. `git_commit` requires an explicit changed-path allowlist and a passing full test suite. `git_push` refuses a dirty worktree and force-pushes are not supported.
 
 By default, the queue state is stored in `.emberlane/queue.json` under the
 project root. Use `--root PATH` to select a project directory and
