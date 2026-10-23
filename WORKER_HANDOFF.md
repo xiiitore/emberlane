@@ -8732,3 +8732,40 @@ Loading model...
 Failed to load the model
 
 ~~~
+
+
+### Worker task 1a121ad2-5726-44fb-8111-1c983d58165b
+
+[Full task output](worker-logs/1a121ad2-5726-44fb-8111-1c983d58165b.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:43:47.964903+00:00",
+  "source_comment_id": "6370611171",
+  "task_id": "1a121ad2-5726-44fb-8111-1c983d58165b",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/1a121ad2-5726-44fb-8111-1c983d58165b.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/1a121ad2-5726-44fb-8111-1c983d58165b.md",
+    "dropbox_sha256": "f576eb574d2b39b7c4b2107945cfd46d4c65adb8e3f8f206be4593e4d8d36ff1",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 113,
+    "full_log_path": "worker-logs/1a121ad2-5726-44fb-8111-1c983d58165b.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: tests/test_queue.py
+~~~
