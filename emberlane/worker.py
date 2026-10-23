@@ -76,12 +76,20 @@ class LocalWorker:
     def _validate_patch(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Validate a proposed patch in a disposable worktree; never modify the active checkout."""
         try:
-            return validate_patch_in_worktree(
+            result = validate_patch_in_worktree(
                 self.root,
                 payload["patch"],
                 run_tests=payload.get("run_tests", False),
                 test_timeout=payload.get("test_timeout", 120),
             )
+            for key in ("error", "diff_stat", "diff_preview", "test_output"):
+                value = result.get(key)
+                if isinstance(value, str):
+                    redacted = _redact_sensitive_text(value)
+                    if redacted != value:
+                        result[key] = redacted
+                        result["output_redacted"] = True
+            return result
         except PatchCycleError as exc:
             return {
                 "ok": False,
