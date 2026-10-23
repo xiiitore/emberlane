@@ -180,9 +180,22 @@ class LocalWorker:
                 "tests_run": False,
             }
         if not isinstance(output, str) or not output.startswith("diff --git "):
+            safe_output = _redact_sensitive_text(output) if isinstance(output, str) else ""
             return {
                 "ok": False, "passed": False, "stage": "model_output_validation",
                 "error": "model output must begin with a standard diff --git header; no patch was applied",
+                "generated_output": safe_output,
+                "output_redacted": safe_output != output,
+                "generation_elapsed_seconds": generated.get("elapsed_seconds"),
+                "tests_run": False,
+            }
+        safe_output = _redact_sensitive_text(output)
+        if safe_output != output:
+            return {
+                "ok": False, "passed": False, "stage": "model_output_validation",
+                "error": "potential credential detected in generated patch; refusing to validate it",
+                "generated_output": safe_output,
+                "output_redacted": True,
                 "generation_elapsed_seconds": generated.get("elapsed_seconds"),
                 "tests_run": False,
             }
@@ -192,6 +205,7 @@ class LocalWorker:
             "run_tests": payload.get("run_tests", False),
             "test_timeout": payload.get("test_timeout", 120),
         })
+        validation["generated_patch"] = output
         validation["generation_elapsed_seconds"] = generated.get("elapsed_seconds")
         validation["model_path"] = generated.get("model_path")
         validation["model_output_truncated"] = False
