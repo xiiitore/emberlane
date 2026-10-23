@@ -207,6 +207,14 @@ def run_local_model_proposal(
     if not model_path.is_file():
         return {"status": "model_not_found", "proposal": None,
                 "output": "Configured EMBERLANE_MODEL_PATH is not a file"}
+    try:
+        model_mode = model_path.stat().st_mode
+    except OSError:
+        return {"status": "model_not_found", "proposal": None,
+                "output": "Configured EMBERLANE_MODEL_PATH could not be inspected"}
+    if not model_mode & 0o444 or not os.access(model_path, os.R_OK):
+        return {"status": "model_unreadable", "proposal": None,
+                "output": "Configured model file is not readable by the worker"}
     executable = os.environ.get("EMBERLANE_LLAMA_CLI", "llama-cli").strip()
     if not executable or "\x00" in executable:
         return {"status": "model_not_configured", "proposal": None,
@@ -288,6 +296,12 @@ def run_local_model_proposal(
                 )
                 capture_status, output_size = _capture_output(
                     process, output_path, payload["max_output_bytes"], payload["timeout_seconds"])
+        except FileNotFoundError:
+            return {"status": "model_cli_not_found", "proposal": None,
+                    "output": "Configured local model executable was not found"}
+        except PermissionError:
+            return {"status": "model_cli_not_executable", "proposal": None,
+                    "output": "Configured local model executable could not be started"}
         except OSError as exc:
             return {"status": "backend_unavailable", "proposal": None,
                     "output": f"Could not start local model executable: {type(exc).__name__}"}
@@ -303,9 +317,25 @@ def run_local_model_proposal(
         raw_output = output_path.read_bytes().decode("utf-8", errors="replace")
         if process.returncode != 0:
             diagnostic = "\n".join(part for part in (raw_output.strip(), stderr_output.strip()) if part)
-            return {"status": "model_failed", "proposal": None,
+            lowered_diagnostic = diagnostic.casefold()
+            loader_markers = (
+                "failed to load model",
+                "error while loading shared libraries",
+                "unable to load model",
+                "could not load model",
+            )
+            failure_status = (
+                "model_load_failed"
+                if any(marker in lowered_diagnostic for marker in loader_markers)
+                else "model_failed"
+            )
+            return {"status": failure_status, "proposal": None,
                     "returncode": process.returncode,
                     "output": _redact(diagnostic or "Local model exited without diagnostic output")[:2000]}
+        if not raw_output.strip():
+            return {"status": "empty_model_output", "proposal": None,
+                    "returncode": 0,
+                    "output": _redact(stderr_output[-2000:] or "Local model returned empty output")}
         try:
             response = _parse_model_json(raw_output)
         except ValueError as exc:
