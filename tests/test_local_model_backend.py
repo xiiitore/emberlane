@@ -126,7 +126,7 @@ class LocalModelProposalTests(unittest.TestCase):
             processes[0].kwargs["env"]["LD_LIBRARY_PATH"], str(prefix / "lib")
         )
 
-    def test_model_failure_preserves_stderr_diagnostic(self):
+    def test_model_loader_failure_preserves_stderr_diagnostic(self):
         class FailedProcess(FakeProcess):
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
@@ -135,9 +135,55 @@ class LocalModelProposalTests(unittest.TestCase):
                 self.kwargs["stderr"].flush()
 
         result = self.run_with_fake(FailedProcess)
-        self.assertEqual(result["status"], "model_failed")
+        self.assertEqual(result["status"], "model_load_failed")
         self.assertEqual(result["returncode"], 1)
         self.assertIn("libllama.so", result["output"])
+
+    def test_missing_cli_is_distinguished_from_generic_backend_failure(self):
+        def missing_cli(*args, **kwargs):
+            raise FileNotFoundError("llama-cli")
+
+        result = self.run_with_fake(missing_cli)
+        self.assertEqual(result["status"], "model_cli_not_found")
+        self.assertNotIn("llama-cli", result["output"])
+
+    def test_unreadable_model_is_rejected_before_launch(self):
+        self.model.chmod(0)
+        try:
+            with patch.dict(os.environ, {
+                "EMBERLANE_MODEL_PATH": str(self.model),
+                "EMBERLANE_LLAMA_CLI": "llama-cli",
+            }, clear=False), patch(
+                "emberlane.local_model_backend.subprocess.Popen"
+            ) as popen:
+                result = run_local_model_proposal(
+                    self.root, self.payload, workspace=self.workspace
+                )
+            self.assertEqual(result["status"], "model_unreadable")
+            popen.assert_not_called()
+        finally:
+            self.model.chmod(0o600)
+
+    def test_empty_successful_model_output_has_distinct_status(self):
+        class EmptyOutputProcess(FakeProcess):
+            output_bytes = b""
+
+        result = self.run_with_fake(EmptyOutputProcess)
+        self.assertEqual(result["status"], "empty_model_output")
+        self.assertEqual(result["returncode"], 0)
+
+    def test_generic_nonzero_exit_is_not_misclassified_as_loader_failure(self):
+        class GenericFailureProcess(FakeProcess):
+            def __init__(self, command, *, cwd, stdout, **kwargs):
+                super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
+                self.returncode = 2
+                self.kwargs["stderr"].write(b"generic execution failure")
+                self.kwargs["stderr"].flush()
+
+        result = self.run_with_fake(GenericFailureProcess)
+        self.assertEqual(result["status"], "model_failed")
+        self.assertEqual(result["returncode"], 2)
+        self.assertIn("generic execution failure", result["output"])
 
     def test_local_model_edit_accepts_strict_context_option(self):
         (self.root / "src" / "allowed.py").write_text(
