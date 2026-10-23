@@ -435,11 +435,12 @@ class GitHubIssueMailbox:
             body = comment.get("body") or ""
             try:
                 task_data = _task_from_comment(body)
-            except MailboxError as exc:
-                self._reply(f"EMBERLANE_RESULT {comment_id}\nREJECTED: {exc}")
+            except MailboxError:
+                # Public issue comments must not echo parser details or submitted payload text.
+                self._reply(f"EMBERLANE_RESULT {comment_id}\nREJECTED: invalid_task_envelope")
                 self.state["handled"].append(comment_id)
                 self._save_state()
-                return {"status": "rejected", "comment_id": comment_id, "error": str(exc)}
+                return {"status": "rejected", "comment_id": comment_id, "error_code": "invalid_task_envelope"}
             if task_data is None:
                 continue
             try:
@@ -448,10 +449,16 @@ class GitHubIssueMailbox:
                     idempotency_key=comment_id,
                 )
             except Exception as exc:
-                self._reply(f"EMBERLANE_RESULT {comment_id}\nREJECTED: {type(exc).__name__}: {exc}")
+                # Keep public replies generic; the exception message can contain paths or secrets.
+                self._reply(f"EMBERLANE_RESULT {comment_id}\nREJECTED: task_validation_failed")
                 self.state["handled"].append(comment_id)
                 self._save_state()
-                return {"status": "rejected", "comment_id": comment_id, "error": str(exc)}
+                return {
+                    "status": "rejected",
+                    "comment_id": comment_id,
+                    "error_code": "task_validation_failed",
+                    "error_type": type(exc).__name__,
+                }
             self.state["active"][comment_id] = task.task_id
             self._save_state()
             self.worker.run_one()

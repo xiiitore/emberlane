@@ -273,9 +273,57 @@ class MailboxRejectionTests(unittest.TestCase):
 
             result = mailbox.run_once()
 
+
             self.assertEqual(result["status"], "rejected")
-            self.assertIn("EMBERLANE_RESULT 123\nREJECTED: ValueError:", replies[0])
-            self.assertNotIn("\\nREJECTED:", replies[0])
+            self.assertEqual(result["error_code"], "task_validation_failed")
+            self.assertEqual(replies[0], "EMBERLANE_RESULT 123\nREJECTED: task_validation_failed")
+            self.assertNotIn("unsupported_kind", replies[0])
+
+    def test_invalid_json_payload_is_not_echoed_to_public_comment(self):
+        with tempfile.TemporaryDirectory() as temp:
+            worker = LocalWorker(Path(temp))
+            mailbox = GitHubIssueMailbox(worker, "owner/repo", 6, "authorized")
+            mailbox._comments = lambda: [{
+                "id": 124,
+                "user": {"login": "authorized"},
+                "body": "EMBERLANE_TASK_JSON\n{SECRET_PAYLOAD_TOKEN: private}",
+            }]
+            replies = []
+            mailbox._reply = replies.append
+
+            result = mailbox.run_once()
+
+            self.assertEqual(result["status"], "rejected")
+            self.assertEqual(result["error_code"], "invalid_task_envelope")
+            self.assertEqual(replies[0], "EMBERLANE_RESULT 124\nREJECTED: invalid_task_envelope")
+            self.assertNotIn("SECRET_PAYLOAD_TOKEN", replies[0])
+            self.assertNotIn("private", replies[0])
+
+    def test_worker_validation_exception_message_is_not_published(self):
+        with tempfile.TemporaryDirectory() as temp:
+            worker = LocalWorker(Path(temp))
+            def fail_submit(*args, **kwargs):
+                raise ValueError("PRIVATE_TOKEN=/secret/path")
+            worker.submit = fail_submit
+            mailbox = GitHubIssueMailbox(worker, "owner/repo", 6, "authorized")
+            mailbox._comments = lambda: [{
+                "id": 125,
+                "user": {"login": "authorized"},
+                "body": "EMBERLANE_TASK_JSON\n" + json.dumps({
+                    "kind": "write_file",
+                    "payload": {"path": "safe.txt", "content": "safe"},
+                }),
+            }]
+            replies = []
+            mailbox._reply = replies.append
+
+            result = mailbox.run_once()
+
+            self.assertEqual(result["status"], "rejected")
+            self.assertEqual(result["error_code"], "task_validation_failed")
+            self.assertEqual(result["error_type"], "ValueError")
+            self.assertNotIn("PRIVATE_TOKEN", replies[0])
+            self.assertNotIn("/secret/path", replies[0])
 
 
 if __name__ == "__main__":
