@@ -63,7 +63,7 @@ class LocalModelConfig:
         except (TypeError, ValueError) as exc:
             raise LocalModelError("invalid_configuration", "model numeric settings must be integers") from exc
         if not executable:
-            raise LocalModelError("invalid_configuration", "LLAMA_CLI_BIN must not be empty")
+            raise LocalModelError("invalid_configuration", "EMBERLANE_LLAMA_CLI or LLAMA_CLI_BIN must not be empty")
         if not 128 <= context <= MAX_CONTEXT_TOKENS:
             raise LocalModelError("invalid_configuration", f"context must be 128..{MAX_CONTEXT_TOKENS}")
         if not 1 <= tokens <= MAX_GENERATION_TOKENS:
