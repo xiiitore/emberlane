@@ -8102,3 +8102,40 @@ Allowed source context exceeds the configured context-size budget
 ~~~text
 Allowed file exceeds 20000 bytes: emberlane/worker.py
 ~~~
+
+
+### Worker task 0be1009d-31b3-4462-a0ca-f4009604f32b
+
+[Full task output](worker-logs/0be1009d-31b3-4462-a0ca-f4009604f32b.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-23T17:28:12.461331+00:00",
+  "source_comment_id": "6370583542",
+  "task_id": "0be1009d-31b3-4462-a0ca-f4009604f32b",
+  "kind": "local_model_edit",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/0be1009d-31b3-4462-a0ca-f4009604f32b.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/0be1009d-31b3-4462-a0ca-f4009604f32b.md",
+    "dropbox_sha256": "051c7b86f389765dec48fdf389718f70935769308af62cc3bec287ce959e44a8",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 113,
+    "full_log_path": "worker-logs/0be1009d-31b3-4462-a0ca-f4009604f32b.md"
+  }
+}
+```
+
+#### Output: `result.proposal_result.output`
+
+~~~text
+Allowed file exceeds 20000 bytes: emberlane/worker.py
+~~~
