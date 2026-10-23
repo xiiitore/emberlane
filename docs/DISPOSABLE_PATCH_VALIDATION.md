@@ -15,7 +15,7 @@ The `validate_patch` worker task validates a proposed unified Git diff in a temp
 - `patch` is required and limited to 256,000 UTF-8 bytes.
 - `run_tests` defaults to false. Set it to true only when authorized to execute code from the patch; tests run with the worker's operating-system permissions.
 - `test_timeout` is an integer from 1 to 300 seconds.
-- Only standard, unquoted Git diff path headers are accepted. Absolute paths, traversal, Windows-style paths, and protected paths (`.git`, `.emberlane`, `.venv`, secret/key filenames) are rejected.
+- Only standard, unquoted Git diff path headers are accepted. Absolute paths, traversal, Windows-style paths, and protected paths (`.git`, `.emberlane`, `.venv`, secret/key filenames), symlink targets, and mismatched diff/file headers are rejected.
 - The original checkout must be a clean Git worktree root. If it is dirty, validation fails closed instead of guessing which state to test.
 - The patch is checked and applied in a detached worktree at the original HEAD. The worker reports the base SHA, patch SHA-256, touched paths, diff summary, test status and bounded test-output preview. The temporary worktree is removed in cleanup.
 - With `run_tests: false`, status `validated` means only that the patch applies cleanly and passes `git diff --check`; it does not mean the code works.
@@ -34,4 +34,4 @@ Large diffs may exceed the operating system's command-line argument limit; for t
 
 ## Security boundary
 
-A temporary Git worktree protects the active checkout from patch application; it is **not an OS sandbox**. When `run_tests` is true, code in the patch—including tests, build hooks or imports—can execute with the worker's permissions. Do not run untrusted patches with tests enabled unless the environment is separately isolated. This feature does not auto-commit, push or merge. Human review of the returned diff remains required.
+A temporary Git worktree protects the active checkout from patch application; it is **not an OS sandbox**. When `run_tests` is true, code in the patch—including tests, build hooks or imports—can execute with the worker's permissions. Do not run untrusted patches with tests enabled unless the environment is separately isolated. This feature does not auto-commit, push or merge. Local-model task output and error text pass through pattern-based redaction for common credential formats; this is not a guarantee that every secret is detected. Human review of the returned diff remains required.
