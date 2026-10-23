@@ -52,6 +52,11 @@ class LocalModelConfig:
                 "not_configured",
                 "EMBERLANE_MODEL_PATH must point to an existing local model file",
             )
+        if not Path(raw_model).expanduser().is_absolute():
+            raise LocalModelError(
+                "invalid_configuration",
+                "EMBERLANE_MODEL_PATH must be an absolute path",
+            )
         try:
             context = int(values.get("EMBERLANE_MODEL_CONTEXT", str(DEFAULT_CONTEXT_TOKENS)))
             tokens = int(values.get("EMBERLANE_MODEL_MAX_TOKENS", str(DEFAULT_MAX_TOKENS)))
