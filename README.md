@@ -36,6 +36,12 @@ python -m emberlane run-one
 # Run a finite supervised batch: task, failure and wall-clock budgets are mandatory
 python -m emberlane supervise --max-tasks 10 --max-failures 3 --max-seconds 300
 
+# Optional: poll the authorized GitHub mailbox a bounded number of times
+# Requires a working GitHub CLI authentication on the host running Emberlane.
+python -m emberlane supervise --max-tasks 10 --max-failures 3 --max-seconds 300 \\
+  --mailbox-repo xiiitore/emberlane --mailbox-issue 6 --mailbox-author xiiitore \\
+  --poll-interval 5 --max-idle-polls 3
+
 # Opt in to publishing a redacted source preview in the task's private-to-repo Markdown log
 # Only use this for files safe to expose to people with repository access.
 python -m emberlane submit read_file --payload '{"path":"src/example.py","include_content":true}'
@@ -81,7 +87,7 @@ python -m emberlane submit queue_prune --payload '{"keep_terminal":50}'
 python -m emberlane run-one
 ```
 
-The `supervise` command runs a finite batch, checks `PAUSED`/`STOP` before claiming each task, and exits immediately when no runnable work remains. It never auto-resumes deferred tasks or busy-polls an idle queue. Metadata-only audit events are appended and fsynced to `.emberlane/supervisor.jsonl`; task payloads, source text and raw exception messages are excluded. `git_commit` requires an explicit changed-path allowlist and a passing full test suite. `git_push` refuses a dirty worktree and force-pushes are not supported.
+The `supervise` command runs a finite batch, checks `PAUSED`/`STOP` before claiming each task, and exits immediately when no runnable work remains. It never auto-resumes deferred tasks or busy-polls an idle queue. Metadata-only audit events are appended and fsynced to `.emberlane/supervisor.jsonl`; task payloads, source text and raw exception messages are excluded. With all three mailbox options supplied, it polls one authorized GitHub issue and executes tasks under the same task/failure/deadline limits; idle polls are capped and spaced by `--poll-interval`. GitHub authentication must already be configured for the local GitHub CLI. This is finite polling, not a permanent background service. `git_commit` requires an explicit changed-path allowlist and a passing full test suite. `git_push` refuses a dirty worktree and force-pushes are not supported.
 
 By default, the queue state is stored in `.emberlane/queue.json` under the
 project root. Use `--root PATH` to select a project directory and
