@@ -407,7 +407,7 @@ class GitHubIssueMailbox:
             "error_present": task.last_error is not None,
             "result": safe_result,
         }
-        self._reply("EMBERLANE_RESULT\\n" + json.dumps(result, ensure_ascii=False, indent=2)[:MAX_COMMENT_CHARS])
+        self._reply("EMBERLANE_RESULT\n" + json.dumps(result, ensure_ascii=False, indent=2)[:MAX_COMMENT_CHARS])
         self.state["handled"].append(comment_id)
         self.state["active"].pop(comment_id, None)
         self._save_state()
