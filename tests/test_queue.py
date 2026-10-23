@@ -82,6 +82,26 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(second.status, "failed")
         self.assertEqual(second.attempts, 2)
 
+        class ChatGPTAgentToolRateLimitException(RuntimeError):
+            pass
+
+        deferred = queue.submit("provider", {})
+        waiting = queue.run_one({
+            "provider": lambda payload: (_ for _ in ()).throw(
+                ChatGPTAgentToolRateLimitException("usage limit reached")
+            )
+        })
+        self.assertEqual(waiting.task_id, deferred.task_id)
+        self.assertEqual(waiting.status, "deferred")
+        self.assertEqual(waiting.attempts, 1)
+        self.assertIsNone(waiting.last_error)
+        self.assertEqual(waiting.result["reason"], "external_capacity_limit")
+        resumed = queue.resume_deferred(waiting.task_id)
+        self.assertEqual(resumed.status, "pending")
+        completed = queue.run_one({"provider": lambda payload: {"ok": True}})
+        self.assertEqual(completed.status, "completed")
+        self.assertEqual(completed.attempts, 2)
+
     def test_unknown_handler_fails_closed(self):
         queue = TaskQueue(self.state)
         queue.submit("unregistered", {})
