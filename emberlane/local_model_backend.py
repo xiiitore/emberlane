@@ -112,7 +112,7 @@ def validate_local_model_payload(
 MAX_STDERR_BYTES = 20_000
 
 
-def _capture_output(
+def _capture_model_output(
     process: subprocess.Popen[bytes],
     output_path: Path,
     stderr_path: Path,
@@ -162,6 +162,43 @@ def _capture_output(
         for stream in streams.values():
             if stream is not None:
                 stream.close()
+
+
+def _capture_output(
+    process: subprocess.Popen[bytes], output_path: Path, max_bytes: int, timeout_seconds: int
+) -> tuple[str, int]:
+    started = time.monotonic()
+    size = 0
+    stream = process.stdout
+    if stream is None:
+        raise RuntimeError("local model output pipe was not created")
+    try:
+        with output_path.open("wb") as output, selectors.DefaultSelector() as selector:
+            selector.register(stream, selectors.EVENT_READ)
+            while True:
+                if process.poll() is not None and not selector.get_map():
+                    break
+                remaining = timeout_seconds - (time.monotonic() - started)
+                if remaining <= 0:
+                    process.kill()
+                    process.wait()
+                    return "timeout", size
+                events = selector.select(min(0.05, remaining)) if selector.get_map() else []
+                for key, _ in events:
+                    chunk = os.read(key.fd, min(65536, max_bytes + 1 - size))
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    size += len(chunk)
+                    if size > max_bytes:
+                        process.kill()
+                        process.wait()
+                        return "output_limit", size
+                    output.write(chunk)
+            process.wait()
+        return "complete", size
+    finally:
+        stream.close()
 
 
 def _parse_model_json(text: str) -> dict[str, Any]:
@@ -321,7 +358,7 @@ def run_local_model_proposal(
             return {"status": "backend_unavailable", "proposal": None,
                     "output": f"Could not start local model executable: {type(exc).__name__}"}
         try:
-            capture_status, output_size, stderr_size = _capture_output(
+            capture_status, output_size, stderr_size = _capture_model_output(
                 process, output_path, stderr_path, payload["max_output_bytes"],
                 payload["timeout_seconds"], MAX_STDERR_BYTES,
             )
