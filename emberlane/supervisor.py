@@ -126,6 +126,7 @@ def run_supervisor(
             status = "audit_log_error"
             break
 
+    deferred_ids = sorted({task.task_id for task in worker.queue.list_tasks() if task.status == "deferred"})
     report = {
         "status": status,
         "processed": len(task_ids),
