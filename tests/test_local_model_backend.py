@@ -271,6 +271,20 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertEqual(result["status"], "model_not_configured")
         popen.assert_not_called()
 
+    def test_relative_model_path_is_rejected_before_launch(self):
+        with patch.dict(os.environ, {
+            "EMBERLANE_MODEL_PATH": "models/model.gguf",
+            "EMBERLANE_LLAMA_CLI": "llama-cli",
+        }, clear=False), patch(
+            "emberlane.local_model_backend.subprocess.Popen"
+        ) as popen:
+            result = run_local_model_proposal(
+                self.root, self.payload, workspace=self.workspace
+            )
+        self.assertEqual(result["status"], "model_not_configured")
+        self.assertIn("absolute", result["output"])
+        popen.assert_not_called()
+
     def test_missing_model_file_is_reported(self):
         with patch.dict(os.environ, {"EMBERLANE_MODEL_PATH": str(self.root / "missing.gguf")}), patch(
             "emberlane.local_model_backend.subprocess.Popen"
