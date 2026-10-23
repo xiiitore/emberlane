@@ -538,6 +538,7 @@ class LocalWorkerTests(unittest.TestCase):
             {"prompt": "change", "context_files": ["a.py", "a.py"]},
             {"prompt": "change", "context_files": ["a.py"] * 6},
             {"prompt": "change", "unexpected": True},
+            {"prompt": "use ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"},
         ):
             with self.subTest(payload=payload):
                 with self.assertRaises(ValueError):
