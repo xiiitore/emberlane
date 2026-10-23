@@ -305,6 +305,19 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(second["preserved_active_count"], 2)
         self.assertIsNone(second["backup_file"])
 
+    @unittest.skipIf(sys.platform == "win32", "POSIX file mode assertion")
+    def test_prune_terminal_archive_is_private(self):
+        queue = TaskQueue(self.state)
+        old = queue.submit("done", {"content": "potentially sensitive payload"})
+        old.status = "completed"
+        old.updated_at = 1.0
+        queue._save()
+
+        result = queue.prune_terminal(keep_terminal=0)
+        backup = self.state.parent / result["backup_file"]
+
+        self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
+
     def test_prune_terminal_refuses_to_prune_if_archive_verification_fails(self):
         queue = TaskQueue(self.state)
         old = queue.submit("done", {})
@@ -313,14 +326,14 @@ class TaskQueueTests(unittest.TestCase):
         queue.submit("pending", {})
         queue._save()
         original_state = self.state.read_bytes()
-        original_write_bytes = Path.write_bytes
+        from emberlane.queue import _write_private_archive as write_private_archive
 
         def corrupt_archive(path, data):
-            if ".pre-prune-" in path.name:
-                return original_write_bytes(path, b"corrupt archive")
-            return original_write_bytes(path, data)
+            return write_private_archive(
+                path, b"corrupt archive" if ".pre-prune-" in path.name else data
+            )
 
-        with patch.object(Path, "write_bytes", corrupt_archive):
+        with patch("emberlane.queue._write_private_archive", side_effect=corrupt_archive):
             with self.assertRaisesRegex(OSError, "archive verification failed"):
                 queue.prune_terminal(keep_terminal=0)
 
