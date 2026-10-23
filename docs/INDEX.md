@@ -4,6 +4,8 @@ This index separates current implementation instructions from design contracts a
 
 ## Start here
 
+- [Goal planning guide](GOAL_PLANNING_GUIDE.md) — bounded declarative plans, dependency scheduling and CLI usage.
+
 - [README](../README.md) — installation, existing CLI examples, worker boundaries and GitHub issue mailbox.
 - [Termux readiness runbook](TERMUX_READINESS_RUNBOOK.md) — read-only prerequisite checks and a staged local validation sequence.
 - [Operations runbook](OPERATIONS_RUNBOOK.md) — start/end-of-session checks and recovery procedures for quota waits, model failures, queue corruption and unsafe task results.
