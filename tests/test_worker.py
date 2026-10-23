@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from emberlane.local_model import LocalModelError
 from emberlane.worker import LocalWorker
 from emberlane.workspace import WorkspaceError
 
@@ -367,6 +368,50 @@ class LocalWorkerTests(unittest.TestCase):
         self.assertTrue(result.result["platform"])
         self.assertEqual(result.result["git_status"]["returncode"], 0)
         self.assertEqual(result.result["latest_commit"]["returncode"], 0)
+
+
+    def test_local_model_task_persists_successful_output(self):
+        task = self.worker.submit("local_model", {"prompt": "say hello"})
+        fake_result = {
+            "ok": True,
+            "output": "hello",
+            "truncated": False,
+            "returncode": 0,
+            "elapsed_seconds": 0.01,
+        }
+        with patch("emberlane.worker.LocalModelConfig.from_env", return_value=object()), patch(
+            "emberlane.worker.LocalModelRunner"
+        ) as runner:
+            runner.return_value.generate.return_value = fake_result
+            result = self.worker.run_one()
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.result, fake_result)
+        self.assertEqual(result.attempts, 1)
+
+    def test_local_model_configuration_error_is_terminal_not_retried(self):
+        self.worker.submit("local_model", {"prompt": "say hello"})
+        with patch(
+            "emberlane.worker.LocalModelConfig.from_env",
+            side_effect=LocalModelError("not_configured", "model path missing"),
+        ):
+            result = self.worker.run_one()
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.attempts, 1)
+        self.assertEqual(result.result["error_code"], "not_configured")
+        self.assertFalse(result.result["ok"])
+
+    def test_local_model_payload_is_validated_before_enqueue(self):
+        for payload in (
+            {},
+            {"prompt": "   "},
+            {"prompt": "x" * 16001},
+            {"prompt": "hello", "shell": "not-allowed"},
+        ):
+            with self.subTest(payload_keys=sorted(payload)):
+                with self.assertRaises(ValueError):
+                    self.worker.submit("local_model", payload)
+        self.assertEqual(self.worker.queue.list_tasks(), [])
 
 
 if __name__ == "__main__":
