@@ -37,6 +37,6 @@ This file records observed evidence, not intended capability. Update it whenever
 
 1. Obtain a live local-worker result for the already queued `queue_prune` task; verify archive and counts before reporting cleanup.
 2. Reconcile the dirty Termux checkout without losing local-only files; do not use forced sync.
-3. Run the full compatibility matrix on the release candidate.
+3. The compatibility matrix is currently PASS on `5b94680`; rerun it only if code or workflow behavior changes after that verified head.
 4. Integrate and test supervisor pause/stop/deadline and restart-reconciliation behavior without creating a parallel supervisor.
 5. Only after the operator permits it, run the real-model smoke test and bounded end-to-end device cycle.
