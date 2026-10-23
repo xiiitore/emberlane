@@ -52,6 +52,42 @@ class TaskLogPublishingTests(unittest.TestCase):
         self.assertTrue(any("feat/local-coding-worker" in value for value in args))
 
     @patch("emberlane.mailbox.subprocess.run")
+    @patch("emberlane.mailbox.subprocess.run")
+    def test_task_log_redacts_sensitive_fields_and_casefolds_content_key(self, run):
+        run.side_effect = [
+            subprocess.CompletedProcess(["gh"], 1, "", "HTTP 404: Not Found"),
+            subprocess.CompletedProcess(["gh"], 0, "{}", ""),
+        ]
+        task = SimpleNamespace(
+            task_id="task-789", kind="diagnostics", status="completed",
+            attempts=1, last_error=None,
+            result={
+                "api_key": "plain-api-key-value",
+                "nested": {
+                    "refresh_token": "plain-refresh-token-value",
+                    "safe_label": "kept",
+                },
+                "Content": "private mixed-case file content",
+                "OUTPUT": "diagnostic output remains available in the task log",
+            },
+        )
+
+        result = self.mailbox._publish_task_log(task, "comment-9")
+        self.assertEqual(result["task_log_status"], "published")
+        args = run.call_args_list[1].args[0]
+        encoded = next(
+            value[len("content="):] for value in args if value.startswith("content=")
+        )
+        document = base64.b64decode(encoded).decode("utf-8")
+
+        self.assertNotIn("plain-api-key-value", document)
+        self.assertNotIn("plain-refresh-token-value", document)
+        self.assertNotIn("private mixed-case file content", document)
+        self.assertIn("[OMITTED_FILE_CONTENT]", document)
+        self.assertIn("diagnostic output remains available in the task log", document)
+        self.assertIn('"safe_label": "kept"', document)
+
+
     def test_existing_task_log_is_idempotent(self, run):
         previous = '# Emberlane task output\n```json\n{"task_id": "task-123"}\n```'
         api_content = base64.b64encode(previous.encode()).decode()
