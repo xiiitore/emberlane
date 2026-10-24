@@ -557,6 +557,33 @@ def _fixed_command(
         return None
 
 
+def _patch_changed_paths(patch: str, source: Path) -> list[str] | None:
+    """Ask Git's patch parser for the actual paths, without applying the patch."""
+    result = _fixed_command(
+        ["git", "apply", "--numstat", "-z", "-"],
+        source,
+        input_bytes=patch.encode("utf-8"),
+    )
+    if result is None or result.returncode != 0:
+        return None
+    paths: list[str] = []
+    for record in result.stdout.split(b"\x00"):
+        if not record:
+            continue
+        fields = record.split(b"\t", 2)
+        if len(fields) != 3 or not fields[2]:
+            # Reject malformed output and rename/copy records, which this backend
+            # does not generate and cannot safely represent as a single path.
+            return None
+        try:
+            path = fields[2].decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return None
+        paths.append(path)
+    if not paths or len(paths) != len(set(paths)):
+        return None
+    return paths
+
 def run_local_model_edit(
     root: str | Path,
     raw_payload: dict[str, Any],
@@ -613,6 +640,28 @@ def run_local_model_edit(
         return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
     if set(clean_paths) != set(changed_paths):
         return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
+    try:
+        clean_allowed_paths = {
+            _safe_relative(path, workspace)
+            for path in proposal_payload["allowed_paths"]
+        }
+    except (KeyError, TypeError, ValueError, WorkspaceError):
+        return {"status": "rejected", "reason": "unsafe_allowed_paths", "applied": False}
+    if not set(clean_paths).issubset(clean_allowed_paths):
+        return {
+            "status": "rejected",
+            "reason": "changed_path_outside_allowlist",
+            "applied": False,
+        }
+    patch_paths = _patch_changed_paths(patch, source)
+    if patch_paths is None:
+        return {"status": "rejected", "reason": "invalid_patch_paths", "applied": False}
+    try:
+        clean_patch_paths = [_safe_relative(path, workspace) for path in patch_paths]
+    except (ValueError, WorkspaceError):
+        return {"status": "rejected", "reason": "unsafe_patch_paths", "applied": False}
+    if set(clean_patch_paths) != set(clean_paths):
+        return {"status": "rejected", "reason": "patch_paths_mismatch", "applied": False}
     state = control_state(source)
     if state is not None:
         return {"status": state, "applied": False}
