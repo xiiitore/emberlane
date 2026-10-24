@@ -173,6 +173,43 @@ class MailboxIdempotencyTests(unittest.TestCase):
             self.assertEqual(len(replies), 1)
 
 
+    def test_resuming_active_comment_runs_its_task_not_first_pending_task(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            worker = LocalWorker(root)
+            unrelated = worker.submit(
+                "write_file",
+                {"path": "unrelated.txt", "content": "wrong task"},
+                idempotency_key="unrelated-request",
+            )
+            expected = worker.submit(
+                "write_file",
+                {"path": "expected.txt", "content": "right task"},
+                idempotency_key="123",
+            )
+            self.assertEqual(worker.queue.list_tasks()[0].task_id, unrelated.task_id)
+
+            mailbox = GitHubIssueMailbox(worker, "owner/repo", 6, "authorized")
+            mailbox._comments = lambda: []
+            mailbox.state = {"handled": [], "active": {"123": expected.task_id}}
+            mailbox._save_state = lambda: None
+            mailbox._publish_task_log = lambda *_: {"task_log_status": "published"}
+            mailbox._publish_handoff_record = lambda *_: {"handoff_status": "published"}
+            replies = []
+            mailbox._reply = replies.append
+
+            result = mailbox.run_once()
+
+            self.assertEqual(result, {
+                "status": "finished", "comment_id": "123", "task_id": expected.task_id,
+            })
+            self.assertFalse((root / "unrelated.txt").exists())
+            self.assertEqual((root / "expected.txt").read_text(), "right task")
+            self.assertEqual(worker.queue.get(unrelated.task_id).status, "pending")
+            self.assertEqual(worker.queue.get(expected.task_id).status, "completed")
+            self.assertEqual(len(replies), 1)
+
+
 
 class MailboxPublicationRetryTests(unittest.TestCase):
     def test_terminal_task_stays_active_when_full_log_publication_fails(self):
