@@ -13,6 +13,7 @@ This index separates current implementation instructions from design contracts a
 ## Architecture and behavior
 
 - [Architecture](ARCHITECTURE.md) — components, execution path, trust boundaries and invariants.
+- [Agent-fleet governance and Hugging Face evaluation](AGENT_FLEET_GOVERNANCE.md) — model/framework boundaries, source-backed fleet incident context, telemetry contract and staged acceptance plan.
 - [Task state machine](TASK_STATE_MACHINE.md) — status semantics, recovery, retry policy, idempotency and result classification.
 - [Model/provider adapter contract](ADAPTER_CONTRACT.md) — explicit adapter inputs/outputs, local runtime readiness and conformance requirements.
 
