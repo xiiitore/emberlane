@@ -584,6 +584,22 @@ def _patch_changed_paths(patch: str, source: Path) -> list[str] | None:
         return None
     return paths
 
+def _patch_has_unsupported_file_operations(patch: str) -> bool:
+    """Reject patch metadata that changes file type, mode, or path identity."""
+    for line in patch.splitlines():
+        if line.startswith((
+            "old mode ", "new mode ", "deleted file mode ",
+            "rename from ", "rename to ", "copy from ", "copy to ",
+            "GIT binary patch", "Binary files ",
+        )):
+            return True
+        if line.startswith("new file mode ") and line != "new file mode 100644":
+            # Only ordinary non-executable files may be added by this backend.
+            # In particular, Git mode 120000 denotes a symlink.
+            return True
+    return False
+
+
 def run_local_model_edit(
     root: str | Path,
     raw_payload: dict[str, Any],
@@ -662,6 +678,12 @@ def run_local_model_edit(
         return {"status": "rejected", "reason": "unsafe_patch_paths", "applied": False}
     if set(clean_patch_paths) != set(clean_paths):
         return {"status": "rejected", "reason": "patch_paths_mismatch", "applied": False}
+    if _patch_has_unsupported_file_operations(patch):
+        return {
+            "status": "rejected",
+            "reason": "unsupported_patch_operation",
+            "applied": False,
+        }
     state = control_state(source)
     if state is not None:
         return {"status": state, "applied": False}
