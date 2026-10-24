@@ -56,6 +56,21 @@ class TaskQueueTests(unittest.TestCase):
         self.assertIsNone(restored.run_one({"side_effect": lambda payload: called.append(payload)}))
         self.assertEqual(called, [])
 
+    def test_lock_wait_is_bounded_for_a_second_queue_instance(self):
+        queue = TaskQueue(self.state)
+        other = TaskQueue(self.state)
+        other.lock_timeout_seconds = 0.1
+        queue.submit("parent", {})
+
+        def handler(payload):
+            other.submit("child", {})
+            return {"ok": True}
+
+        result = queue.run_one({"parent": handler})
+        self.assertEqual(result.status, "pending")
+        self.assertIn("timed out acquiring queue lock", result.last_error)
+        self.assertEqual(len(queue.list_tasks()), 1)
+
     def test_idempotent_submit_returns_existing_task(self):
         queue = TaskQueue(self.state)
         first = queue.submit("write_file", {"path": "x.py", "content": "X = 1"},
