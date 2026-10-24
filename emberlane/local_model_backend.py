@@ -597,6 +597,12 @@ def _patch_has_unsupported_file_operations(patch: str) -> bool:
             # Only ordinary non-executable files may be added by this backend.
             # In particular, Git mode 120000 denotes a symlink.
             return True
+        if line.startswith("index ") and line.rsplit(" ", 1)[-1] == "160000":
+            # Existing submodule/gitlink updates can encode their mode here,
+            # without any old/new file-mode header.
+            return True
+        if line.startswith("Subproject commit "):
+            return True
     return False
 
 
