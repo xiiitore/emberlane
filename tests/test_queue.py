@@ -499,6 +499,25 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(restored.status, "completed")
         self.assertEqual(restored.result, {"ok": True})
 
+    def test_handler_rejects_non_finite_json_results(self):
+        queue = TaskQueue(self.state)
+        for index, invalid_result in enumerate((float("nan"), float("inf"), float("-inf"))):
+            with self.subTest(value=repr(invalid_result)):
+                created = queue.submit(f"bad-result-{index}", {})
+                result = queue.run_task(
+                    created.task_id,
+                    {f"bad-result-{index}": lambda payload, value=invalid_result: value},
+                )
+                self.assertEqual(result.status, "pending")
+                self.assertIsNone(result.result)
+                self.assertIn("ValueError", result.last_error)
+                serialized = self.state.read_text(encoding="utf-8")
+                self.assertNotIn("NaN", serialized)
+                self.assertNotIn("Infinity", serialized)
+                restored = TaskQueue(self.state).get(created.task_id)
+                self.assertEqual(restored.status, "pending")
+                self.assertIsNone(restored.result)
+
     def test_handler_cannot_mutate_persisted_task_payload(self):
         queue = TaskQueue(self.state)
         created = queue.submit("mutating", {"nested": {"value": 1}})
