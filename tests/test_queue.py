@@ -71,6 +71,23 @@ class TaskQueueTests(unittest.TestCase):
                 TaskQueue(self.state)
         flock.assert_called_once()
 
+    def test_lock_descriptor_closes_if_unlock_raises(self):
+        from emberlane import queue as queue_module
+
+        if queue_module.fcntl is None:
+            self.skipTest("POSIX flock-specific test")
+        queue = TaskQueue(self.state)
+        with (
+            patch(
+                "emberlane.queue.fcntl.flock",
+                side_effect=[None, OSError(errno.EIO, "unlock failed")],
+            ),
+            patch("emberlane.queue.os.close", wraps=__import__("os").close) as close,
+        ):
+            with self.assertRaisesRegex(OSError, "unlock failed"):
+                queue.list_tasks()
+        close.assert_called_once()
+
     def test_lock_wait_is_bounded_for_a_second_queue_instance(self):
         queue = TaskQueue(self.state)
         other = TaskQueue(self.state)
