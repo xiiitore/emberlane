@@ -794,23 +794,18 @@ def run_local_model_edit(
                 return {"status": "verification_failed", "applied": True,
                         "reason": "changed_path_missing_from_verified_snapshot"}
             expected_hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
-        actual_hashes = {
-            name: hashlib.sha256((source / name).read_bytes()).hexdigest()
-            for name in clean_paths if (source / name).is_file()
-        }
+        actual_hashes: dict[str, str] = {}
+        for name in clean_paths:
+            path = source / name
+            # Path.is_file() follows symlinks. A path replaced with a symlink
+            # after apply must not be treated as a verified regular file.
+            if path.is_symlink() or not path.is_file():
+                continue
+            actual_hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
         if actual_hashes != expected_hashes:
-            can_revert = all(
-                (source / name).is_file()
-                and hashlib.sha256((source / name).read_bytes()).hexdigest() == expected_hashes[name]
-                for name in clean_paths
-            )
-            if can_revert:
-                revert = _fixed_command(
-                    ["git", "apply", "--reverse", "--whitespace=error", "-"],
-                    source, input_bytes=patch_bytes,
-                )
-                if revert is not None and revert.returncode == 0:
-                    return {"status": "apply_verification_failed", "applied": False}
+            # Once the source differs from the verified snapshot, reversing the
+            # patch could overwrite an unrelated concurrent change or follow a
+            # symlink. Leave the state untouched and require explicit recovery.
             return {"status": "recovery_required", "applied": True,
                     "reason": "working_tree_did_not_match_verified_snapshot"}
         return {
