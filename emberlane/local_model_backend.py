@@ -665,6 +665,15 @@ def run_local_model_edit(
             "reason": "changed_path_outside_allowlist",
             "applied": False,
         }
+    patch_paths = _patch_changed_paths(patch)
+    if patch_paths is None:
+        return {"status": "rejected", "reason": "invalid_patch_paths", "applied": False}
+    try:
+        clean_patch_paths = [_safe_relative(path, workspace) for path in patch_paths]
+    except (ValueError, WorkspaceError):
+        return {"status": "rejected", "reason": "unsafe_patch_paths", "applied": False}
+    if set(clean_patch_paths) != set(clean_paths):
+        return {"status": "rejected", "reason": "patch_paths_mismatch", "applied": False}
     state = control_state(source)
     if state is not None:
         return {"status": state, "applied": False}
