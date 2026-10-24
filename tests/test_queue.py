@@ -499,6 +499,60 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(self.state.read_bytes(), persisted_before)
         self.assertEqual(TaskQueue(self.state).get(created.task_id).status, "deferred")
 
+    def test_run_task_rolls_back_memory_if_initial_save_fails(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("effect", {"value": 1})
+        persisted_before = self.state.read_bytes()
+        called = []
+
+        with patch.object(queue, "_save", side_effect=OSError("initial save failed")):
+            with self.assertRaisesRegex(OSError, "initial save failed"):
+                queue.run_task(created.task_id, {"effect": lambda payload: called.append(payload)})
+
+        internal = queue._tasks[created.task_id]
+        self.assertEqual(internal.status, "pending")
+        self.assertEqual(internal.attempts, 0)
+        self.assertEqual(called, [])
+        self.assertEqual(self.state.read_bytes(), persisted_before)
+
+    def test_run_task_final_save_failure_keeps_persisted_running_snapshot(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("effect", {"value": 1})
+        original_save = queue._save
+        save_calls = []
+        effects = []
+
+        def fail_second_save():
+            save_calls.append(len(save_calls) + 1)
+            if len(save_calls) == 1:
+                original_save()
+            else:
+                raise OSError("final save failed")
+
+        def handler(payload):
+            effects.append(payload["value"])
+            return {"ok": True}
+
+        with patch.object(queue, "_save", side_effect=fail_second_save):
+            with self.assertRaisesRegex(OSError, "final save failed"):
+                queue.run_task(created.task_id, {"effect": handler})
+
+        self.assertEqual(effects, [1])
+        self.assertEqual(len(save_calls), 2)
+        internal = queue._tasks[created.task_id]
+        self.assertEqual(internal.status, "running")
+        self.assertEqual(internal.attempts, 1)
+        disk_state = json.loads(self.state.read_text(encoding="utf-8"))[0]
+        self.assertEqual(disk_state["status"], "running")
+        self.assertEqual(disk_state["attempts"], 1)
+
+        # Restart recovery retries the persisted running task: external effects are at-least-once.
+        restored = TaskQueue(self.state)
+        recovered = restored.get(created.task_id)
+        self.assertEqual(recovered.status, "pending")
+        self.assertEqual(recovered.attempts, 1)
+        self.assertIn("may be retried", recovered.last_error)
+
     def test_rejects_bad_arguments(self):
         queue = TaskQueue(self.state)
         with self.assertRaises(ValueError):
