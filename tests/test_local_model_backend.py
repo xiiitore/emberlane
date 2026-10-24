@@ -503,16 +503,16 @@ class LocalModelProposalTests(unittest.TestCase):
     def test_edit_rejects_symlink_patch_before_applying_to_source(self):
         self._initialize_git()
         outside = Path(self.temp.name) / "outside-sentinel.txt"
-        outside.write_text("must remain untouched\\n", encoding="utf-8")
+        outside.write_text("must remain untouched\n", encoding="utf-8")
         symlink_target = str(outside.resolve())
         patch_text = (
-            "diff --git a/src/evil-link b/src/evil-link\\n"
-            "new file mode 120000\\n"
-            "index 0000000..0000000\\n"
-            "--- /dev/null\\n"
-            "+++ b/src/evil-link\\n"
-            "@@ -0,0 +1 @@\\n"
-            f"+{symlink_target}\\n"
+            "diff --git a/src/evil-link b/src/evil-link\n"
+            "new file mode 120000\n"
+            "index 0000000..0000000\n"
+            "--- /dev/null\n"
+            "+++ b/src/evil-link\n"
+            "@@ -0,0 +1 @@\n"
+            f"+{symlink_target}\n"
         )
         proposal = {
             "status": "proposal",
@@ -533,7 +533,7 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertEqual(result["reason"], "unsupported_patch_operation")
         self.assertFalse(result["applied"])
         self.assertFalse((self.root / "src" / "evil-link").is_symlink())
-        self.assertEqual(outside.read_text(encoding="utf-8"), "must remain untouched\\n")
+        self.assertEqual(outside.read_text(encoding="utf-8"), "must remain untouched\n")
 
     def test_edit_applies_only_after_targeted_tests_pass(self):
         self._initialize_git()
