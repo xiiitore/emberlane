@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import threading
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -124,41 +125,60 @@ class TaskQueue:
         self.max_attempts = max_attempts
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         self._tasks: dict[str, Task] = {}
+        # Nested queue calls from a handler (for example GoalPlanner.advance ->
+        # queue.submit) must reuse the outer lock and its in-memory snapshot.
+        self._thread_lock = threading.RLock()
+        self._lock_depth = 0
         with self._locked_refresh():
             pass
 
     @contextmanager
     def _locked_refresh(self) -> Iterator[None]:
-        """Hold a stable sibling lock while reloading and operating on queue state.
+        """Refresh under an OS lock, reusing it for nested calls on this instance.
 
         The lock file is never replaced or removed: queue.json itself is atomically
         replaced by _save(), so locking queue.json would not serialize processes
         that opened different inodes. Locks are advisory and require a filesystem
         that implements POSIX flock or Windows byte-range locking correctly.
+
+        Reentrant calls from the same thread must not open and lock a second file
+        descriptor or reload state: handlers can submit child tasks while their
+        parent is marked running. The outer operation owns refresh and recovery.
         """
-        lock_path = self.state_path.with_name(self.state_path.name + ".lock")
-        fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
-        locked = False
-        try:
-            if fcntl is not None:
-                fcntl.flock(fd, fcntl.LOCK_EX)
-            else:  # pragma: no cover - exercised on Windows
-                if os.fstat(fd).st_size == 0:
-                    os.write(fd, b"\\0")
-                    os.fsync(fd)
-                os.lseek(fd, 0, os.SEEK_SET)
-                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
-            locked = True
-            self._load()
-            yield
-        finally:
-            if locked:
+        with self._thread_lock:
+            if self._lock_depth:
+                self._lock_depth += 1
+                try:
+                    yield
+                finally:
+                    self._lock_depth -= 1
+                return
+
+            lock_path = self.state_path.with_name(self.state_path.name + ".lock")
+            fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+            locked = False
+            try:
                 if fcntl is not None:
-                    fcntl.flock(fd, fcntl.LOCK_UN)
+                    fcntl.flock(fd, fcntl.LOCK_EX)
                 else:  # pragma: no cover - exercised on Windows
+                    if os.fstat(fd).st_size == 0:
+                        os.write(fd, b"\\0")
+                        os.fsync(fd)
                     os.lseek(fd, 0, os.SEEK_SET)
-                    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-            os.close(fd)
+                    msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+                locked = True
+                self._lock_depth = 1
+                self._load()
+                yield
+            finally:
+                self._lock_depth = 0
+                if locked:
+                    if fcntl is not None:
+                        fcntl.flock(fd, fcntl.LOCK_UN)
+                    else:  # pragma: no cover - exercised on Windows
+                        os.lseek(fd, 0, os.SEEK_SET)
+                        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                os.close(fd)
 
     def _load(self) -> None:
         self._tasks = {}
