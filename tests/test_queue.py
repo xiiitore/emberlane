@@ -1,3 +1,4 @@
+import errno
 import json
 import threading
 import subprocess
@@ -56,6 +57,19 @@ class TaskQueueTests(unittest.TestCase):
         called = []
         self.assertIsNone(restored.run_one({"side_effect": lambda payload: called.append(payload)}))
         self.assertEqual(called, [])
+
+    def test_permanent_os_lock_error_is_not_retried_as_contention(self):
+        from emberlane import queue as queue_module
+
+        if queue_module.fcntl is None:
+            self.skipTest("POSIX flock-specific test")
+        with patch(
+            "emberlane.queue.fcntl.flock",
+            side_effect=PermissionError(errno.EPERM, "permission denied"),
+        ) as flock:
+            with self.assertRaises(PermissionError):
+                TaskQueue(self.state)
+        flock.assert_called_once()
 
     def test_lock_wait_is_bounded_for_a_second_queue_instance(self):
         queue = TaskQueue(self.state)
