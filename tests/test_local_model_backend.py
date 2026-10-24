@@ -535,6 +535,108 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertFalse((self.root / "src" / "evil-link").is_symlink())
         self.assertEqual(outside.read_text(encoding="utf-8"), "must remain untouched\n")
 
+    def test_edit_rejects_other_unsupported_patch_operations_before_apply(self):
+        self._initialize_git()
+        original = (self.root / "src" / "allowed.py").read_bytes()
+        unsupported_metadata = [
+            "old mode 100644\\nnew mode 100755",
+            "deleted file mode 100644",
+            "rename from src/allowed.py\\nrename to src/renamed.py",
+            "copy from src/allowed.py\\ncopy to src/copied.py",
+            "new file mode 160000",
+            "GIT binary patch",
+        ]
+        for metadata in unsupported_metadata:
+            with self.subTest(metadata=metadata):
+                patch_text = (
+                    "diff --git a/src/allowed.py b/src/allowed.py\\n"
+                    f"{metadata}\\n"
+                    "--- a/src/allowed.py\\n"
+                    "+++ b/src/allowed.py\\n"
+                    "@@ -1 +1 @@\\n"
+                    "-VALUE = 1\\n"
+                    "+VALUE = 2\\n"
+                )
+                proposal = {
+                    "status": "proposal",
+                    "proposal": {
+                        "changed_paths": ["src/allowed.py"],
+                        "patch": patch_text,
+                        "patch_bytes": len(patch_text.encode("utf-8")),
+                        "base_sha256": {
+                            "src/allowed.py": hashlib.sha256(original).hexdigest(),
+                        },
+                        "output": "unsupported operation",
+                        "output_bytes": 21,
+                        "applied": False,
+                    },
+                }
+                with patch(
+                    "emberlane.local_model_backend.run_local_model_proposal",
+                    return_value=proposal,
+                ):
+                    result = run_local_model_edit(
+                        self.root, self.payload, workspace=self.workspace,
+                    )
+                self.assertEqual(result["status"], "rejected")
+                self.assertEqual(result["reason"], "unsupported_patch_operation")
+                self.assertFalse(result["applied"])
+                self.assertEqual(
+                    (self.root / "src" / "allowed.py").read_bytes(), original,
+                )
+                self.assertFalse((self.root / "src" / "renamed.py").exists())
+                self.assertFalse((self.root / "src" / "copied.py").exists())
+
+    def test_post_apply_unexpected_mutation_returns_recovery_required(self):
+        self._initialize_git()
+        tests_dir = self.root / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test_feature.py").write_text(
+            "import unittest\\nfrom src.allowed import VALUE\\n"
+            "class FeatureTests(unittest.TestCase):\\n"
+            " def test_value(self): self.assertEqual(VALUE, 2)\\n",
+            encoding="utf-8",
+        )
+        proposal = self._proposal_for_value(2)
+        fixed_command = __import__(
+            "emberlane.local_model_backend", fromlist=["_fixed_command"]
+        )._fixed_command
+
+        def mutate_after_real_apply(command, cwd, **kwargs):
+            result = fixed_command(command, cwd, **kwargs)
+            if (
+                Path(cwd).resolve() == self.root.resolve()
+                and command == ["git", "apply", "--whitespace=error", "-"]
+                and result is not None
+                and result.returncode == 0
+            ):
+                (self.root / "src" / "allowed.py").write_text(
+                    "VALUE = 999\\n", encoding="utf-8",
+                )
+            return result
+
+        with patch(
+            "emberlane.local_model_backend.run_local_model_proposal",
+            return_value=proposal,
+        ), patch(
+            "emberlane.local_model_backend._fixed_command",
+            side_effect=mutate_after_real_apply,
+        ):
+            result = run_local_model_edit(
+                self.root,
+                {**self.payload, "test_file": "test_feature.py"},
+                workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "recovery_required")
+        self.assertTrue(result["applied"])
+        self.assertEqual(
+            result["reason"], "working_tree_did_not_match_verified_snapshot",
+        )
+        self.assertEqual(
+            (self.root / "src" / "allowed.py").read_text(encoding="utf-8"),
+            "VALUE = 999\\n",
+        )
+
     def test_edit_applies_only_after_targeted_tests_pass(self):
         self._initialize_git()
         tests = self.root / "tests"
