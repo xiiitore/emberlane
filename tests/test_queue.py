@@ -1,5 +1,6 @@
 import errno
 import json
+import os
 import threading
 import subprocess
 import sys
@@ -82,7 +83,7 @@ class TaskQueueTests(unittest.TestCase):
                 "emberlane.queue.fcntl.flock",
                 side_effect=[None, OSError(errno.EIO, "unlock failed")],
             ),
-            patch("emberlane.queue.os.close", wraps=__import__("os").close) as close,
+            patch("emberlane.queue.os.close", wraps=os.close) as close,
         ):
             with self.assertRaisesRegex(OSError, "unlock failed"):
                 queue.list_tasks()
