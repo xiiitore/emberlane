@@ -249,7 +249,7 @@ class TaskQueue:
         fd, temporary = tempfile.mkstemp(prefix=".queue-", dir=self.state_path.parent)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as stream:
-                json.dump(data, stream, ensure_ascii=False, sort_keys=True)
+                json.dump(data, stream, ensure_ascii=False, sort_keys=True, allow_nan=False)
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(temporary, self.state_path)
@@ -445,7 +445,7 @@ class TaskQueue:
         running_snapshot = copy.deepcopy(task)
         try:
             # Persist only JSON-compatible results so task state remains portable.
-            task.result = json.loads(json.dumps(handler(copy.deepcopy(task.payload)), ensure_ascii=False))
+            task.result = json.loads(json.dumps(handler(copy.deepcopy(task.payload)), ensure_ascii=False, allow_nan=False))
         except Exception as exc:
             if _is_external_wait_exception(exc):
                 task.result = {
