@@ -110,17 +110,24 @@ class TaskQueue:
             loaded[task.task_id] = task
         self._tasks = loaded
         # A process may have stopped after persisting "running" but before
-        # persisting a terminal state. Requeue it on restart. This is
-        # at-least-once behavior: a handler may run again if it performed its
-        # side effect before the process stopped.
+        # persisting a terminal state. Retry only while the configured attempt
+        # budget remains: a handler may already have performed its side effect
+        # before the process stopped, so retries are at-least-once.
         recovered = False
         now = time.time()
         for task in self._tasks.values():
             if task.status == "running":
-                task.status = "pending"
-                task.last_error = (
-                    "Recovered after interrupted run; handler may be retried."
-                )
+                if task.attempts >= self.max_attempts:
+                    task.status = "failed"
+                    task.last_error = (
+                        "Recovered after interrupted run, but retry limit is exhausted; "
+                        "manual recovery required because the side effect may have occurred."
+                    )
+                else:
+                    task.status = "pending"
+                    task.last_error = (
+                        "Recovered after interrupted run; handler may be retried."
+                    )
                 task.updated_at = now
                 recovered = True
         if recovered:

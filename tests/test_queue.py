@@ -350,6 +350,23 @@ class TaskQueueTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             queue.submit("ok", [])
 
+    def test_recovered_running_task_at_attempt_limit_fails_closed(self):
+        queue = TaskQueue(self.state, max_attempts=1)
+        task = queue.submit("side_effect", {"value": "may-have-run"})
+        task.status = "running"
+        task.attempts = 1
+        queue._save()
+
+        restored = TaskQueue(self.state, max_attempts=1)
+        recovered = restored.get(task.task_id)
+        self.assertEqual(recovered.status, "failed")
+        self.assertIn("retry limit is exhausted", recovered.last_error)
+        self.assertIn("manual recovery required", recovered.last_error)
+
+        called = []
+        self.assertIsNone(restored.run_one({"side_effect": lambda payload: called.append(payload)}))
+        self.assertEqual(called, [])
+
 
 if __name__ == "__main__":
     unittest.main()
