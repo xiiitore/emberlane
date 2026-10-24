@@ -583,10 +583,9 @@ def _patch_changed_paths(patch: str) -> list[str] | None:
                 return None
             if old_path is None and new_path is None:
                 return None
-            if old_path is not None:
-                paths.append(old_path)
-            if new_path is not None:
-                paths.append(new_path)
+            if old_path is not None and new_path is not None and old_path != new_path:
+                return None
+            paths.append(old_path if old_path is not None else new_path)
             index += 2
             continue
         if line.startswith("+++ "):
