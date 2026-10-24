@@ -636,7 +636,7 @@ class LocalModelProposalTests(unittest.TestCase):
         target = self.root / gitlink_path
         target.mkdir(parents=True)
         sentinel = target / "worktree-sentinel.txt"
-        sentinel.write_text("keep worktree untouched\\n", encoding="utf-8")
+        sentinel.write_text("keep worktree untouched\n", encoding="utf-8")
         # Represent an existing submodule path in the actual index as mode 160000.
         # The worktree directory is retained to assert rejection changes neither layer.
         subprocess.run(
@@ -653,13 +653,13 @@ class LocalModelProposalTests(unittest.TestCase):
             capture_output=True, text=True, check=True,
         ).stdout
         patch_text = (
-            f"diff --git a/{gitlink_path} b/{gitlink_path}\\n"
-            "index 1111111..2222222 160000\\n"
-            f"--- a/{gitlink_path}\\n"
-            f"+++ b/{gitlink_path}\\n"
-            "@@ -1 +1 @@\\n"
-            "-Subproject commit 1111111111111111111111111111111111111111\\n"
-            "+Subproject commit 2222222222222222222222222222222222222222\\n"
+            f"diff --git a/{gitlink_path} b/{gitlink_path}\n"
+            "index 1111111..2222222 160000\n"
+            f"--- a/{gitlink_path}\n"
+            f"+++ b/{gitlink_path}\n"
+            "@@ -1 +1 @@\n"
+            "-Subproject commit 1111111111111111111111111111111111111111\n"
+            "+Subproject commit 2222222222222222222222222222222222222222\n"
         )
         proposal = {
             "status": "proposal",
@@ -686,7 +686,7 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertFalse(result["applied"])
         self.assertTrue(target.is_dir())
         self.assertEqual(
-            sentinel.read_text(encoding="utf-8"), "keep worktree untouched\\n",
+            sentinel.read_text(encoding="utf-8"), "keep worktree untouched\n",
         )
         self.assertEqual(
             subprocess.run(
