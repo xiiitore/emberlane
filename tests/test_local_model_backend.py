@@ -133,7 +133,7 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_model_loader_failure_preserves_stderr_diagnostic(self):
         class FailedProcess(FakeProcess):
-            stderr_bytes = b"error while loading shared libraries: libllama.so\\n"
+            stderr_bytes = b"error while loading shared libraries: libllama.so\n"
 
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
@@ -407,22 +407,22 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_edit_rejects_proposal_outside_requested_allowlist(self):
         other = self.root / "src" / "other.py"
-        other.write_text("VALUE = 1\\n", encoding="utf-8")
+        other.write_text("VALUE = 1\n", encoding="utf-8")
         self._initialize_git()
         tests = self.root / "tests"
         tests.mkdir()
         (tests / "test_feature.py").write_text(
-            "import unittest\\nclass FeatureTests(unittest.TestCase):\\n"
-            " def test_value(self): self.assertEqual(1, 1)\\n",
+            "import unittest\nclass FeatureTests(unittest.TestCase):\n"
+            " def test_value(self): self.assertEqual(1, 1)\n",
             encoding="utf-8",
         )
         original = other.read_bytes()
         patch_text = (
-            "--- a/src/other.py\\n"
-            "+++ b/src/other.py\\n"
-            "@@ -1 +1 @@\\n"
-            "-VALUE = 1\\n"
-            "+VALUE = 2\\n"
+            "--- a/src/other.py\n"
+            "+++ b/src/other.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            "+VALUE = 2\n"
         )
         proposal = {
             "status": "proposal",
@@ -445,7 +445,7 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertEqual(result["status"], "rejected")
         self.assertEqual(result["reason"], "changed_path_outside_allowlist")
         self.assertFalse(result["applied"])
-        self.assertEqual(other.read_text(encoding="utf-8"), "VALUE = 1\\n")
+        self.assertEqual(other.read_text(encoding="utf-8"), "VALUE = 1\n")
 
     def test_edit_applies_only_after_targeted_tests_pass(self):
         self._initialize_git()
