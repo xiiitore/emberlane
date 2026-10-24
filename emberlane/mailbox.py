@@ -439,7 +439,8 @@ class GitHubIssueMailbox:
             if task is not None and task.status == "pending":
                 if not execute_tasks:
                     return {"status": "pending", "comment_id": comment_id, "task_id": task_id}
-                self.worker.run_one()
+                # Resume this comment's task, never an unrelated first-pending task.
+                self.worker.run_one(task_id=task_id)
             if self._finish_if_terminal(comment_id, task_id):
                 return {"status": "finished", "comment_id": comment_id, "task_id": task_id}
 
