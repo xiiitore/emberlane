@@ -567,10 +567,10 @@ def _patch_changed_paths(patch: str, source: Path) -> list[str] | None:
     if result is None or result.returncode != 0:
         return None
     paths: list[str] = []
-    for record in result.stdout.split(b"\\x00"):
+    for record in result.stdout.split(b"\x00"):
         if not record:
             continue
-        fields = record.split(b"\\t", 2)
+        fields = record.split(b"\t", 2)
         if len(fields) != 3 or not fields[2]:
             # Reject malformed output and rename/copy records, which this backend
             # does not generate and cannot safely represent as a single path.
