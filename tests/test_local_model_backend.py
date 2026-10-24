@@ -637,6 +637,53 @@ class LocalModelProposalTests(unittest.TestCase):
             "VALUE = 999\n",
         )
 
+    def test_post_apply_symlink_swap_is_not_verified_or_reversed(self):
+        self._initialize_git()
+        tests_dir = self.root / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test_feature.py").write_text(
+            "import unittest\\nfrom src.allowed import VALUE\\n"
+            "class FeatureTests(unittest.TestCase):\\n"
+            " def test_value(self): self.assertEqual(VALUE, 2)\\n",
+            encoding="utf-8",
+        )
+        outside = self.root.parent / "outside-after-apply.py"
+        outside.write_text("VALUE = 2\\n", encoding="utf-8")
+        target = self.root / "src" / "allowed.py"
+        proposal = self._proposal_for_value(2)
+        fixed_command = __import__(
+            "emberlane.local_model_backend", fromlist=["_fixed_command"]
+        )._fixed_command
+
+        def replace_with_symlink_after_real_apply(command, cwd, **kwargs):
+            result = fixed_command(command, cwd, **kwargs)
+            if (
+                Path(cwd).resolve() == self.root.resolve()
+                and command == ["git", "apply", "--whitespace=error", "-"]
+                and result is not None
+                and result.returncode == 0
+            ):
+                target.unlink()
+                target.symlink_to(outside)
+            return result
+
+        with patch(
+            "emberlane.local_model_backend.run_local_model_proposal",
+            return_value=proposal,
+        ), patch(
+            "emberlane.local_model_backend._fixed_command",
+            side_effect=replace_with_symlink_after_real_apply,
+        ):
+            result = run_local_model_edit(
+                self.root,
+                {**self.payload, "test_file": "test_feature.py"},
+                workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "recovery_required")
+        self.assertTrue(result["applied"])
+        self.assertTrue(target.is_symlink())
+        self.assertEqual(outside.read_text(encoding="utf-8"), "VALUE = 2\\n")
+
     def test_edit_applies_only_after_targeted_tests_pass(self):
         self._initialize_git()
         tests = self.root / "tests"
