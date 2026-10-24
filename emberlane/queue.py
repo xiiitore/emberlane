@@ -194,13 +194,15 @@ class TaskQueue:
                 yield
             finally:
                 self._lock_depth = 0
-                if locked:
-                    if fcntl is not None:
-                        fcntl.flock(fd, fcntl.LOCK_UN)
-                    else:  # pragma: no cover - exercised on Windows
-                        os.lseek(fd, 0, os.SEEK_SET)
-                        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-                os.close(fd)
+                try:
+                    if locked:
+                        if fcntl is not None:
+                            fcntl.flock(fd, fcntl.LOCK_UN)
+                        else:  # pragma: no cover - exercised on Windows
+                            os.lseek(fd, 0, os.SEEK_SET)
+                            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                finally:
+                    os.close(fd)
         finally:
             self._thread_lock.release()
 
