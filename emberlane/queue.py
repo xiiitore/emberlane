@@ -418,15 +418,29 @@ class TaskQueue:
     ) -> Task:
         handler = handlers.get(task.kind)
         if handler is None:
+            original_task = copy.deepcopy(task)
             task.status = "failed"
             task.last_error = f"no handler registered for kind: {task.kind}"
             task.updated_at = time.time()
-            self._save()
+            try:
+                self._save()
+            except BaseException:
+                self._tasks[task.task_id] = original_task
+                raise
             return task
+        original_task = copy.deepcopy(task)
         task.status = "running"
         task.attempts += 1
         task.updated_at = time.time()
-        self._save()
+        try:
+            self._save()
+        except BaseException:
+            self._tasks[task.task_id] = original_task
+            raise
+        # If the final save fails, retain this persisted running snapshot in memory.
+        # The handler may already have caused an external effect, so restart recovery
+        # remains at-least-once rather than pretending the effect can be rolled back.
+        running_snapshot = copy.deepcopy(task)
         try:
             # Persist only JSON-compatible results so task state remains portable.
             task.result = json.loads(json.dumps(handler(copy.deepcopy(task.payload)), ensure_ascii=False))
@@ -460,5 +474,9 @@ class TaskQueue:
                 task.last_error = None
                 task.status = "completed"
         task.updated_at = time.time()
-        self._save()
+        try:
+            self._save()
+        except BaseException:
+            self._tasks[task.task_id] = running_snapshot
+            raise
         return task
