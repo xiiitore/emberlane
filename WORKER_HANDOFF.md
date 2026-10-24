@@ -9466,3 +9466,42 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 0b2f2e39-aa15-4d1a-baf0-112c45779683
+
+[Full task output](worker-logs/0b2f2e39-aa15-4d1a-baf0-112c45779683.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-24T19:36:00.665176+00:00",
+  "source_comment_id": "6388617675",
+  "task_id": "0b2f2e39-aa15-4d1a-baf0-112c45779683",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/0b2f2e39-aa15-4d1a-baf0-112c45779683.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/0b2f2e39-aa15-4d1a-baf0-112c45779683.md",
+    "dropbox_sha256": "846af391d84beeb5ae5343f973ce339ae8c78fb19fc364441d6b3e72d1e15db8",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "returncode": 0,
+    "passed": true,
+    "output_publication": "full_log_only",
+    "output_note": "Full sanitized output was not copied inline"
+  },
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/0b2f2e39-aa15-4d1a-baf0-112c45779683.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/0b2f2e39-aa15-4d1a-baf0-112c45779683.md).
