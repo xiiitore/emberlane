@@ -367,5 +367,38 @@ class TaskQueueTests(unittest.TestCase):
             queue.submit("ok", [])
 
 
+    def test_nested_submit_from_handler_is_reentrant_and_persists_both_tasks(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        child_code = (
+            "import sys\\n"
+            "from emberlane import TaskQueue\\n"
+            "queue = TaskQueue(sys.argv[1])\\n"
+            "parent = queue.submit('parent', {})\\n"
+            "def handler(payload):\\n"
+            "    child = queue.submit('child', {'value': 7})\\n"
+            "    return {'ok': True, 'child_id': child.task_id}\\n"
+            "result = queue.run_one({'parent': handler})\\n"
+            "assert result.status == 'completed', result\\n"
+            "restored = TaskQueue(sys.argv[1])\\n"
+            "assert restored.get(parent.task_id).status == 'completed'\\n"
+            "child_id = result.result['child_id']\\n"
+            "assert restored.get(child_id).status == 'pending'\\n"
+            "print('PASS', flush=True)\\n"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-c", child_code, str(self.state)],
+            cwd=repo_root,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=5,
+            check=False,
+            shell=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("PASS", completed.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
