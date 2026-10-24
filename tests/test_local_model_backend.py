@@ -591,13 +591,13 @@ class LocalModelProposalTests(unittest.TestCase):
         self._initialize_git()
         original = (self.root / "src" / "allowed.py").read_bytes()
         patch_text = (
-            "diff --git a/src/allowed.py b/src/allowed.py\\n"
-            "index 1111111..2222222 160000\\n"
-            "--- a/src/allowed.py\\n"
-            "+++ b/src/allowed.py\\n"
-            "@@ -1 +1 @@\\n"
-            "-Subproject commit 1111111111111111111111111111111111111111\\n"
-            "+Subproject commit 2222222222222222222222222222222222222222\\n"
+            "diff --git a/src/allowed.py b/src/allowed.py\n"
+            "index 1111111..2222222 160000\n"
+            "--- a/src/allowed.py\n"
+            "+++ b/src/allowed.py\n"
+            "@@ -1 +1 @@\n"
+            "-Subproject commit 1111111111111111111111111111111111111111\n"
+            "+Subproject commit 2222222222222222222222222222222222222222\n"
         )
         proposal = {
             "status": "proposal",
