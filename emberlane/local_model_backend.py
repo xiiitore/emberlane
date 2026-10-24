@@ -613,6 +613,19 @@ def run_local_model_edit(
         return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
     if set(clean_paths) != set(changed_paths):
         return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
+    try:
+        clean_allowed_paths = {
+            _safe_relative(path, workspace)
+            for path in proposal_payload["allowed_paths"]
+        }
+    except (KeyError, TypeError, ValueError, WorkspaceError):
+        return {"status": "rejected", "reason": "unsafe_allowed_paths", "applied": False}
+    if not set(clean_paths).issubset(clean_allowed_paths):
+        return {
+            "status": "rejected",
+            "reason": "changed_path_outside_allowlist",
+            "applied": False,
+        }
     state = control_state(source)
     if state is not None:
         return {"status": state, "applied": False}
