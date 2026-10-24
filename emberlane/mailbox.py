@@ -377,6 +377,7 @@ class GitHubIssueMailbox:
             allowed_scalar_fields = {
                 "ok", "passed", "returncode", "exit_code", "replacements",
                 "bytes_written", "count", "files_changed", "patch_included",
+                "pruned_count", "kept_terminal_count", "preserved_active_count",
             }
             for key in allowed_scalar_fields:
                 value = task.result.get(key)
