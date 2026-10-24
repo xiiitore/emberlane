@@ -632,17 +632,20 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_existing_gitlink_patch_is_rejected_before_apply(self):
         self._initialize_git()
-        target = self.root / "src" / "allowed.py"
-        original = target.read_bytes()
-        # Make the real Git index entry a gitlink (mode 160000), while retaining
-        # the regular worktree file to prove rejection preserves both layers.
+        gitlink_path = "vendor/submodule"
+        target = self.root / gitlink_path
+        target.mkdir(parents=True)
+        sentinel = target / "worktree-sentinel.txt"
+        sentinel.write_text("keep worktree untouched\\n", encoding="utf-8")
+        # Represent an existing submodule path in the actual index as mode 160000.
+        # The worktree directory is retained to assert rejection changes neither layer.
         subprocess.run(
             ["git", "update-index", "--add", "--cacheinfo",
-             "160000,1111111111111111111111111111111111111111,src/allowed.py"],
+             f"160000,1111111111111111111111111111111111111111,{gitlink_path}"],
             cwd=self.root, check=True,
         )
         index_before = subprocess.run(
-            ["git", "ls-files", "--stage", "--", "src/allowed.py"],
+            ["git", "ls-files", "--stage", "--", gitlink_path],
             cwd=self.root, capture_output=True, text=True, check=True,
         ).stdout
         tree_before = subprocess.run(
@@ -650,42 +653,44 @@ class LocalModelProposalTests(unittest.TestCase):
             capture_output=True, text=True, check=True,
         ).stdout
         patch_text = (
-            "diff --git a/src/allowed.py b/src/allowed.py\n"
-            "index 1111111..2222222 160000\n"
-            "--- a/src/allowed.py\n"
-            "+++ b/src/allowed.py\n"
-            "@@ -1 +1 @@\n"
-            "-Subproject commit 1111111111111111111111111111111111111111\n"
-            "+Subproject commit 2222222222222222222222222222222222222222\n"
+            f"diff --git a/{gitlink_path} b/{gitlink_path}\\n"
+            "index 1111111..2222222 160000\\n"
+            f"--- a/{gitlink_path}\\n"
+            f"+++ b/{gitlink_path}\\n"
+            "@@ -1 +1 @@\\n"
+            "-Subproject commit 1111111111111111111111111111111111111111\\n"
+            "+Subproject commit 2222222222222222222222222222222222222222\\n"
         )
         proposal = {
             "status": "proposal",
             "proposal": {
-                "changed_paths": ["src/allowed.py"],
+                "changed_paths": [gitlink_path],
                 "patch": patch_text,
                 "patch_bytes": len(patch_text.encode("utf-8")),
-                "base_sha256": {
-                    "src/allowed.py": hashlib.sha256(original).hexdigest(),
-                },
+                "base_sha256": {gitlink_path: None},
                 "output": "attempt existing gitlink update",
                 "output_bytes": 28,
                 "applied": False,
             },
         }
+        payload = {**self.payload, "allowed_paths": [gitlink_path]}
         with patch(
             "emberlane.local_model_backend.run_local_model_proposal",
             return_value=proposal,
         ):
             result = run_local_model_edit(
-                self.root, self.payload, workspace=self.workspace,
+                self.root, payload, workspace=self.workspace,
             )
         self.assertEqual(result["status"], "rejected")
         self.assertEqual(result["reason"], "unsupported_patch_operation")
         self.assertFalse(result["applied"])
-        self.assertEqual(target.read_bytes(), original)
+        self.assertTrue(target.is_dir())
+        self.assertEqual(
+            sentinel.read_text(encoding="utf-8"), "keep worktree untouched\\n",
+        )
         self.assertEqual(
             subprocess.run(
-                ["git", "ls-files", "--stage", "--", "src/allowed.py"],
+                ["git", "ls-files", "--stage", "--", gitlink_path],
                 cwd=self.root, capture_output=True, text=True, check=True,
             ).stdout,
             index_before,
