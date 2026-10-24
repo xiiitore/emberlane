@@ -601,7 +601,7 @@ def _patch_has_unsupported_file_operations(patch: str) -> bool:
             # Existing submodule/gitlink updates can encode their mode here,
             # without any old/new file-mode header.
             return True
-        if line.startswith("Subproject commit "):
+        if line.startswith(("+Subproject commit ", "-Subproject commit ", " Subproject commit ")):
             return True
     return False
 
