@@ -447,6 +447,40 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertFalse(result["applied"])
         self.assertEqual(other.read_text(encoding="utf-8"), "VALUE = 1\n")
 
+    def test_edit_rejects_patch_touching_path_missing_from_changed_paths(self):
+        other = self.root / "src" / "other.py"
+        other.write_text("VALUE = 10\n", encoding="utf-8")
+        self._initialize_git()
+        tests = self.root / "tests"
+        tests.mkdir()
+        (tests / "test_feature.py").write_text(
+            "import unittest\nclass FeatureTests(unittest.TestCase):\n"
+            " def test_value(self): self.assertEqual(1, 1)\n",
+            encoding="utf-8",
+        )
+        original_other = other.read_text(encoding="utf-8")
+        proposal = self._proposal_for_value(2)
+        extra_patch = (
+            "--- a/src/other.py\n"
+            "+++ b/src/other.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 10\n"
+            "+VALUE = 20\n"
+        )
+        proposal["proposal"]["patch"] += extra_patch
+        proposal["proposal"]["patch_bytes"] = len(proposal["proposal"]["patch"].encode("utf-8"))
+        with patch("emberlane.local_model_backend.run_local_model_proposal", return_value=proposal):
+            result = run_local_model_edit(
+                self.root,
+                {**self.payload, "test_file": "test_feature.py"},
+                workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "rejected")
+        self.assertEqual(result["reason"], "patch_paths_mismatch")
+        self.assertFalse(result["applied"])
+        self.assertEqual((self.root / "src" / "allowed.py").read_text(encoding="utf-8"), "VALUE = 1\n")
+        self.assertEqual(other.read_text(encoding="utf-8"), original_other)
+
     def test_edit_applies_only_after_targeted_tests_pass(self):
         self._initialize_git()
         tests = self.root / "tests"
