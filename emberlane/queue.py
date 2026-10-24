@@ -409,7 +409,7 @@ class TaskQueue:
             task = self._tasks.get(task_id)
             if task is None or task.status != "pending":
                 return None
-            return self._run_task(task, handlers)
+            return copy.deepcopy(self._run_task(task, handlers))
 
     def _run_task(
         self,
