@@ -632,7 +632,23 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_existing_gitlink_patch_is_rejected_before_apply(self):
         self._initialize_git()
-        original = (self.root / "src" / "allowed.py").read_bytes()
+        target = self.root / "src" / "allowed.py"
+        original = target.read_bytes()
+        # Make the real Git index entry a gitlink (mode 160000), while retaining
+        # the regular worktree file to prove rejection preserves both layers.
+        subprocess.run(
+            ["git", "update-index", "--add", "--cacheinfo",
+             "160000,1111111111111111111111111111111111111111,src/allowed.py"],
+            cwd=self.root, check=True,
+        )
+        index_before = subprocess.run(
+            ["git", "ls-files", "--stage", "--", "src/allowed.py"],
+            cwd=self.root, capture_output=True, text=True, check=True,
+        ).stdout
+        tree_before = subprocess.run(
+            ["git", "write-tree"], cwd=self.root,
+            capture_output=True, text=True, check=True,
+        ).stdout
         patch_text = (
             "diff --git a/src/allowed.py b/src/allowed.py\n"
             "index 1111111..2222222 160000\n"
@@ -666,8 +682,20 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertEqual(result["status"], "rejected")
         self.assertEqual(result["reason"], "unsupported_patch_operation")
         self.assertFalse(result["applied"])
+        self.assertEqual(target.read_bytes(), original)
         self.assertEqual(
-            (self.root / "src" / "allowed.py").read_bytes(), original,
+            subprocess.run(
+                ["git", "ls-files", "--stage", "--", "src/allowed.py"],
+                cwd=self.root, capture_output=True, text=True, check=True,
+            ).stdout,
+            index_before,
+        )
+        self.assertEqual(
+            subprocess.run(
+                ["git", "write-tree"], cwd=self.root,
+                capture_output=True, text=True, check=True,
+            ).stdout,
+            tree_before,
         )
 
     def test_post_apply_unexpected_mutation_returns_recovery_required(self):
