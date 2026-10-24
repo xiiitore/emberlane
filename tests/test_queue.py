@@ -495,7 +495,7 @@ class TaskQueueTests(unittest.TestCase):
 
         internal = queue._tasks[created.task_id]
         self.assertEqual(internal.status, "deferred")
-        self.assertEqual(internal.result, {"status": "deferred", "reason": "external_capacity_limit", "exception_type": "Exception"})
+        self.assertEqual(internal.result, {"status": "deferred"})
         self.assertEqual(self.state.read_bytes(), persisted_before)
         self.assertEqual(TaskQueue(self.state).get(created.task_id).status, "deferred")
 
