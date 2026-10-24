@@ -266,8 +266,21 @@ class TaskQueue:
             "backup_file": backup_path.name,
         }
 
-    def run_one(self, handlers: dict[str, Callable[[dict[str, Any]], Any]]) -> Task | None:
-        task = next((t for t in self._tasks.values() if t.status == "pending"), None)
+    def run_one(
+        self,
+        handlers: dict[str, Callable[[dict[str, Any]], Any]],
+        *,
+        task_id: str | None = None,
+    ) -> Task | None:
+        """Run the first pending task, or one exact pending task when task_id is set."""
+        if task_id is None:
+            task = next((t for t in self._tasks.values() if t.status == "pending"), None)
+        else:
+            if not isinstance(task_id, str) or not task_id:
+                raise ValueError("task_id must be a non-empty string")
+            task = self._tasks.get(task_id)
+            if task is None or task.status != "pending":
+                return None
         if task is None:
             return None
         handler = handlers.get(task.kind)
