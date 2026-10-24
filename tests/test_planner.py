@@ -52,7 +52,7 @@ class GoalPlannerTests(unittest.TestCase):
         self.queue.run_one({"diagnostics": lambda payload: {"ok": True}})
         # Remove the continuation from consideration to exercise a deterministic tick.
         continuation = next(t for t in self.queue.list_tasks() if t.kind == "plan_goal")
-        continuation.status = "completed"
+        self.queue._tasks[continuation.task_id].status = "completed"
         self.queue._save()
         result = self.planner.advance(self.plan(cycle=1))
         self.assertEqual(result["scheduled"], ["edit"])
@@ -90,7 +90,7 @@ class GoalPlannerTests(unittest.TestCase):
     def test_stops_after_failed_step(self):
         self.planner.advance(self.plan())
         task = next(t for t in self.queue.list_tasks() if t.kind == "diagnostics")
-        task.status = "completed"
+        self.queue._tasks[task.task_id].status = "completed"
         task.result = {"ok": False, "error": "operation did not succeed"}
         self.queue._save()
         result = self.planner.advance(self.plan(cycle=1))
@@ -112,7 +112,7 @@ class GoalPlannerTests(unittest.TestCase):
         task = self.queue.get(result["next_cycle_task_id"])
         self.assertIsNotNone(task)
         self.queue.run_one({"diagnostics": lambda payload: {"ok": True}})
-        task.status = "completed"
+        self.queue._tasks[task.task_id].status = "completed"
         self.queue._save()
         result = self.planner.advance(self.plan(steps=[
             {"id": "one", "kind": "diagnostics", "payload": {}}
