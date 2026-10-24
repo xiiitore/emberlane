@@ -472,6 +472,35 @@ class TaskQueueTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             queue.submit("ok", [])
 
+    def test_rejects_non_json_payload_before_queue_mutation(self):
+        queue = TaskQueue(self.state)
+        existing = queue.submit("ok", {"value": 1})
+        original_bytes = self.state.read_bytes()
+        original_ids = set(queue._tasks)
+
+        for payload in ({"bad": object()}, {"not_finite": float("nan")}):
+            with self.subTest(payload_type=type(next(iter(payload.values()))).__name__):
+                with self.assertRaisesRegex(ValueError, "JSON-compatible"):
+                    queue.submit("ok", payload)
+                self.assertEqual(set(queue._tasks), original_ids)
+                self.assertEqual(self.state.read_bytes(), original_bytes)
+
+        self.assertEqual(queue.get(existing.task_id).payload, {"value": 1})
+
+    def test_submit_rolls_back_memory_when_save_fails(self):
+        queue = TaskQueue(self.state)
+        existing = queue.submit("ok", {"value": 1})
+        original_bytes = self.state.read_bytes()
+        original_ids = set(queue._tasks)
+
+        with patch.object(queue, "_save", side_effect=OSError("injected save failure")):
+            with self.assertRaisesRegex(OSError, "injected save failure"):
+                queue.submit("ok", {"value": 2})
+
+        self.assertEqual(set(queue._tasks), original_ids)
+        self.assertEqual(self.state.read_bytes(), original_bytes)
+        self.assertEqual(queue.get(existing.task_id).payload, {"value": 1})
+
 
     def test_nested_submit_from_handler_is_reentrant_and_persists_both_tasks(self):
         repo_root = Path(__file__).resolve().parents[1]
