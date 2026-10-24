@@ -199,5 +199,25 @@ class TaskQueueMultiprocessTests(unittest.TestCase):
         self.assertIsInstance(json.loads(self.state.read_text(encoding="utf-8")), list)
 
 
+    def test_keyboard_interrupt_releases_lock_and_recovers_running_task(self):
+        queue = TaskQueue(self.state, max_attempts=2)
+        interrupted = queue.submit("interrupt", {"value": 1})
+
+        def interrupt(_payload):
+            raise KeyboardInterrupt("simulated operator stop")
+
+        with self.assertRaisesRegex(KeyboardInterrupt, "simulated operator stop"):
+            queue.run_one({"interrupt": interrupt})
+
+        # A second operation must reacquire the OS lock, reload the persisted
+        # running snapshot, and recover it instead of hanging or losing it.
+        followup = queue.submit("echo", {"value": 2})
+        recovered = queue.get(interrupted.task_id)
+        self.assertEqual(recovered.status, "pending")
+        self.assertEqual(recovered.attempts, 1)
+        self.assertIn("Recovered after interrupted run", recovered.last_error)
+        self.assertEqual(queue.get(followup.task_id).status, "pending")
+
+
 if __name__ == "__main__":
     unittest.main()
