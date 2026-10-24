@@ -675,7 +675,7 @@ def run_local_model_edit(
         if status is None or status.returncode != 0:
             return {"status": "verification_setup_failed", "applied": False,
                     "stage": "patch_scope_check"}
-        status_entries = [entry for entry in status.stdout.split(b"\\0") if entry]
+        status_entries = [entry for entry in status.stdout.split(b"\0") if entry]
         try:
             actual_patch_paths = {entry[3:].decode("utf-8") for entry in status_entries
                                   if len(entry) >= 4}
