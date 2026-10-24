@@ -584,6 +584,32 @@ def _patch_changed_paths(patch: str, source: Path) -> list[str] | None:
         return None
     return paths
 
+def _patch_has_unsupported_file_operations(patch: str) -> bool:
+    """Reject patch metadata that changes file type, mode, or path identity."""
+    for line in patch.splitlines():
+        if line.startswith((
+            "old mode ", "new mode ", "deleted file mode ",
+            "rename from ", "rename to ", "copy from ", "copy to ",
+            "GIT binary patch", "Binary files ",
+        )):
+            return True
+        if line == "+++ /dev/null":
+            # Plain unified diffs can delete files without a deleted-file-mode header.
+            # Deletion is unsupported by this backend, so reject before any apply.
+            return True
+        if line.startswith("new file mode ") and line != "new file mode 100644":
+            # Only ordinary non-executable files may be added by this backend.
+            # In particular, Git mode 120000 denotes a symlink.
+            return True
+        if line.startswith("index ") and line.rsplit(" ", 1)[-1] == "160000":
+            # Existing submodule/gitlink updates can encode their mode here,
+            # without any old/new file-mode header.
+            return True
+        if line.startswith(("+Subproject commit ", "-Subproject commit ", " Subproject commit ")):
+            return True
+    return False
+
+
 def run_local_model_edit(
     root: str | Path,
     raw_payload: dict[str, Any],
@@ -651,6 +677,12 @@ def run_local_model_edit(
         return {
             "status": "rejected",
             "reason": "changed_path_outside_allowlist",
+            "applied": False,
+        }
+    if _patch_has_unsupported_file_operations(patch):
+        return {
+            "status": "rejected",
+            "reason": "unsupported_patch_operation",
             "applied": False,
         }
     patch_paths = _patch_changed_paths(patch, source)
@@ -772,23 +804,18 @@ def run_local_model_edit(
                 return {"status": "verification_failed", "applied": True,
                         "reason": "changed_path_missing_from_verified_snapshot"}
             expected_hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
-        actual_hashes = {
-            name: hashlib.sha256((source / name).read_bytes()).hexdigest()
-            for name in clean_paths if (source / name).is_file()
-        }
+        actual_hashes: dict[str, str] = {}
+        for name in clean_paths:
+            path = source / name
+            # Path.is_file() follows symlinks. A path replaced with a symlink
+            # after apply must not be treated as a verified regular file.
+            if path.is_symlink() or not path.is_file():
+                continue
+            actual_hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
         if actual_hashes != expected_hashes:
-            can_revert = all(
-                (source / name).is_file()
-                and hashlib.sha256((source / name).read_bytes()).hexdigest() == expected_hashes[name]
-                for name in clean_paths
-            )
-            if can_revert:
-                revert = _fixed_command(
-                    ["git", "apply", "--reverse", "--whitespace=error", "-"],
-                    source, input_bytes=patch_bytes,
-                )
-                if revert is not None and revert.returncode == 0:
-                    return {"status": "apply_verification_failed", "applied": False}
+            # Once the source differs from the verified snapshot, reversing the
+            # patch could overwrite an unrelated concurrent change or follow a
+            # symlink. Leave the state untouched and require explicit recovery.
             return {"status": "recovery_required", "applied": True,
                     "reason": "working_tree_did_not_match_verified_snapshot"}
         return {
