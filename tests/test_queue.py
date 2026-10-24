@@ -1,4 +1,5 @@
 import json
+import threading
 import subprocess
 import sys
 import tempfile
@@ -70,6 +71,31 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(result.status, "pending")
         self.assertIn("timed out acquiring queue lock", result.last_error)
         self.assertEqual(len(queue.list_tasks()), 1)
+
+    def test_in_process_lock_wait_is_bounded(self):
+        queue = TaskQueue(self.state)
+        queue.lock_timeout_seconds = 0.05
+        acquired = threading.Event()
+        release = threading.Event()
+
+        def hold_lock():
+            queue._thread_lock.acquire()
+            try:
+                acquired.set()
+                release.wait(timeout=2)
+            finally:
+                queue._thread_lock.release()
+
+        holder = threading.Thread(target=hold_lock)
+        holder.start()
+        self.assertTrue(acquired.wait(timeout=1))
+        try:
+            with self.assertRaisesRegex(TimeoutError, "in-process queue lock"):
+                queue.list_tasks()
+        finally:
+            release.set()
+            holder.join(timeout=2)
+        self.assertFalse(holder.is_alive())
 
     def test_idempotent_submit_returns_existing_task(self):
         queue = TaskQueue(self.state)
