@@ -38,6 +38,24 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(result.status, "completed")
         self.assertEqual(result.attempts, 2)
 
+    def test_recovered_running_task_at_attempt_limit_fails_closed(self):
+        queue = TaskQueue(self.state, max_attempts=1)
+        task = queue.submit("side_effect", {"value": "may-have-run"})
+        raw = json.loads(self.state.read_text(encoding="utf-8"))
+        raw[0]["status"] = "running"
+        raw[0]["attempts"] = 1
+        self.state.write_text(json.dumps(raw), encoding="utf-8")
+
+        restored = TaskQueue(self.state, max_attempts=1)
+        recovered = restored.get(task.task_id)
+        self.assertEqual(recovered.status, "failed")
+        self.assertIn("retry limit is exhausted", recovered.last_error)
+        self.assertIn("manual recovery required", recovered.last_error)
+
+        called = []
+        self.assertIsNone(restored.run_one({"side_effect": lambda payload: called.append(payload)}))
+        self.assertEqual(called, [])
+
     def test_idempotent_submit_returns_existing_task(self):
         queue = TaskQueue(self.state)
         first = queue.submit("write_file", {"path": "x.py", "content": "X = 1"},
