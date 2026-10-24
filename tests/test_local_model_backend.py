@@ -642,13 +642,13 @@ class LocalModelProposalTests(unittest.TestCase):
         tests_dir = self.root / "tests"
         tests_dir.mkdir()
         (tests_dir / "test_feature.py").write_text(
-            "import unittest\\nfrom src.allowed import VALUE\\n"
-            "class FeatureTests(unittest.TestCase):\\n"
-            " def test_value(self): self.assertEqual(VALUE, 2)\\n",
+            "import unittest\nfrom src.allowed import VALUE\n"
+            "class FeatureTests(unittest.TestCase):\n"
+            " def test_value(self): self.assertEqual(VALUE, 2)\n",
             encoding="utf-8",
         )
         outside = self.root.parent / "outside-after-apply.py"
-        outside.write_text("VALUE = 2\\n", encoding="utf-8")
+        outside.write_text("VALUE = 2\n", encoding="utf-8")
         target = self.root / "src" / "allowed.py"
         proposal = self._proposal_for_value(2)
         fixed_command = __import__(
@@ -682,7 +682,7 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertEqual(result["status"], "recovery_required")
         self.assertTrue(result["applied"])
         self.assertTrue(target.is_symlink())
-        self.assertEqual(outside.read_text(encoding="utf-8"), "VALUE = 2\\n")
+        self.assertEqual(outside.read_text(encoding="utf-8"), "VALUE = 2\n")
 
     def test_edit_applies_only_after_targeted_tests_pass(self):
         self._initialize_git()
