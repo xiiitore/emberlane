@@ -273,7 +273,7 @@ class TaskQueue:
                         return copy.deepcopy(existing)
             now = time.time()
             task = Task(
-                str(uuid.uuid4()), kind, payload,
+                str(uuid.uuid4()), kind, copy.deepcopy(payload),
                 created_at=now, updated_at=now,
                 idempotency_key=idempotency_key,
             )
