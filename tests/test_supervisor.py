@@ -53,7 +53,7 @@ class BoundedSupervisorTests(unittest.TestCase):
     def test_deferred_only_queue_returns_idle_without_resuming_it(self):
         task = self.worker.submit("write_file", {"path": "later.txt", "content": "later"})
         queued = self.worker.queue.get(task.task_id)
-        queued.status = "deferred"
+        self.worker.queue._tasks[queued.task_id].status = "deferred"
         self.worker.queue._save()
         report = run_supervisor(self.worker, max_tasks=5, max_failures=2, max_seconds=30)
         self.assertEqual(report["status"], "idle")
