@@ -279,107 +279,120 @@ class TaskQueue:
             raise ValueError("kind must be a non-empty string")
         if not isinstance(payload, dict):
             raise ValueError("payload must be a dictionary")
-        if idempotency_key is not None:
-            if not isinstance(idempotency_key, str) or not idempotency_key:
-                raise ValueError("idempotency_key must be a non-empty string")
-            for existing in self._tasks.values():
-                if existing.idempotency_key == idempotency_key:
-                    if existing.kind != kind or existing.payload != payload:
-                        raise ValueError("idempotency key already used for a different task")
-                    return existing
-        now = time.time()
-        task = Task(
-            str(uuid.uuid4()), kind, payload,
-            created_at=now, updated_at=now,
-            idempotency_key=idempotency_key,
-        )
-        self._tasks[task.task_id] = task
-        self._save()
-        return task
+        with self._exclusive() as outermost:
+            if outermost:
+                self._load_unlocked(recover_running=True)
+            if idempotency_key is not None:
+                if not isinstance(idempotency_key, str) or not idempotency_key:
+                    raise ValueError("idempotency_key must be a non-empty string")
+                for existing in self._tasks.values():
+                    if existing.idempotency_key == idempotency_key:
+                        if existing.kind != kind or existing.payload != payload:
+                            raise ValueError("idempotency key already used for a different task")
+                        return existing
+            now = time.time()
+            task = Task(
+                str(uuid.uuid4()), kind, payload,
+                created_at=now, updated_at=now,
+                idempotency_key=idempotency_key,
+            )
+            self._tasks[task.task_id] = task
+            self._save_unlocked()
+            return task
 
     def get(self, task_id: str) -> Task | None:
-        return self._tasks.get(task_id)
+        with self._exclusive() as outermost:
+            if outermost:
+                self._load_unlocked(recover_running=True)
+            return self._tasks.get(task_id)
 
     def list_tasks(self) -> list[Task]:
-        return list(self._tasks.values())
+        with self._exclusive() as outermost:
+            if outermost:
+                self._load_unlocked(recover_running=True)
+            return list(self._tasks.values())
 
     def resume_deferred(self, task_id: str) -> Task:
         """Explicitly requeue a deferred task after its external dependency recovers."""
-        task = self._tasks.get(task_id)
-        if task is None:
-            raise KeyError(f"unknown task id: {task_id}")
-        if task.status != "deferred":
-            raise ValueError(f"task is not deferred: {task_id}")
-        task.status = "pending"
-        task.last_error = None
-        task.result = None
-        task.updated_at = time.time()
-        self._save()
-        return task
+        with self._exclusive() as outermost:
+            if outermost:
+                self._load_unlocked(recover_running=True)
+            task = self._tasks.get(task_id)
+            if task is None:
+                raise KeyError(f"unknown task id: {task_id}")
+            if task.status != "deferred":
+                raise ValueError(f"task is not deferred: {task_id}")
+            task.status = "pending"
+            task.last_error = None
+            task.result = None
+            task.updated_at = time.time()
+            self._save_unlocked()
+            return task
 
     def prune_terminal(self, keep_terminal: int = 50) -> dict[str, Any]:
-        """Archive the current queue, then remove only old terminal tasks.
-
-        Pending, running and deferred tasks are always preserved. A local backup
-        is written before the atomic queue rewrite; no task payload is published.
-        """
+        """Archive current state and prune terminal tasks under the queue lock."""
         if isinstance(keep_terminal, bool) or not isinstance(keep_terminal, int):
             raise ValueError("keep_terminal must be an integer")
         if not 0 <= keep_terminal <= 1000:
             raise ValueError("keep_terminal must be from 0 to 1000")
 
-        terminal_states = {"completed", "failed", "cancelled", "canceled"}
-        terminal = sorted(
-            (task for task in self._tasks.values() if task.status in terminal_states),
-            key=lambda task: (task.updated_at, task.created_at, task.task_id),
-        )
-        remove_count = max(0, len(terminal) - keep_terminal)
-        to_remove = terminal[:remove_count]
-        if not to_remove:
+        with self._exclusive() as outermost:
+            if outermost:
+                self._load_unlocked(recover_running=True)
+            terminal_states = {"completed", "failed", "cancelled", "canceled"}
+            terminal = sorted(
+                (task for task in self._tasks.values() if task.status in terminal_states),
+                key=lambda task: (task.updated_at, task.created_at, task.task_id),
+            )
+            remove_count = max(0, len(terminal) - keep_terminal)
+            to_remove = terminal[:remove_count]
+            if not to_remove:
+                return {
+                    "pruned_count": 0,
+                    "kept_terminal_count": len(terminal),
+                    "preserved_active_count": sum(
+                        task.status not in terminal_states for task in self._tasks.values()
+                    ),
+                    "backup_file": None,
+                }
+
+            backup_path = self.state_path.with_name(
+                f"{self.state_path.name}.pre-prune-{time.time_ns()}.bak"
+            )
+            if self.state_path.exists():
+                state_bytes = self.state_path.read_bytes()
+                _write_private_archive(backup_path, state_bytes)
+                if backup_path.read_bytes() != state_bytes:
+                    raise OSError("queue archive verification failed; queue was not pruned")
+            else:
+                raise FileNotFoundError("queue state file disappeared before archival")
+
+            original_tasks = self._tasks.copy()
+            for task in to_remove:
+                del self._tasks[task.task_id]
+            try:
+                self._save_unlocked()
+            except BaseException:
+                self._tasks = original_tasks
+                raise
             return {
-                "pruned_count": 0,
-                "kept_terminal_count": len(terminal),
+                "pruned_count": len(to_remove),
+                "kept_terminal_count": len(terminal) - len(to_remove),
                 "preserved_active_count": sum(
                     task.status not in terminal_states for task in self._tasks.values()
                 ),
-                "backup_file": None,
+                "backup_file": backup_path.name,
             }
 
-        backup_path = self.state_path.with_name(
-            f"{self.state_path.name}.pre-prune-{time.time_ns()}.bak"
-        )
-        if self.state_path.exists():
-            state_bytes = self.state_path.read_bytes()
-            _write_private_archive(backup_path, state_bytes)
-            # Pruning is destructive to historical records: verify the recovery
-            # copy byte-for-byte before changing in-memory or persisted queue state.
-            if backup_path.read_bytes() != state_bytes:
-                raise OSError("queue archive verification failed; queue was not pruned")
-        else:
-            raise FileNotFoundError("queue state file disappeared before archival")
-
-        original_tasks = self._tasks.copy()
-        for task in to_remove:
-            del self._tasks[task.task_id]
-        try:
-            self._save()
-        except BaseException:
-            self._tasks = original_tasks
-            raise
-        return {
-            "pruned_count": len(to_remove),
-            "kept_terminal_count": len(terminal) - len(to_remove),
-            "preserved_active_count": sum(
-                task.status not in terminal_states for task in self._tasks.values()
-            ),
-            "backup_file": backup_path.name,
-        }
-
     def run_one(self, handlers: dict[str, Callable[[dict[str, Any]], Any]]) -> Task | None:
-        task = next((t for t in self._tasks.values() if t.status == "pending"), None)
-        if task is None:
-            return None
-        return self._run_task(task, handlers)
+        """Run the first pending task while holding the interprocess queue lock."""
+        with self._exclusive() as outermost:
+            if outermost:
+                self._load_unlocked(recover_running=True)
+            task = next((t for t in self._tasks.values() if t.status == "pending"), None)
+            if task is None:
+                return None
+            return self._run_task(task, handlers)
 
     def run_task(
         self,
@@ -387,10 +400,13 @@ class TaskQueue:
         handlers: dict[str, Callable[[dict[str, Any]], Any]],
     ) -> Task | None:
         """Run only the requested pending task; never substitute another queue item."""
-        task = self._tasks.get(task_id)
-        if task is None or task.status != "pending":
-            return None
-        return self._run_task(task, handlers)
+        with self._exclusive() as outermost:
+            if outermost:
+                self._load_unlocked(recover_running=True)
+            task = self._tasks.get(task_id)
+            if task is None or task.status != "pending":
+                return None
+            return self._run_task(task, handlers)
 
     def _run_task(
         self,
@@ -402,12 +418,12 @@ class TaskQueue:
             task.status = "failed"
             task.last_error = f"no handler registered for kind: {task.kind}"
             task.updated_at = time.time()
-            self._save()
+            self._save_unlocked()
             return task
         task.status = "running"
         task.attempts += 1
         task.updated_at = time.time()
-        self._save()
+        self._save_unlocked()
         try:
             # Persist only JSON-compatible results so task state remains portable.
             task.result = json.loads(json.dumps(handler(task.payload), ensure_ascii=False))
@@ -441,5 +457,5 @@ class TaskQueue:
                 task.last_error = None
                 task.status = "completed"
         task.updated_at = time.time()
-        self._save()
+        self._save_unlocked()
         return task
