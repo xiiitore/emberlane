@@ -273,6 +273,7 @@ class TaskQueueTests(unittest.TestCase):
         cancelled = queue.submit("cancelled", {})
         pending = queue.submit("pending", {})
         deferred = queue.submit("deferred", {})
+        stored_tasks = {task.task_id: task for task in queue.list_tasks()}
         for task, status, stamp in (
             (completed, "completed", 10.0),
             (failed, "failed", 20.0),
@@ -280,8 +281,9 @@ class TaskQueueTests(unittest.TestCase):
             (pending, "pending", 40.0),
             (deferred, "deferred", 50.0),
         ):
-            task.status = status
-            task.updated_at = stamp
+            stored = stored_tasks[task.task_id]
+            stored.status = status
+            stored.updated_at = stamp
         queue._save()
 
         result = queue.prune_terminal(keep_terminal=1)
@@ -321,9 +323,10 @@ class TaskQueueTests(unittest.TestCase):
     def test_prune_terminal_refuses_to_prune_if_archive_verification_fails(self):
         queue = TaskQueue(self.state)
         old = queue.submit("done", {})
+        queue.submit("pending", {})
+        old = queue.get(old.task_id)
         old.status = "completed"
         old.updated_at = 1.0
-        queue.submit("pending", {})
         queue._save()
         original_state = self.state.read_bytes()
         from emberlane.queue import _write_private_archive as write_private_archive
