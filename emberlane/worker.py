@@ -761,12 +761,12 @@ class LocalWorker:
                 raise ValueError("expected_branch must be a valid branch name")
         return self.queue.submit(kind, payload, idempotency_key=idempotency_key)
 
-    def run_one(self) -> Task | None:
+    def run_one(self, task_id: str | None = None) -> Task | None:
         # Check immediately before claiming so a persistent marker leaves all
         # pending task records untouched.
         if control_state(self.root) is not None:
             return None
-        return self.queue.run_one(self.handlers)
+        return self.queue.run_one(self.handlers, task_id=task_id)
 
     def resume_deferred(self, task_id: str) -> Task:
         """Resume a deferred task and continue its waiting goal plan, if any."""
