@@ -418,6 +418,36 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(result.status, "failed")
         self.assertIn("no handler", result.last_error)
 
+    def test_public_task_objects_are_detached_snapshots(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("echo", {"nested": {"value": 1}})
+        created.status = "failed"
+        created.payload["nested"]["value"] = 2
+
+        fetched = queue.get(created.task_id)
+        self.assertEqual(fetched.status, "pending")
+        self.assertEqual(fetched.payload, {"nested": {"value": 1}})
+        fetched.status = "completed"
+        fetched.payload["nested"]["value"] = 3
+
+        listed = queue.list_tasks()
+        listed[0].status = "failed"
+        listed[0].payload["nested"]["value"] = 4
+        restored = TaskQueue(self.state)
+        final = restored.get(created.task_id)
+        self.assertEqual(final.status, "pending")
+        self.assertEqual(final.payload, {"nested": {"value": 1}})
+
+        duplicate = queue.submit(
+            "echo", {"nested": {"value": 1}}, idempotency_key="snapshot-key"
+        )
+        duplicate.status = "failed"
+        again = queue.submit(
+            "echo", {"nested": {"value": 1}}, idempotency_key="snapshot-key"
+        )
+        again.status = "completed"
+        self.assertEqual(queue.get(again.task_id).status, "pending")
+
     def test_rejects_bad_arguments(self):
         queue = TaskQueue(self.state)
         with self.assertRaises(ValueError):
