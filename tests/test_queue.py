@@ -479,6 +479,26 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(queue.get(created.task_id).payload, expected)
         self.assertEqual(TaskQueue(self.state).get(created.task_id).payload, expected)
 
+    def test_resume_deferred_rolls_back_when_save_fails(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("wait", {})
+        result = queue.run_task(
+            created.task_id,
+            {"wait": lambda payload: {"status": "deferred"}},
+        )
+        self.assertEqual(result.status, "deferred")
+        persisted_before = self.state.read_bytes()
+
+        with patch.object(queue, "_save", side_effect=OSError("disk write failed")):
+            with self.assertRaisesRegex(OSError, "disk write failed"):
+                queue.resume_deferred(created.task_id)
+
+        internal = queue._tasks[created.task_id]
+        self.assertEqual(internal.status, "deferred")
+        self.assertEqual(internal.result, {"status": "deferred", "reason": "external_capacity_limit", "exception_type": "Exception"})
+        self.assertEqual(self.state.read_bytes(), persisted_before)
+        self.assertEqual(TaskQueue(self.state).get(created.task_id).status, "deferred")
+
     def test_rejects_bad_arguments(self):
         queue = TaskQueue(self.state)
         with self.assertRaises(ValueError):
