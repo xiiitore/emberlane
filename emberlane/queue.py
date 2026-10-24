@@ -135,18 +135,19 @@ class TaskQueue:
 
     @contextmanager
     def _locked_refresh(self) -> Iterator[None]:
-        """Refresh under an OS lock, reusing it for nested calls on this instance.
+        """Refresh under bounded thread/OS locks; reuse both for nested calls.
 
         The lock file is never replaced or removed: queue.json itself is atomically
         replaced by _save(), so locking queue.json would not serialize processes
         that opened different inodes. Locks are advisory and require a filesystem
         that implements POSIX flock or Windows byte-range locking correctly.
 
-        Reentrant calls from the same thread must not open and lock a second file
-        descriptor or reload state: handlers can submit child tasks while their
-        parent is marked running. The outer operation owns refresh and recovery.
+        Reentrant calls from the same thread must not open a second descriptor or
+        reload state while a handler is executing.
         """
-        with self._thread_lock:
+        if not self._thread_lock.acquire(timeout=self.lock_timeout_seconds):
+            raise TimeoutError("timed out acquiring in-process queue lock")
+        try:
             if self._lock_depth:
                 self._lock_depth += 1
                 try:
@@ -191,6 +192,8 @@ class TaskQueue:
                         os.lseek(fd, 0, os.SEEK_SET)
                         msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
                 os.close(fd)
+        finally:
+            self._thread_lock.release()
 
     def _load(self) -> None:
         self._tasks = {}
