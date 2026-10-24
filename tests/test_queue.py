@@ -422,6 +422,9 @@ class TaskQueueTests(unittest.TestCase):
         queue = TaskQueue(self.state)
         payload = {"nested": {"value": 1}}
         created = queue.submit("echo", payload, idempotency_key="snapshot-key")
+        payload["nested"]["value"] = 9
+        self.assertEqual(queue.get(created.task_id).payload, {"nested": {"value": 1}})
+        payload["nested"]["value"] = 1
         created.status = "failed"
         created.payload["nested"]["value"] = 2
 
