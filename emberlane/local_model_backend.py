@@ -557,44 +557,32 @@ def _fixed_command(
         return None
 
 
-def _patch_changed_paths(patch: str) -> list[str] | None:
-    """Return paths declared by unified-diff file headers, or None if malformed."""
-    lines = patch.splitlines()
+def _patch_changed_paths(patch: str, source: Path) -> list[str] | None:
+    """Ask Git's patch parser for the actual paths, without applying the patch."""
+    result = _fixed_command(
+        ["git", "apply", "--numstat", "-z", "-"],
+        source,
+        input_bytes=patch.encode("utf-8"),
+    )
+    if result is None or result.returncode != 0:
+        return None
     paths: list[str] = []
-    index = 0
-    while index < len(lines):
-        line = lines[index]
-        if line.startswith("--- "):
-            if index + 1 >= len(lines) or not lines[index + 1].startswith("+++ "):
-                return None
-            old_name = line[4:]
-            new_name = lines[index + 1][4:]
-            if old_name == "/dev/null":
-                old_path = None
-            elif old_name.startswith("a/"):
-                old_path = old_name[2:]
-            else:
-                return None
-            if new_name == "/dev/null":
-                new_path = None
-            elif new_name.startswith("b/"):
-                new_path = new_name[2:]
-            else:
-                return None
-            if old_path is None and new_path is None:
-                return None
-            if old_path is not None and new_path is not None and old_path != new_path:
-                return None
-            paths.append(old_path if old_path is not None else new_path)
-            index += 2
+    for record in result.stdout.split(b"\\x00"):
+        if not record:
             continue
-        if line.startswith("+++ "):
+        fields = record.split(b"\\t", 2)
+        if len(fields) != 3 or not fields[2]:
+            # Reject malformed output and rename/copy records, which this backend
+            # does not generate and cannot safely represent as a single path.
             return None
-        index += 1
+        try:
+            path = fields[2].decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return None
+        paths.append(path)
     if not paths or len(paths) != len(set(paths)):
         return None
     return paths
-
 
 def run_local_model_edit(
     root: str | Path,
@@ -665,7 +653,7 @@ def run_local_model_edit(
             "reason": "changed_path_outside_allowlist",
             "applied": False,
         }
-    patch_paths = _patch_changed_paths(patch)
+    patch_paths = _patch_changed_paths(patch, source)
     if patch_paths is None:
         return {"status": "rejected", "reason": "invalid_patch_paths", "applied": False}
     try:
