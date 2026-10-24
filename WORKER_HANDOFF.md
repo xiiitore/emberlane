@@ -9607,3 +9607,37 @@ No stdout/stderr output field was retained for inline publication.
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/88ab1ead-355d-4000-a834-dae4bc62cd54.md).
+
+
+### Worker task 9c5dc307-97c4-4338-81a4-69d0d83ade70
+
+[Full task output](worker-logs/9c5dc307-97c4-4338-81a4-69d0d83ade70.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-24T20:00:08.099976+00:00",
+  "source_comment_id": "6388867293",
+  "task_id": "9c5dc307-97c4-4338-81a4-69d0d83ade70",
+  "kind": "git_status",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/9c5dc307-97c4-4338-81a4-69d0d83ade70.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/9c5dc307-97c4-4338-81a4-69d0d83ade70.md",
+    "dropbox_sha256": "66c78a7a74aa76e6e94325d99f923ce68695dee46ce834b39e7ad8fac0d5877d",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/9c5dc307-97c4-4338-81a4-69d0d83ade70.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/9c5dc307-97c4-4338-81a4-69d0d83ade70.md).
