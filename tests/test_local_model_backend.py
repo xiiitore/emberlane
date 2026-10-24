@@ -587,6 +587,46 @@ class LocalModelProposalTests(unittest.TestCase):
                 self.assertFalse((self.root / "src" / "renamed.py").exists())
                 self.assertFalse((self.root / "src" / "copied.py").exists())
 
+    def test_existing_gitlink_patch_is_rejected_before_apply(self):
+        self._initialize_git()
+        original = (self.root / "src" / "allowed.py").read_bytes()
+        patch_text = (
+            "diff --git a/src/allowed.py b/src/allowed.py\\n"
+            "index 1111111..2222222 160000\\n"
+            "--- a/src/allowed.py\\n"
+            "+++ b/src/allowed.py\\n"
+            "@@ -1 +1 @@\\n"
+            "-Subproject commit 1111111111111111111111111111111111111111\\n"
+            "+Subproject commit 2222222222222222222222222222222222222222\\n"
+        )
+        proposal = {
+            "status": "proposal",
+            "proposal": {
+                "changed_paths": ["src/allowed.py"],
+                "patch": patch_text,
+                "patch_bytes": len(patch_text.encode("utf-8")),
+                "base_sha256": {
+                    "src/allowed.py": hashlib.sha256(original).hexdigest(),
+                },
+                "output": "attempt existing gitlink update",
+                "output_bytes": 28,
+                "applied": False,
+            },
+        }
+        with patch(
+            "emberlane.local_model_backend.run_local_model_proposal",
+            return_value=proposal,
+        ):
+            result = run_local_model_edit(
+                self.root, self.payload, workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "rejected")
+        self.assertEqual(result["reason"], "unsupported_patch_operation")
+        self.assertFalse(result["applied"])
+        self.assertEqual(
+            (self.root / "src" / "allowed.py").read_bytes(), original,
+        )
+
     def test_post_apply_unexpected_mutation_returns_recovery_required(self):
         self._initialize_git()
         tests_dir = self.root / "tests"
