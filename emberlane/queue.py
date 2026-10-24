@@ -202,10 +202,17 @@ class TaskQueue:
         now = time.time()
         for task in self._tasks.values():
             if task.status == "running":
-                task.status = "pending"
-                task.last_error = (
-                    "Recovered after interrupted run; handler may be retried."
-                )
+                if task.attempts >= self.max_attempts:
+                    task.status = "failed"
+                    task.last_error = (
+                        "Recovered after interrupted run, but retry limit is exhausted; "
+                        "manual recovery required because the side effect may have occurred."
+                    )
+                else:
+                    task.status = "pending"
+                    task.last_error = (
+                        "Recovered after interrupted run; handler may be retried."
+                    )
                 task.updated_at = now
                 recovered = True
         if recovered:
