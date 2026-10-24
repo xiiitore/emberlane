@@ -6,6 +6,7 @@ from pathlib import Path
 
 from emberlane.supervisor import run_supervisor
 from emberlane.worker import LocalWorker
+from emberlane.mailbox import GitHubIssueMailbox
 
 
 class BoundedSupervisorTests(unittest.TestCase):
@@ -53,6 +54,7 @@ class BoundedSupervisorTests(unittest.TestCase):
     def test_deferred_only_queue_returns_idle_without_resuming_it(self):
         task = self.worker.submit("write_file", {"path": "later.txt", "content": "later"})
         queued = self.worker.queue.get(task.task_id)
+        # get() returns a detached snapshot; set fixture state on the stored task.
         self.worker.queue._tasks[queued.task_id].status = "deferred"
         self.worker.queue._save()
         report = run_supervisor(self.worker, max_tasks=5, max_failures=2, max_seconds=30)
@@ -99,6 +101,188 @@ class BoundedSupervisorTests(unittest.TestCase):
         self.assertEqual(report["mailbox_status"], "finished")
         self.assertEqual(mailbox.calls, 2)
         self.assertEqual((self.root / "mailbox.txt").read_text(encoding="utf-8"), "from mailbox")
+
+    def test_mailbox_result_stays_bound_to_task_when_older_fifo_task_is_pending(self):
+        older = self.worker.submit("write_file", {
+            "path": "older.txt", "content": "older queued work"
+        })
+
+        class MappedMailbox:
+            def __init__(self, worker):
+                self.worker = worker
+                self.calls = 0
+                self.task_id = None
+                self.source_comment_id = "source-123"
+
+            def run_once(self, *, execute_tasks=True):
+                if execute_tasks is not False:
+                    raise AssertionError("supervisor must own task execution")
+                self.calls += 1
+                if self.task_id is None:
+                    task = self.worker.submit(
+                        "write_file",
+                        {"path": "mailbox.txt", "content": "mapped mailbox work"},
+                        idempotency_key=self.source_comment_id,
+                    )
+                    self.task_id = task.task_id
+                task = self.worker.queue.get(self.task_id)
+                if task.status in {"completed", "failed", "cancelled", "canceled"}:
+                    return {
+                        "status": "finished",
+                        "comment_id": self.source_comment_id,
+                        "task_id": self.task_id,
+                    }
+                return {
+                    "status": "pending",
+                    "comment_id": self.source_comment_id,
+                    "task_id": self.task_id,
+                }
+
+        mailbox = MappedMailbox(self.worker)
+        report = run_supervisor(
+            self.worker, max_tasks=2, max_failures=2, max_seconds=30, mailbox=mailbox
+        )
+
+        self.assertEqual(report["status"], "task_limit")
+        self.assertEqual(report["processed"], 2)
+        self.assertEqual(report["task_ids"], [older.task_id, mailbox.task_id])
+        self.assertEqual(mailbox.calls, 4)
+        self.assertEqual(self.worker.queue.get(older.task_id).status, "completed")
+        self.assertEqual(self.worker.queue.get(mailbox.task_id).status, "completed")
+        self.assertEqual((self.root / "older.txt").read_text(encoding="utf-8"), "older queued work")
+        self.assertEqual((self.root / "mailbox.txt").read_text(encoding="utf-8"), "mapped mailbox work")
+
+    def test_real_mailbox_publication_stays_linked_to_mapped_task_under_supervisor_fifo(self):
+        older = self.worker.submit("write_file", {
+            "path": "older.txt", "content": "older queued work"
+        })
+        mailbox = GitHubIssueMailbox(self.worker, "owner/repo", 6, "authorized")
+        mailbox._comments = lambda: [{
+            "id": 456,
+            "user": {"login": "authorized"},
+            "body": 'EMBERLANE_TASK_JSON\n' + json.dumps({
+                "kind": "write_file",
+                "payload": {"path": "mailbox.txt", "content": "mapped mailbox work"},
+            }),
+        }]
+        mailbox.state = {"handled": [], "active": {}}
+        mailbox._save_state = lambda: None
+        mailbox._publish_task_log = lambda *_: {
+            "task_log_status": "published", "task_log_url": "test://task-log",
+        }
+        mailbox._publish_handoff_record = lambda *_: {"handoff_status": "published"}
+        replies = []
+        mailbox._reply = replies.append
+
+        report = run_supervisor(
+            self.worker, max_tasks=2, max_failures=2, max_seconds=30, mailbox=mailbox
+        )
+
+        self.assertEqual(report["status"], "task_limit")
+        self.assertEqual(report["task_ids"][0], older.task_id)
+        self.assertEqual(self.worker.queue.get(older.task_id).status, "completed")
+        self.assertEqual(mailbox.state["handled"], ["456"])
+        self.assertEqual(mailbox.state["active"], {})
+        self.assertEqual(len(replies), 1)
+        self.assertTrue(replies[0].startswith("EMBERLANE_RESULT\n{"))
+        published = json.loads(replies[0].split("\n", 1)[1])
+        self.assertEqual(published["source_comment_id"], "456")
+        self.assertEqual(published["task_id"], report["task_ids"][1])
+        self.assertEqual(self.worker.queue.get(published["task_id"]).status, "completed")
+        self.assertEqual((self.root / "older.txt").read_text(encoding="utf-8"), "older queued work")
+        self.assertEqual((self.root / "mailbox.txt").read_text(encoding="utf-8"), "mapped mailbox work")
+
+    def test_real_mailbox_waits_across_max_tasks_one_batches_before_publishing(self):
+        older = self.worker.submit("write_file", {
+            "path": "older.txt", "content": "older queued work"
+        })
+        mailbox = GitHubIssueMailbox(self.worker, "owner/repo", 6, "authorized")
+        mailbox._comments = lambda: [{
+            "id": 789,
+            "user": {"login": "authorized"},
+            "body": 'EMBERLANE_TASK_JSON\n' + json.dumps({
+                "kind": "write_file",
+                "payload": {"path": "mailbox.txt", "content": "mapped mailbox work"},
+            }),
+        }]
+        mailbox.state = {"handled": [], "active": {}}
+        mailbox._save_state = lambda: None
+        mailbox._publish_task_log = lambda *_: {
+            "task_log_status": "published", "task_log_url": "test://task-log",
+        }
+        mailbox._publish_handoff_record = lambda *_: {"handoff_status": "published"}
+        replies = []
+        mailbox._reply = replies.append
+
+        first_report = run_supervisor(
+            self.worker, max_tasks=1, max_failures=2, max_seconds=30, mailbox=mailbox
+        )
+
+        self.assertEqual(first_report["status"], "task_limit")
+        self.assertEqual(first_report["task_ids"], [older.task_id])
+        self.assertEqual(self.worker.queue.get(older.task_id).status, "completed")
+        self.assertEqual(mailbox.state["handled"], [])
+        self.assertEqual(set(mailbox.state["active"]), {"789"})
+        mailbox_task_id = mailbox.state["active"]["789"]
+        self.assertEqual(self.worker.queue.get(mailbox_task_id).status, "pending")
+        self.assertEqual(replies, [])
+        self.assertFalse((self.root / "mailbox.txt").exists())
+
+        mailbox._comments = lambda: []
+        second_report = run_supervisor(
+            self.worker, max_tasks=1, max_failures=2, max_seconds=30, mailbox=mailbox
+        )
+
+        self.assertEqual(second_report["status"], "task_limit")
+        self.assertEqual(second_report["task_ids"], [mailbox_task_id])
+        self.assertEqual(self.worker.queue.get(mailbox_task_id).status, "completed")
+        self.assertEqual(mailbox.state["handled"], ["789"])
+        self.assertEqual(mailbox.state["active"], {})
+        self.assertEqual(len(replies), 1)
+        self.assertTrue(replies[0].startswith("EMBERLANE_RESULT\n{"))
+        published = json.loads(replies[0].split("\n", 1)[1])
+        self.assertEqual(published["source_comment_id"], "789")
+        self.assertEqual(published["task_id"], mailbox_task_id)
+        self.assertEqual(published["status"], "completed")
+        self.assertEqual((self.root / "older.txt").read_text(encoding="utf-8"), "older queued work")
+        self.assertEqual((self.root / "mailbox.txt").read_text(encoding="utf-8"), "mapped mailbox work")
+
+    def test_real_mailbox_failed_task_publishes_failed_status_not_success(self):
+        task = self.worker.submit("write_file", {
+            "path": "will-not-run.txt", "content": "unused"
+        })
+        # submit() returns a detached snapshot; set fixture state on the stored task.
+        self.worker.queue._tasks[task.task_id].status = "failed"
+        self.worker.queue._tasks[task.task_id].last_error = "fixture: deliberate terminal failure"
+        self.worker.queue._save()
+
+        mailbox = GitHubIssueMailbox(self.worker, "owner/repo", 6, "authorized")
+        mailbox._comments = lambda: []
+        mailbox.state = {"handled": [], "active": {"790": task.task_id}}
+        mailbox._save_state = lambda: None
+        mailbox._publish_task_log = lambda *_: {
+            "task_log_status": "published", "task_log_url": "test://task-log",
+        }
+        mailbox._publish_handoff_record = lambda *_: {"handoff_status": "published"}
+        replies = []
+        mailbox._reply = replies.append
+
+        report = run_supervisor(
+            self.worker, max_tasks=1, max_failures=2, max_seconds=30, mailbox=mailbox
+        )
+
+        self.assertEqual(report["status"], "mailbox_idle")
+        self.assertEqual(report["processed"], 0)
+        self.assertEqual(self.worker.queue.get(task.task_id).status, "failed")
+        self.assertEqual(mailbox.state["handled"], ["790"])
+        self.assertEqual(mailbox.state["active"], {})
+        self.assertEqual(len(replies), 1)
+        published = json.loads(replies[0].split("\n", 1)[1])
+        self.assertEqual(published["source_comment_id"], "790")
+        self.assertEqual(published["task_id"], task.task_id)
+        self.assertEqual(published["status"], "failed")
+        self.assertTrue(published["error_present"])
+        self.assertNotEqual(published["status"], "completed")
 
     def test_mailbox_idle_polling_is_bounded_and_waits_between_polls(self):
         class IdleMailbox:
