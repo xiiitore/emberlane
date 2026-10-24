@@ -235,6 +235,39 @@ def _make_patch(before: dict[str, str], after: dict[str, str], changed: list[str
     return "".join(pieces)
 
 
+def _unified_patch_paths(patch: str) -> list[str] | None:
+    """Return every file path declared by a generated unified patch, or None if malformed."""
+    paths: list[str] = []
+    old_header: str | None = None
+    for line in patch.splitlines():
+        if line.startswith("--- "):
+            if old_header is not None:
+                return None
+            old_header = line[4:]
+        elif line.startswith("+++ "):
+            if old_header is None:
+                return None
+            new_header = line[4:]
+            if old_header == "/dev/null":
+                if not new_header.startswith("b/"):
+                    return None
+                path = new_header[2:]
+            elif new_header == "/dev/null":
+                if not old_header.startswith("a/"):
+                    return None
+                path = old_header[2:]
+            else:
+                if not old_header.startswith("a/") or not new_header.startswith("b/") or old_header[2:] != new_header[2:]:
+                    return None
+                path = old_header[2:]
+            if not path:
+                return None
+            paths.append(path)
+            old_header = None
+    if old_header is not None or not paths:
+        return None
+    return paths
+
 def _redact(text: str) -> str:
     text = re.sub(r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})",
                   "[REDACTED_TOKEN]", text)
@@ -611,8 +644,11 @@ def run_local_model_edit(
         clean_paths = [_safe_relative(path, workspace) for path in changed_paths]
     except (ValueError, WorkspaceError):
         return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
-    if set(clean_paths) != set(changed_paths):
+    if set(clean_paths) != set(changed_paths) or len(clean_paths) != len(set(clean_paths)):
         return {"status": "rejected", "reason": "unsafe_changed_paths", "applied": False}
+    patch_paths = _unified_patch_paths(patch)
+    if patch_paths is None or len(patch_paths) != len(set(patch_paths)) or set(patch_paths) != set(clean_paths):
+        return {"status": "rejected", "reason": "patch_paths_mismatch", "applied": False}
     try:
         clean_allowed_paths = {
             _safe_relative(path, workspace)
