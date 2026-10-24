@@ -340,7 +340,7 @@ class TaskQueueTests(unittest.TestCase):
             (pending, "pending", 40.0),
             (deferred, "deferred", 50.0),
         ):
-            stored = stored_tasks[task.task_id]
+            stored = queue._tasks[task.task_id]
             stored.status = status
             stored.updated_at = stamp
         queue._save()
@@ -370,8 +370,8 @@ class TaskQueueTests(unittest.TestCase):
     def test_prune_terminal_archive_is_private(self):
         queue = TaskQueue(self.state)
         old = queue.submit("done", {"content": "potentially sensitive payload"})
-        old.status = "completed"
-        old.updated_at = 1.0
+        queue._tasks[old.task_id].status = "completed"
+        queue._tasks[old.task_id].updated_at = 1.0
         queue._save()
 
         result = queue.prune_terminal(keep_terminal=0)
@@ -384,8 +384,8 @@ class TaskQueueTests(unittest.TestCase):
         old = queue.submit("done", {})
         queue.submit("pending", {})
         old = queue.get(old.task_id)
-        old.status = "completed"
-        old.updated_at = 1.0
+        queue._tasks[old.task_id].status = "completed"
+        queue._tasks[old.task_id].updated_at = 1.0
         queue._save()
         original_state = self.state.read_bytes()
         from emberlane.queue import _write_private_archive as write_private_archive
