@@ -420,13 +420,14 @@ class TaskQueueTests(unittest.TestCase):
 
     def test_public_task_objects_are_detached_snapshots(self):
         queue = TaskQueue(self.state)
-        created = queue.submit("echo", {"nested": {"value": 1}})
+        payload = {"nested": {"value": 1}}
+        created = queue.submit("echo", payload, idempotency_key="snapshot-key")
         created.status = "failed"
         created.payload["nested"]["value"] = 2
 
         fetched = queue.get(created.task_id)
         self.assertEqual(fetched.status, "pending")
-        self.assertEqual(fetched.payload, {"nested": {"value": 1}})
+        self.assertEqual(fetched.payload, payload)
         fetched.status = "completed"
         fetched.payload["nested"]["value"] = 3
 
@@ -436,17 +437,16 @@ class TaskQueueTests(unittest.TestCase):
         restored = TaskQueue(self.state)
         final = restored.get(created.task_id)
         self.assertEqual(final.status, "pending")
-        self.assertEqual(final.payload, {"nested": {"value": 1}})
+        self.assertEqual(final.payload, payload)
 
-        duplicate = queue.submit(
-            "echo", {"nested": {"value": 1}}, idempotency_key="snapshot-key"
-        )
+        duplicate = queue.submit("echo", payload, idempotency_key="snapshot-key")
         duplicate.status = "failed"
-        again = queue.submit(
-            "echo", {"nested": {"value": 1}}, idempotency_key="snapshot-key"
-        )
+        duplicate.payload["nested"]["value"] = 5
+        again = queue.submit("echo", payload, idempotency_key="snapshot-key")
         again.status = "completed"
+        self.assertEqual(again.task_id, created.task_id)
         self.assertEqual(queue.get(again.task_id).status, "pending")
+        self.assertEqual(queue.get(again.task_id).payload, payload)
 
     def test_rejects_bad_arguments(self):
         queue = TaskQueue(self.state)
