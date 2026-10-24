@@ -9703,3 +9703,67 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 emberlane/local_model_backend.py
 
 ~~~
+
+
+### Worker task 85f8c8f0-b3d9-4707-9e26-7cb5aa702337
+
+[Full task output](worker-logs/85f8c8f0-b3d9-4707-9e26-7cb5aa702337.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-24T20:04:57.555708+00:00",
+  "source_comment_id": "6388912488",
+  "task_id": "85f8c8f0-b3d9-4707-9e26-7cb5aa702337",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/85f8c8f0-b3d9-4707-9e26-7cb5aa702337.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/85f8c8f0-b3d9-4707-9e26-7cb5aa702337.md",
+    "dropbox_sha256": "e8db68f7aa7d089a7e8bcbc5730329561cefea0ac464f792fc6319595f8e6db4",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "passed": true,
+    "returncode": 0,
+    "output_publication": "full_log_only",
+    "output_note": "Full sanitized output was not copied inline"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 2725,
+    "full_log_path": "worker-logs/85f8c8f0-b3d9-4707-9e26-7cb5aa702337.md"
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+test_auto_context_size_passes_edit_validation (test_local_model_backend.LocalModelProposalTests.test_auto_context_size_passes_edit_validation) ... ok
+test_boolean_numeric_limits_are_rejected_before_queueing (test_local_model_backend.LocalModelProposalTests.test_boolean_numeric_limits_are_rejected_before_queueing) ... ok
+test_edit_applies_only_after_targeted_tests_pass (test_local_model_backend.LocalModelProposalTests.test_edit_applies_only_after_targeted_tests_pass) ... ok
+test_edit_refuses_source_changed_since_proposal (test_local_model_backend.LocalModelProposalTests.test_edit_refuses_source_changed_since_proposal) ... ok
+test_enforces_streamed_output_limit (test_local_model_backend.LocalModelProposalTests.test_enforces_streamed_output_limit) ... ok
+test_failed_tests_leave_working_tree_unchanged (test_local_model_backend.LocalModelProposalTests.test_failed_tests_leave_working_tree_unchanged) ... ok
+test_fixed_cli_and_filtered_environment (test_local_model_backend.LocalModelProposalTests.test_fixed_cli_and_filtered_environment) ... ok
+test_invalid_model_json_is_rejected (test_local_model_backend.LocalModelProposalTests.test_invalid_model_json_is_rejected) ... ok
+test_missing_model_configuration_does_not_launch_process (test_local_model_backend.LocalModelProposalTests.test_missing_model_configuration_does_not_launch_process) ... ok
+test_missing_model_file_is_reported (test_local_model_backend.LocalModelProposalTests.test_missing_model_file_is_reported) ... ok
+test_pause_created_during_inference_discards_proposal (test_local_model_backend.LocalModelProposalTests.test_pause_created_during_inference_discards_proposal) ... ok
+test_persistent_pause_prevents_model_launch (test_local_model_backend.LocalModelProposalTests.test_persistent_pause_prevents_model_launch) ... ok
+test_proposes_patch_without_modifying_source (test_local_model_backend.LocalModelProposalTests.test_proposes_patch_without_modifying_source) ... ok
+test_rejects_credential_like_source_without_launching_model (test_local_model_backend.LocalModelProposalTests.test_rejects_credential_like_source_without_launching_model) ... ok
+test_rejects_model_output_outside_allowlist (test_local_model_backend.LocalModelProposalTests.test_rejects_model_output_outside_allowlist) ... ok
+test_rejects_unsafe_path_before_model_launch (test_local_model_backend.LocalModelProposalTests.test_rejects_unsafe_path_before_model_launch) ... ok
+test_supports_new_allowlisted_file_and_marks_addition (test_local_model_backend.LocalModelProposalTests.test_supports_new_allowlisted_file_and_marks_addition) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 1.370s
+
+OK
+
+~~~
