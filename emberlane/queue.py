@@ -1,6 +1,7 @@
 """Minimal file-backed task queue with atomic state persistence."""
 from __future__ import annotations
 
+import copy
 import json
 import os
 import tempfile
@@ -269,7 +270,7 @@ class TaskQueue:
                     if existing.idempotency_key == idempotency_key:
                         if existing.kind != kind or existing.payload != payload:
                             raise ValueError("idempotency key already used for a different task")
-                        return existing
+                        return copy.deepcopy(existing)
             now = time.time()
             task = Task(
                 str(uuid.uuid4()), kind, payload,
@@ -278,20 +279,21 @@ class TaskQueue:
             )
             self._tasks[task.task_id] = task
             self._save()
-            return task
+            return copy.deepcopy(task)
 
     def get(self, task_id: str) -> Task | None:
         with self._locked_refresh():
-            return self._tasks.get(task_id)
+            task = self._tasks.get(task_id)
+            return copy.deepcopy(task) if task is not None else None
 
     def list_tasks(self) -> list[Task]:
         with self._locked_refresh():
-            return list(self._tasks.values())
+            return copy.deepcopy(list(self._tasks.values()))
 
     def resume_deferred(self, task_id: str) -> Task:
         """Explicitly requeue a deferred task after its external dependency recovers."""
         with self._locked_refresh():
-            return self._resume_deferred_locked(task_id)
+            return copy.deepcopy(self._resume_deferred_locked(task_id))
 
     def _resume_deferred_locked(self, task_id: str) -> Task:
         task = self._tasks.get(task_id)
@@ -373,7 +375,7 @@ class TaskQueue:
             task = next((t for t in self._tasks.values() if t.status == "pending"), None)
             if task is None:
                 return None
-            return self._run_task(task, handlers)
+            return copy.deepcopy(self._run_task(task, handlers))
 
     def run_task(
         self,
