@@ -539,23 +539,23 @@ class LocalModelProposalTests(unittest.TestCase):
         self._initialize_git()
         original = (self.root / "src" / "allowed.py").read_bytes()
         unsupported_metadata = [
-            "old mode 100644\\nnew mode 100755",
+            "old mode 100644\nnew mode 100755",
             "deleted file mode 100644",
-            "rename from src/allowed.py\\nrename to src/renamed.py",
-            "copy from src/allowed.py\\ncopy to src/copied.py",
+            "rename from src/allowed.py\nrename to src/renamed.py",
+            "copy from src/allowed.py\ncopy to src/copied.py",
             "new file mode 160000",
             "GIT binary patch",
         ]
         for metadata in unsupported_metadata:
             with self.subTest(metadata=metadata):
                 patch_text = (
-                    "diff --git a/src/allowed.py b/src/allowed.py\\n"
-                    f"{metadata}\\n"
-                    "--- a/src/allowed.py\\n"
-                    "+++ b/src/allowed.py\\n"
-                    "@@ -1 +1 @@\\n"
-                    "-VALUE = 1\\n"
-                    "+VALUE = 2\\n"
+                    "diff --git a/src/allowed.py b/src/allowed.py\n"
+                    f"{metadata}\n"
+                    "--- a/src/allowed.py\n"
+                    "+++ b/src/allowed.py\n"
+                    "@@ -1 +1 @@\n"
+                    "-VALUE = 1\n"
+                    "+VALUE = 2\n"
                 )
                 proposal = {
                     "status": "proposal",
@@ -592,9 +592,9 @@ class LocalModelProposalTests(unittest.TestCase):
         tests_dir = self.root / "tests"
         tests_dir.mkdir()
         (tests_dir / "test_feature.py").write_text(
-            "import unittest\\nfrom src.allowed import VALUE\\n"
-            "class FeatureTests(unittest.TestCase):\\n"
-            " def test_value(self): self.assertEqual(VALUE, 2)\\n",
+            "import unittest\nfrom src.allowed import VALUE\n"
+            "class FeatureTests(unittest.TestCase):\n"
+            " def test_value(self): self.assertEqual(VALUE, 2)\n",
             encoding="utf-8",
         )
         proposal = self._proposal_for_value(2)
@@ -611,7 +611,7 @@ class LocalModelProposalTests(unittest.TestCase):
                 and result.returncode == 0
             ):
                 (self.root / "src" / "allowed.py").write_text(
-                    "VALUE = 999\\n", encoding="utf-8",
+                    "VALUE = 999\n", encoding="utf-8",
                 )
             return result
 
@@ -634,7 +634,7 @@ class LocalModelProposalTests(unittest.TestCase):
         )
         self.assertEqual(
             (self.root / "src" / "allowed.py").read_text(encoding="utf-8"),
-            "VALUE = 999\\n",
+            "VALUE = 999\n",
         )
 
     def test_edit_applies_only_after_targeted_tests_pass(self):
