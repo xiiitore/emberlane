@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import errno
 import json
 import os
 import tempfile
@@ -175,7 +176,14 @@ class TaskQueue:
                             msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
                         locked = True
                         break
-                    except (BlockingIOError, OSError) as exc:
+                    except OSError as exc:
+                        contention_errnos = {
+                            errno.EACCES,
+                            errno.EAGAIN,
+                            errno.EDEADLK,
+                        }
+                        if not isinstance(exc, BlockingIOError) and exc.errno not in contention_errnos:
+                            raise
                         if time.monotonic() >= deadline:
                             raise TimeoutError(
                                 f"timed out acquiring queue lock: {lock_path.name}"
