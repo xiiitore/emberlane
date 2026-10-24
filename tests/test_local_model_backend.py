@@ -133,7 +133,7 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_model_loader_failure_preserves_stderr_diagnostic(self):
         class FailedProcess(FakeProcess):
-            stderr_bytes = b"error while loading shared libraries: libllama.so\n"
+            stderr_bytes = b"error while loading shared libraries: libllama.so\\n"
 
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
