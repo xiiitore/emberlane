@@ -6,9 +6,35 @@ import os
 import tempfile
 import time
 import uuid
+import threading
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows fallback
+    fcntl = None
+try:
+    import msvcrt
+except ImportError:  # pragma: no cover - POSIX fallback
+    msvcrt = None
+
+_PROCESS_LOCKS: dict[str, threading.RLock] = {}
+_PROCESS_LOCKS_GUARD = threading.Lock()
+
+
+def _thread_lock_for(path: Path) -> threading.RLock:
+    key = str(path.resolve())
+    with _PROCESS_LOCKS_GUARD:
+        return _PROCESS_LOCKS.setdefault(key, threading.RLock())
+
+
+class QueueConflictError(RuntimeError):
+    """Raised rather than overwriting queue state changed since it was loaded."""
+
+
 
 
 def _write_private_archive(path: Path, data: bytes) -> None:
@@ -102,21 +128,84 @@ class Task:
 
 
 class TaskQueue:
-    """A small single-process queue. Not intended for concurrent writers."""
+    """File-backed queue serialized across processes by a stable sidecar lock.
+
+    Handlers execute while the queue lock is held. This prevents concurrent claims
+    but serializes submissions and reads behind long-running handlers. Handler
+    effects remain at-least-once: after a crash, a persisted running task is
+    requeued and its external effect may be repeated. Exactly-once effects are not
+    guaranteed; use idempotent handlers or reconcile external effects.
+    """
 
     def __init__(self, state_path: str | Path, max_attempts: int = 3):
         if max_attempts < 1:
             raise ValueError("max_attempts must be >= 1")
         self.state_path = Path(state_path)
         self.max_attempts = max_attempts
+        self.lock_timeout_seconds = 15.0
+        self._lock_path = self.state_path.with_name(self.state_path.name + ".lock")
+        self._thread_lock = _thread_lock_for(self._lock_path)
+        self._lock_local = threading.local()
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         self._tasks: dict[str, Task] = {}
-        self._load()
+        self._baseline_bytes: bytes | None = None
+        with self._exclusive():
+            self._load_unlocked(recover_running=True)
 
-    def _load(self) -> None:
+    @contextmanager
+    def _exclusive(self) -> Iterator[bool]:
+        """Acquire a thread lock and stable OS lock; yield True when outermost."""
+        with self._thread_lock:
+            depth = getattr(self._lock_local, "depth", 0)
+            if depth:
+                self._lock_local.depth = depth + 1
+                try:
+                    yield False
+                finally:
+                    self._lock_local.depth -= 1
+                return
+            self._lock_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._lock_path, "a+b") as lock_stream:
+                if fcntl is None and msvcrt is None:
+                    raise RuntimeError("interprocess queue locking is unsupported on this platform")
+                if msvcrt is not None and fcntl is None:
+                    lock_stream.seek(0, os.SEEK_END)
+                    if lock_stream.tell() == 0:
+                        lock_stream.write(b"\\0")
+                        lock_stream.flush()
+                deadline = time.monotonic() + self.lock_timeout_seconds
+                while True:
+                    try:
+                        if fcntl is not None:
+                            fcntl.flock(lock_stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        else:
+                            lock_stream.seek(0)
+                            msvcrt.locking(lock_stream.fileno(), msvcrt.LK_NBLCK, 1)
+                        break
+                    except (BlockingIOError, OSError) as exc:
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError(
+                                f"timed out acquiring queue lock: {self._lock_path.name}"
+                            ) from exc
+                        time.sleep(0.025)
+                self._lock_local.depth = 1
+                try:
+                    yield True
+                finally:
+                    self._lock_local.depth = 0
+                    if fcntl is not None:
+                        fcntl.flock(lock_stream.fileno(), fcntl.LOCK_UN)
+                    else:
+                        lock_stream.seek(0)
+                        msvcrt.locking(lock_stream.fileno(), msvcrt.LK_UNLCK, 1)
+
+    def _load_unlocked(self, *, recover_running: bool) -> None:
         if not self.state_path.exists():
+            self._tasks = {}
+            self._baseline_bytes = None
             return
-        raw = json.loads(self.state_path.read_text(encoding="utf-8"))
+        raw_bytes = self.state_path.read_bytes()
+        raw = json.loads(raw_bytes.decode("utf-8"))
         if not isinstance(raw, list):
             raise ValueError("state file must contain a JSON list")
         loaded: dict[str, Task] = {}
@@ -126,24 +215,25 @@ class TaskQueue:
                 raise ValueError("duplicate task id in state file")
             loaded[task.task_id] = task
         self._tasks = loaded
-        # A process may have stopped after persisting "running" but before
-        # persisting a terminal state. Requeue it on restart. This is
-        # at-least-once behavior: a handler may run again if it performed its
-        # side effect before the process stopped.
+        self._baseline_bytes = raw_bytes
         recovered = False
         now = time.time()
-        for task in self._tasks.values():
-            if task.status == "running":
-                task.status = "pending"
-                task.last_error = (
-                    "Recovered after interrupted run; handler may be retried."
-                )
-                task.updated_at = now
-                recovered = True
+        if recover_running:
+            for task in self._tasks.values():
+                if task.status == "running":
+                    task.status = "pending"
+                    task.last_error = "Recovered after interrupted run; handler may be retried."
+                    task.updated_at = now
+                    recovered = True
         if recovered:
-            self._save()
+            self._save_unlocked()
 
-    def _save(self) -> None:
+    def _load(self) -> None:
+        """Compatibility helper; reload state under the interprocess lock."""
+        with self._exclusive() as outermost:
+            self._load_unlocked(recover_running=outermost)
+
+    def _save_unlocked(self) -> None:
         data = [asdict(task) for task in self._tasks.values()]
         fd, temporary = tempfile.mkstemp(prefix=".queue-", dir=self.state_path.parent)
         try:
@@ -152,12 +242,31 @@ class TaskQueue:
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(temporary, self.state_path)
+            try:
+                directory_fd = os.open(self.state_path.parent, os.O_RDONLY)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
+            except OSError:
+                pass
+            self._baseline_bytes = self.state_path.read_bytes()
         except BaseException:
             try:
                 os.unlink(temporary)
             except FileNotFoundError:
                 pass
             raise
+
+    def _save(self) -> None:
+        """Persist legacy Task edits only if the on-disk snapshot is unchanged."""
+        with self._exclusive():
+            current = self.state_path.read_bytes() if self.state_path.exists() else None
+            if current != self._baseline_bytes:
+                raise QueueConflictError(
+                    "queue changed since this instance loaded; refusing stale overwrite"
+                )
+            self._save_unlocked()
 
     def submit(
         self,
