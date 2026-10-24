@@ -465,6 +465,22 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(queue.get(again.task_id).status, "pending")
         self.assertEqual(queue.get(again.task_id).payload, payload)
 
+    def test_run_task_returns_detached_snapshot(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("echo", {"nested": {"value": 1}})
+        returned = queue.run_task(created.task_id, {"echo": lambda payload: {"ok": True}})
+        returned.status = "failed"
+        returned.payload["nested"]["value"] = 9
+        returned.result["ok"] = False
+
+        stored = queue.get(created.task_id)
+        self.assertEqual(stored.status, "completed")
+        self.assertEqual(stored.payload, {"nested": {"value": 1}})
+        self.assertEqual(stored.result, {"ok": True})
+        restored = TaskQueue(self.state).get(created.task_id)
+        self.assertEqual(restored.status, "completed")
+        self.assertEqual(restored.result, {"ok": True})
+
     def test_handler_cannot_mutate_persisted_task_payload(self):
         queue = TaskQueue(self.state)
         created = queue.submit("mutating", {"nested": {"value": 1}})
