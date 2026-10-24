@@ -4,6 +4,14 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from contextlib import contextmanager
+from typing import Iterator
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - exercised on Windows
+    fcntl = None
+    import msvcrt
 import time
 import uuid
 from dataclasses import asdict, dataclass
@@ -102,7 +110,12 @@ class Task:
 
 
 class TaskQueue:
-    """A small single-process queue. Not intended for concurrent writers."""
+    """File-backed queue serialized across processes with an OS lock.
+
+    The lock covers each complete queue operation, including handler execution.
+    This intentionally favors correctness over concurrent submissions during a
+    long-running handler. Handler side effects remain at-least-once after a crash.
+    """
 
     def __init__(self, state_path: str | Path, max_attempts: int = 3):
         if max_attempts < 1:
@@ -111,9 +124,44 @@ class TaskQueue:
         self.max_attempts = max_attempts
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         self._tasks: dict[str, Task] = {}
-        self._load()
+        with self._locked_refresh():
+            pass
+
+    @contextmanager
+    def _locked_refresh(self) -> Iterator[None]:
+        """Hold a stable sibling lock while reloading and operating on queue state.
+
+        The lock file is never replaced or removed: queue.json itself is atomically
+        replaced by _save(), so locking queue.json would not serialize processes
+        that opened different inodes. Locks are advisory and require a filesystem
+        that implements POSIX flock or Windows byte-range locking correctly.
+        """
+        lock_path = self.state_path.with_name(self.state_path.name + ".lock")
+        fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        locked = False
+        try:
+            if fcntl is not None:
+                fcntl.flock(fd, fcntl.LOCK_EX)
+            else:  # pragma: no cover - exercised on Windows
+                if os.fstat(fd).st_size == 0:
+                    os.write(fd, b"\\0")
+                    os.fsync(fd)
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+            locked = True
+            self._load()
+            yield
+        finally:
+            if locked:
+                if fcntl is not None:
+                    fcntl.flock(fd, fcntl.LOCK_UN)
+                else:  # pragma: no cover - exercised on Windows
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            os.close(fd)
 
     def _load(self) -> None:
+        self._tasks = {}
         if not self.state_path.exists():
             return
         raw = json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -173,29 +221,37 @@ class TaskQueue:
         if idempotency_key is not None:
             if not isinstance(idempotency_key, str) or not idempotency_key:
                 raise ValueError("idempotency_key must be a non-empty string")
-            for existing in self._tasks.values():
-                if existing.idempotency_key == idempotency_key:
-                    if existing.kind != kind or existing.payload != payload:
-                        raise ValueError("idempotency key already used for a different task")
-                    return existing
-        now = time.time()
-        task = Task(
-            str(uuid.uuid4()), kind, payload,
-            created_at=now, updated_at=now,
-            idempotency_key=idempotency_key,
-        )
-        self._tasks[task.task_id] = task
-        self._save()
-        return task
+        with self._locked_refresh():
+            if idempotency_key is not None:
+                for existing in self._tasks.values():
+                    if existing.idempotency_key == idempotency_key:
+                        if existing.kind != kind or existing.payload != payload:
+                            raise ValueError("idempotency key already used for a different task")
+                        return existing
+            now = time.time()
+            task = Task(
+                str(uuid.uuid4()), kind, payload,
+                created_at=now, updated_at=now,
+                idempotency_key=idempotency_key,
+            )
+            self._tasks[task.task_id] = task
+            self._save()
+            return task
 
     def get(self, task_id: str) -> Task | None:
-        return self._tasks.get(task_id)
+        with self._locked_refresh():
+            return self._tasks.get(task_id)
 
     def list_tasks(self) -> list[Task]:
-        return list(self._tasks.values())
+        with self._locked_refresh():
+            return list(self._tasks.values())
 
     def resume_deferred(self, task_id: str) -> Task:
         """Explicitly requeue a deferred task after its external dependency recovers."""
+        with self._locked_refresh():
+            return self._resume_deferred_locked(task_id)
+
+    def _resume_deferred_locked(self, task_id: str) -> Task:
         task = self._tasks.get(task_id)
         if task is None:
             raise KeyError(f"unknown task id: {task_id}")
@@ -209,6 +265,10 @@ class TaskQueue:
         return task
 
     def prune_terminal(self, keep_terminal: int = 50) -> dict[str, Any]:
+        with self._locked_refresh():
+            return self._prune_terminal_locked(keep_terminal)
+
+    def _prune_terminal_locked(self, keep_terminal: int = 50) -> dict[str, Any]:
         """Archive the current queue, then remove only old terminal tasks.
 
         Pending, running and deferred tasks are always preserved. A local backup
@@ -267,10 +327,11 @@ class TaskQueue:
         }
 
     def run_one(self, handlers: dict[str, Callable[[dict[str, Any]], Any]]) -> Task | None:
-        task = next((t for t in self._tasks.values() if t.status == "pending"), None)
-        if task is None:
-            return None
-        return self._run_task(task, handlers)
+        with self._locked_refresh():
+            task = next((t for t in self._tasks.values() if t.status == "pending"), None)
+            if task is None:
+                return None
+            return self._run_task(task, handlers)
 
     def run_task(
         self,
@@ -278,10 +339,11 @@ class TaskQueue:
         handlers: dict[str, Callable[[dict[str, Any]], Any]],
     ) -> Task | None:
         """Run only the requested pending task; never substitute another queue item."""
-        task = self._tasks.get(task_id)
-        if task is None or task.status != "pending":
-            return None
-        return self._run_task(task, handlers)
+        with self._locked_refresh():
+            task = self._tasks.get(task_id)
+            if task is None or task.status != "pending":
+                return None
+            return self._run_task(task, handlers)
 
     def _run_task(
         self,
