@@ -91,7 +91,7 @@ class GoalPlannerTests(unittest.TestCase):
         self.planner.advance(self.plan())
         task = next(t for t in self.queue.list_tasks() if t.kind == "diagnostics")
         self.queue._tasks[task.task_id].status = "completed"
-        task.result = {"ok": False, "error": "operation did not succeed"}
+        self.queue._tasks[task.task_id].result = {"ok": False, "error": "operation did not succeed"}
         self.queue._save()
         result = self.planner.advance(self.plan(cycle=1))
         self.assertEqual(result["status"], "blocked")
