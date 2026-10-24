@@ -123,6 +123,7 @@ class TaskQueue:
             raise ValueError("max_attempts must be >= 1")
         self.state_path = Path(state_path)
         self.max_attempts = max_attempts
+        self.lock_timeout_seconds = 15.0
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         self._tasks: dict[str, Task] = {}
         # Nested queue calls from a handler (for example GoalPlanner.advance ->
@@ -158,15 +159,26 @@ class TaskQueue:
             fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
             locked = False
             try:
-                if fcntl is not None:
-                    fcntl.flock(fd, fcntl.LOCK_EX)
-                else:  # pragma: no cover - exercised on Windows
+                if fcntl is None:  # pragma: no cover - exercised on Windows
                     if os.fstat(fd).st_size == 0:
                         os.write(fd, b"\\0")
                         os.fsync(fd)
-                    os.lseek(fd, 0, os.SEEK_SET)
-                    msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
-                locked = True
+                deadline = time.monotonic() + self.lock_timeout_seconds
+                while True:
+                    try:
+                        if fcntl is not None:
+                            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        else:  # pragma: no cover - exercised on Windows
+                            os.lseek(fd, 0, os.SEEK_SET)
+                            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                        locked = True
+                        break
+                    except (BlockingIOError, OSError) as exc:
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError(
+                                f"timed out acquiring queue lock: {lock_path.name}"
+                            ) from exc
+                        time.sleep(0.025)
                 self._lock_depth = 1
                 self._load()
                 yield
