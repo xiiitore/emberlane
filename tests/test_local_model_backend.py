@@ -133,7 +133,7 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_model_loader_failure_preserves_stderr_diagnostic(self):
         class FailedProcess(FakeProcess):
-            stderr_bytes = b"error while loading shared libraries: libllama.so\\n"
+            stderr_bytes = b"error while loading shared libraries: libllama.so\n"
 
             def __init__(self, command, *, cwd, stdout, **kwargs):
                 super().__init__(command, cwd=cwd, stdout=stdout, **kwargs)
@@ -503,15 +503,15 @@ class LocalModelProposalTests(unittest.TestCase):
     def test_edit_rejects_symlink_patch_before_touching_workspace(self):
         self._initialize_git()
         outside = self.root.parent / "outside-sentinel.txt"
-        outside.write_text("sentinel stays unchanged\\n", encoding="utf-8")
+        outside.write_text("sentinel stays unchanged\n", encoding="utf-8")
         link_path = self.root / "src" / "evil-link"
         patch_text = (
-            "diff --git a/src/evil-link b/src/evil-link\\n"
-            "new file mode 120000\\n"
-            "--- /dev/null\\n"
-            "+++ b/src/evil-link\\n"
-            "@@ -0,0 +1 @@\\n"
-            f"+{outside}\\n"
+            "diff --git a/src/evil-link b/src/evil-link\n"
+            "new file mode 120000\n"
+            "--- /dev/null\n"
+            "+++ b/src/evil-link\n"
+            "@@ -0,0 +1 @@\n"
+            f"+{outside}\n"
         )
         proposal = {
             "status": "proposal",
@@ -540,7 +540,7 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertFalse(result["applied"])
         self.assertFalse(link_path.is_symlink())
         self.assertFalse(link_path.exists())
-        self.assertEqual(outside.read_text(encoding="utf-8"), "sentinel stays unchanged\\n")
+        self.assertEqual(outside.read_text(encoding="utf-8"), "sentinel stays unchanged\n")
 
     def test_edit_applies_only_after_targeted_tests_pass(self):
         self._initialize_git()
