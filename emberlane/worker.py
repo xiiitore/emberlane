@@ -768,6 +768,12 @@ class LocalWorker:
             return None
         return self.queue.run_one(self.handlers)
 
+    def run_task(self, task_id: str) -> Task | None:
+        """Execute only the specified pending task, respecting worker pause controls."""
+        if control_state(self.root) is not None:
+            return None
+        return self.queue.run_task(task_id, self.handlers)
+
     def resume_deferred(self, task_id: str) -> Task:
         """Resume a deferred task and continue its waiting goal plan, if any."""
         task = self.queue.resume_deferred(task_id)
