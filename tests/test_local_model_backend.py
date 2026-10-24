@@ -500,6 +500,41 @@ class LocalModelProposalTests(unittest.TestCase):
         )
         self.assertEqual(other.read_bytes(), other_original)
 
+    def test_edit_rejects_symlink_patch_before_applying_to_source(self):
+        self._initialize_git()
+        outside = Path(self.temp.name) / "outside-sentinel.txt"
+        outside.write_text("must remain untouched\\n", encoding="utf-8")
+        symlink_target = str(outside.resolve())
+        patch_text = (
+            "diff --git a/src/evil-link b/src/evil-link\\n"
+            "new file mode 120000\\n"
+            "index 0000000..0000000\\n"
+            "--- /dev/null\\n"
+            "+++ b/src/evil-link\\n"
+            "@@ -0,0 +1 @@\\n"
+            f"+{symlink_target}\\n"
+        )
+        proposal = {
+            "status": "proposal",
+            "proposal": {
+                "changed_paths": ["src/evil-link"],
+                "patch": patch_text,
+                "patch_bytes": len(patch_text.encode("utf-8")),
+                "base_sha256": {"src/evil-link": None},
+                "output": "attempted symlink creation",
+                "output_bytes": 25,
+                "applied": False,
+            },
+        }
+        payload = {**self.payload, "allowed_paths": ["src/evil-link"]}
+        with patch("emberlane.local_model_backend.run_local_model_proposal", return_value=proposal):
+            result = run_local_model_edit(self.root, payload, workspace=self.workspace)
+        self.assertEqual(result["status"], "rejected")
+        self.assertEqual(result["reason"], "unsupported_patch_operation")
+        self.assertFalse(result["applied"])
+        self.assertFalse((self.root / "src" / "evil-link").is_symlink())
+        self.assertEqual(outside.read_text(encoding="utf-8"), "must remain untouched\\n")
+
     def test_edit_applies_only_after_targeted_tests_pass(self):
         self._initialize_git()
         tests = self.root / "tests"
