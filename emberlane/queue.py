@@ -318,11 +318,16 @@ class TaskQueue:
             raise KeyError(f"unknown task id: {task_id}")
         if task.status != "deferred":
             raise ValueError(f"task is not deferred: {task_id}")
+        original_task = copy.deepcopy(task)
         task.status = "pending"
         task.last_error = None
         task.result = None
         task.updated_at = time.time()
-        self._save()
+        try:
+            self._save()
+        except BaseException:
+            self._tasks[task_id] = original_task
+            raise
         return task
 
     def prune_terminal(self, keep_terminal: int = 50) -> dict[str, Any]:
