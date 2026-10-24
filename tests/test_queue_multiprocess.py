@@ -179,8 +179,8 @@ class TaskQueueMultiprocessTests(unittest.TestCase):
             queue.submit("old", {"index": index}, idempotency_key=f"old-{index}")
         stored = queue.list_tasks()
         for index, task in enumerate(stored):
-            task.status = "completed"
-            task.updated_at = float(index + 1)
+            queue._tasks[task.task_id].status = "completed"
+            queue._tasks[task.task_id].updated_at = float(index + 1)
         queue._save()
 
         specs = [("prune", "", "unused")] + [
