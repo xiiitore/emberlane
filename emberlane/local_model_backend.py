@@ -557,6 +557,46 @@ def _fixed_command(
         return None
 
 
+def _patch_changed_paths(patch: str) -> list[str] | None:
+    """Return paths declared by unified-diff file headers, or None if malformed."""
+    lines = patch.splitlines()
+    paths: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if line.startswith("--- "):
+            if index + 1 >= len(lines) or not lines[index + 1].startswith("+++ "):
+                return None
+            old_name = line[4:]
+            new_name = lines[index + 1][4:]
+            if old_name == "/dev/null":
+                old_path = None
+            elif old_name.startswith("a/"):
+                old_path = old_name[2:]
+            else:
+                return None
+            if new_name == "/dev/null":
+                new_path = None
+            elif new_name.startswith("b/"):
+                new_path = new_name[2:]
+            else:
+                return None
+            if old_path is None and new_path is None:
+                return None
+            if old_path is not None:
+                paths.append(old_path)
+            if new_path is not None:
+                paths.append(new_path)
+            index += 2
+            continue
+        if line.startswith("+++ "):
+            return None
+        index += 1
+    if not paths or len(paths) != len(set(paths)):
+        return None
+    return paths
+
+
 def run_local_model_edit(
     root: str | Path,
     raw_payload: dict[str, Any],
