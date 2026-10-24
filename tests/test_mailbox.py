@@ -210,6 +210,48 @@ class MailboxIdempotencyTests(unittest.TestCase):
 
 
 
+    def test_fresh_mailbox_comment_executes_its_new_task_not_older_pending_task(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            worker = LocalWorker(root)
+            older = worker.submit("write_file", {
+                "path": "older.txt", "content": "OLDER",
+            }, idempotency_key="older-comment")
+            mailbox = GitHubIssueMailbox(worker, "owner/repo", 6, "authorized")
+            mailbox._comments = lambda: [{
+                "id": 456,
+                "user": {"login": "authorized"},
+                "body": 'EMBERLANE_TASK_JSON\\n' + json.dumps({
+                    "kind": "write_file",
+                    "payload": {"path": "new.txt", "content": "NEW"},
+                }),
+            }]
+            mailbox.state = {"handled": [], "active": {}}
+            mailbox._save_state = lambda: None
+            mailbox._publish_task_log = lambda *_: {
+                "task_log_status": "published", "task_log_url": "test://task-log",
+            }
+            mailbox._publish_handoff_record = lambda *_: {"handoff_status": "published"}
+            replies = []
+            mailbox._reply = replies.append
+
+            result = mailbox.run_once()
+
+            self.assertEqual(result["status"], "finished")
+            self.assertEqual(result["comment_id"], "456")
+            new_task_id = result["task_id"]
+            self.assertNotEqual(new_task_id, older.task_id)
+            self.assertEqual(worker.queue.get(older.task_id).status, "pending")
+            self.assertEqual(worker.queue.get(new_task_id).status, "completed")
+            self.assertFalse((root / "older.txt").exists())
+            self.assertEqual((root / "new.txt").read_text(), "NEW")
+            self.assertEqual(mailbox.state["handled"], ["456"])
+            self.assertEqual(mailbox.state["active"], {})
+            self.assertEqual(len(replies), 1)
+            published = json.loads(replies[0].split("\\n", 1)[1])
+            self.assertEqual(published["task_id"], new_task_id)
+
+
 class MailboxPublicationRetryTests(unittest.TestCase):
     def test_terminal_task_stays_active_when_full_log_publication_fails(self):
         from types import SimpleNamespace
