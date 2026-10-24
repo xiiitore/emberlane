@@ -135,10 +135,10 @@ class TaskQueueMultiprocessTests(unittest.TestCase):
         queue = TaskQueue(self.state, max_attempts=2)
         task = queue.submit("kill", {"marker": "must-not-complete"})
         code = (
-            "import os, sys\\n"
-            "from emberlane import TaskQueue\\n"
-            "queue = TaskQueue(sys.argv[1], max_attempts=int(sys.argv[2]))\\n"
-            "queue.run_one({'kill': lambda payload: os._exit(77)})\\n"
+            "import os, sys\n"
+            "from emberlane import TaskQueue\n"
+            "queue = TaskQueue(sys.argv[1], max_attempts=int(sys.argv[2]))\n"
+            "queue.run_one({'kill': lambda payload: os._exit(77)})\n"
         )
         child = subprocess.run(
             [sys.executable, "-c", code, str(self.state), "2"],
@@ -156,10 +156,10 @@ class TaskQueueMultiprocessTests(unittest.TestCase):
         queue = TaskQueue(self.state, max_attempts=1)
         task = queue.submit("kill", {"marker": "side-effect-uncertain"})
         code = (
-            "import os, sys\\n"
-            "from emberlane import TaskQueue\\n"
-            "queue = TaskQueue(sys.argv[1], max_attempts=int(sys.argv[2]))\\n"
-            "queue.run_one({'kill': lambda payload: os._exit(77)})\\n"
+            "import os, sys\n"
+            "from emberlane import TaskQueue\n"
+            "queue = TaskQueue(sys.argv[1], max_attempts=int(sys.argv[2]))\n"
+            "queue.run_one({'kill': lambda payload: os._exit(77)})\n"
         )
         child = subprocess.run(
             [sys.executable, "-c", code, str(self.state), "1"],
