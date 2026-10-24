@@ -261,6 +261,10 @@ class TaskQueue:
             raise ValueError("kind must be a non-empty string")
         if not isinstance(payload, dict):
             raise ValueError("payload must be a dictionary")
+        try:
+            json.dumps(payload, ensure_ascii=False, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("payload must be JSON-compatible") from exc
         if idempotency_key is not None:
             if not isinstance(idempotency_key, str) or not idempotency_key:
                 raise ValueError("idempotency_key must be a non-empty string")
@@ -277,8 +281,13 @@ class TaskQueue:
                 created_at=now, updated_at=now,
                 idempotency_key=idempotency_key,
             )
+            original_tasks = self._tasks.copy()
             self._tasks[task.task_id] = task
-            self._save()
+            try:
+                self._save()
+            except BaseException:
+                self._tasks = original_tasks
+                raise
             return copy.deepcopy(task)
 
     def get(self, task_id: str) -> Task | None:
