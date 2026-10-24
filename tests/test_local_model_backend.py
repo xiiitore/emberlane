@@ -500,6 +500,48 @@ class LocalModelProposalTests(unittest.TestCase):
         )
         self.assertEqual(other.read_bytes(), other_original)
 
+    def test_edit_rejects_symlink_patch_before_touching_workspace(self):
+        self._initialize_git()
+        outside = self.root.parent / "outside-sentinel.txt"
+        outside.write_text("sentinel stays unchanged\\n", encoding="utf-8")
+        link_path = self.root / "src" / "evil-link"
+        patch_text = (
+            "diff --git a/src/evil-link b/src/evil-link\\n"
+            "new file mode 120000\\n"
+            "--- /dev/null\\n"
+            "+++ b/src/evil-link\\n"
+            "@@ -0,0 +1 @@\\n"
+            f"+{outside}\\n"
+        )
+        proposal = {
+            "status": "proposal",
+            "proposal": {
+                "changed_paths": ["src/evil-link"],
+                "patch": patch_text,
+                "patch_bytes": len(patch_text.encode("utf-8")),
+                "base_sha256": {"src/evil-link": None},
+                "output": "attempt symlink",
+                "output_bytes": 15,
+                "applied": False,
+            },
+        }
+        with patch("emberlane.local_model_backend.run_local_model_proposal", return_value=proposal):
+            result = run_local_model_edit(
+                self.root,
+                {
+                    **self.payload,
+                    "allowed_paths": ["src/evil-link"],
+                    "test_file": "test_feature.py",
+                },
+                workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "rejected")
+        self.assertEqual(result["reason"], "unsupported_patch_operation")
+        self.assertFalse(result["applied"])
+        self.assertFalse(link_path.is_symlink())
+        self.assertFalse(link_path.exists())
+        self.assertEqual(outside.read_text(encoding="utf-8"), "sentinel stays unchanged\\n")
+
     def test_edit_applies_only_after_targeted_tests_pass(self):
         self._initialize_git()
         tests = self.root / "tests"
