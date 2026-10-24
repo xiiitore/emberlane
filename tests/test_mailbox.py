@@ -221,7 +221,7 @@ class MailboxIdempotencyTests(unittest.TestCase):
             mailbox._comments = lambda: [{
                 "id": 456,
                 "user": {"login": "authorized"},
-                "body": 'EMBERLANE_TASK_JSON\\n' + json.dumps({
+                "body": 'EMBERLANE_TASK_JSON\n' + json.dumps({
                     "kind": "write_file",
                     "payload": {"path": "new.txt", "content": "NEW"},
                 }),
@@ -248,7 +248,7 @@ class MailboxIdempotencyTests(unittest.TestCase):
             self.assertEqual(mailbox.state["handled"], ["456"])
             self.assertEqual(mailbox.state["active"], {})
             self.assertEqual(len(replies), 1)
-            published = json.loads(replies[0].split("\\n", 1)[1])
+            published = json.loads(replies[0].split("\n", 1)[1])
             self.assertEqual(published["task_id"], new_task_id)
 
 
