@@ -593,6 +593,10 @@ def _patch_has_unsupported_file_operations(patch: str) -> bool:
             "GIT binary patch", "Binary files ",
         )):
             return True
+        if line == "+++ /dev/null":
+            # Plain unified diffs can delete files without a deleted-file-mode header.
+            # Deletion is unsupported by this backend, so reject before any apply.
+            return True
         if line.startswith("new file mode ") and line != "new file mode 100644":
             # Only ordinary non-executable files may be added by this backend.
             # In particular, Git mode 120000 denotes a symlink.
