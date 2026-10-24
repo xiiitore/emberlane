@@ -451,6 +451,20 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(queue.get(again.task_id).status, "pending")
         self.assertEqual(queue.get(again.task_id).payload, payload)
 
+    def test_handler_cannot_mutate_persisted_task_payload(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("mutating", {"nested": {"value": 1}})
+
+        def mutate(payload):
+            payload["nested"]["value"] = 99
+            return {"ok": True}
+
+        result = queue.run_task(created.task_id, {"mutating": mutate})
+        self.assertEqual(result.status, "completed")
+        expected = {"nested": {"value": 1}}
+        self.assertEqual(queue.get(created.task_id).payload, expected)
+        self.assertEqual(TaskQueue(self.state).get(created.task_id).payload, expected)
+
     def test_rejects_bad_arguments(self):
         queue = TaskQueue(self.state)
         with self.assertRaises(ValueError):
