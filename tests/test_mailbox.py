@@ -173,6 +173,42 @@ class MailboxIdempotencyTests(unittest.TestCase):
             self.assertEqual(len(replies), 1)
 
 
+    def test_active_mailbox_comment_executes_its_own_task_not_first_pending(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            worker = LocalWorker(root)
+            first = worker.submit("write_file", {
+                "path": "first.txt", "content": "FIRST",
+            }, idempotency_key="first-comment")
+            second = worker.submit("write_file", {
+                "path": "second.txt", "content": "SECOND",
+            }, idempotency_key="second-comment")
+            mailbox = GitHubIssueMailbox(worker, "owner/repo", 6, "authorized")
+            mailbox._comments = lambda: []
+            mailbox.state = {"handled": [], "active": {"second-comment": second.task_id}}
+            mailbox._save_state = lambda: None
+            mailbox._publish_task_log = lambda *_: {
+                "task_log_status": "published", "task_log_url": "test://task-log",
+            }
+            mailbox._publish_handoff_record = lambda *_: {"handoff_status": "published"}
+            replies = []
+            mailbox._reply = replies.append
+
+            result = mailbox.run_once()
+
+            self.assertEqual(result, {
+                "status": "finished",
+                "comment_id": "second-comment",
+                "task_id": second.task_id,
+            })
+            self.assertEqual(worker.queue.get(first.task_id).status, "pending")
+            self.assertEqual(worker.queue.get(second.task_id).status, "completed")
+            self.assertFalse((root / "first.txt").exists())
+            self.assertEqual((root / "second.txt").read_text(), "SECOND")
+            self.assertEqual(mailbox.state["active"], {})
+            self.assertEqual(mailbox.state["handled"], ["second-comment"])
+
+
 
 class MailboxPublicationRetryTests(unittest.TestCase):
     def test_terminal_task_stays_active_when_full_log_publication_fails(self):
