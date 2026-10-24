@@ -407,7 +407,7 @@ class TaskQueue:
         self._save()
         try:
             # Persist only JSON-compatible results so task state remains portable.
-            task.result = json.loads(json.dumps(handler(task.payload), ensure_ascii=False))
+            task.result = json.loads(json.dumps(handler(copy.deepcopy(task.payload)), ensure_ascii=False))
         except Exception as exc:
             if _is_external_wait_exception(exc):
                 task.result = {
