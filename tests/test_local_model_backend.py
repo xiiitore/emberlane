@@ -500,6 +500,49 @@ class LocalModelProposalTests(unittest.TestCase):
         )
         self.assertEqual(other.read_bytes(), other_original)
 
+    def test_edit_rejects_plain_unified_deletion_before_applying(self):
+        self._initialize_git()
+        target = self.root / "src" / "allowed.py"
+        original = target.read_bytes()
+        patch_text = (
+            "--- a/src/allowed.py\n"
+            "+++ /dev/null\n"
+            "@@ -1 +0,0 @@\n"
+            "-VALUE = 1\n"
+        )
+        proposal = {
+            "status": "proposal",
+            "proposal": {
+                "changed_paths": ["src/allowed.py"],
+                "patch": patch_text,
+                "patch_bytes": len(patch_text.encode("utf-8")),
+                "base_sha256": {
+                    "src/allowed.py": hashlib.sha256(original).hexdigest(),
+                },
+                "output": "attempted plain unified deletion",
+                "output_bytes": 31,
+                "applied": False,
+            },
+        }
+        with patch(
+            "emberlane.local_model_backend.run_local_model_proposal",
+            return_value=proposal,
+        ):
+            result = run_local_model_edit(
+                self.root, self.payload, workspace=self.workspace,
+            )
+        self.assertEqual(result["status"], "rejected")
+        self.assertEqual(result["reason"], "unsupported_patch_operation")
+        self.assertFalse(result["applied"])
+        self.assertEqual(target.read_bytes(), original)
+        self.assertEqual(
+            subprocess.run(
+                ["git", "status", "--short"], cwd=self.root,
+                capture_output=True, text=True, check=True,
+            ).stdout,
+            "",
+        )
+
     def test_edit_rejects_symlink_patch_before_applying_to_source(self):
         self._initialize_git()
         outside = Path(self.temp.name) / "outside-sentinel.txt"
