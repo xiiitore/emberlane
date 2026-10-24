@@ -213,13 +213,17 @@ class MailboxPublicationRetryTests(unittest.TestCase):
 
         task = SimpleNamespace(
             task_id="task-1",
-            kind="git_diff",
+            kind="queue_prune",
             status="completed",
             attempts=1,
             last_error="PRIVATE_EXCEPTION /private/local/path",
             result={
                 "passed": True,
                 "returncode": 0,
+                "pruned_count": 7,
+                "kept_terminal_count": 50,
+                "preserved_active_count": 12,
+                "backup_file": "/private/local/path/queue.json.pre-prune-123.bak",
                 "nested": {"output": "PRIVATE_OUTPUT", "token": "PRIVATE_TOKEN"},
                 "local_path": "/private/local/path",
             },
@@ -251,6 +255,10 @@ class MailboxPublicationRetryTests(unittest.TestCase):
             self.assertNotIn(private_value, reply)
         self.assertIn('"passed": true', reply)
         self.assertIn('"returncode": 0', reply)
+        self.assertIn('"pruned_count": 7', reply)
+        self.assertIn('"kept_terminal_count": 50', reply)
+        self.assertIn('"preserved_active_count": 12', reply)
+        self.assertNotIn('"backup_file"', reply)
         self.assertIn('"error_present": true', reply)
         self.assertIn('"task_log_status": "published"', reply)
         self.assertIn('"handoff_status": "published"', reply)
