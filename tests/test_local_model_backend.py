@@ -449,28 +449,28 @@ class LocalModelProposalTests(unittest.TestCase):
 
     def test_edit_rejects_patch_touching_path_missing_from_changed_paths(self):
         other = self.root / "src" / "other.py"
-        other.write_text("VALUE = 1\\n", encoding="utf-8")
+        other.write_text("VALUE = 1\n", encoding="utf-8")
         self._initialize_git()
         tests = self.root / "tests"
         tests.mkdir()
         (tests / "test_feature.py").write_text(
-            "import unittest\\nclass FeatureTests(unittest.TestCase):\\n"
-            " def test_value(self): self.assertEqual(1, 1)\\n",
+            "import unittest\nclass FeatureTests(unittest.TestCase):\n"
+            " def test_value(self): self.assertEqual(1, 1)\n",
             encoding="utf-8",
         )
         allowed_original = (self.root / "src" / "allowed.py").read_bytes()
         other_original = other.read_bytes()
         patch_text = (
-            "--- a/src/allowed.py\\n"
-            "+++ b/src/allowed.py\\n"
-            "@@ -1 +1 @@\\n"
-            "-VALUE = 1\\n"
-            "+VALUE = 2\\n"
-            "--- a/src/other.py\\n"
-            "+++ b/src/other.py\\n"
-            "@@ -1 +1 @@\\n"
-            "-VALUE = 1\\n"
-            "+VALUE = 2\\n"
+            "--- a/src/allowed.py\n"
+            "+++ b/src/allowed.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            "+VALUE = 2\n"
+            "--- a/src/other.py\n"
+            "+++ b/src/other.py\n"
+            "@@ -1 +1 @@\n"
+            "-VALUE = 1\n"
+            "+VALUE = 2\n"
         )
         proposal = {
             "status": "proposal",
