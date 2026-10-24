@@ -2,18 +2,18 @@
 
 ## Purpose
 
-The mailbox polls issue comments and treats a comment as executable input only when its first line is exactly `EMBERLANE_TASK_JSON`. This deliberately separates human coordination from worker instructions.
+The mailbox polls issue comments and treats a comment as executable input only when the task marker appears on the first line. This deliberately separates human coordination from worker instructions.
 
 ## Required wire format
 
-The marker must be the first line. The JSON object must follow on subsequent lines and contain exactly two top-level fields: `kind` (a string) and `payload` (an object).
+The canonical format has the marker as the entire first line. The JSON object follows on subsequent lines and contains exactly two top-level fields: `kind` (a string) and `payload` (an object).
 
 ```text
 EMBERLANE_TASK_JSON
 {"kind":"run_tests","payload":{"test_file":"test_mailbox.py"}}
 ```
 
-Do not put a session label, greeting, heading, quotation, or explanatory prose before the marker. A comment such as `1 | ...` followed by the marker is ordinary discussion, not a task envelope. Put coordination in a separate comment, then publish a separate task comment using the exact format above.
+The current parser compares the first line after stripping surrounding whitespace, so leading/trailing whitespace on that line is currently tolerated. It does not search later lines for a marker. Do not put a session label, greeting, heading, quotation, or explanatory prose before the marker. A comment such as `1 | ...` followed by the marker is ordinary discussion, not a task envelope. Put coordination in a separate comment, then publish a separate task comment using the canonical format above.
 
 ## Result correlation
 
@@ -38,4 +38,4 @@ Do not treat queue status `completed` as proof that an edit succeeded. A handler
 
 ## Verification boundary
 
-This document describes the current parser contract and the evidence required for task tracking. It does not prove a worker is running, a task is queued, or a local device is ready. Those claims require fresh runtime evidence.
+This document describes the current parser behavior and the evidence required for task tracking. It does not prove a worker is running, a task is queued, or a local device is ready. Those claims require fresh runtime evidence.
