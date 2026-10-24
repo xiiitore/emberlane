@@ -557,6 +557,26 @@ def _fixed_command(
         return None
 
 
+def _patch_has_unsupported_operations(patch: str) -> bool:
+    """Reject patch operations outside the regular-file edit contract."""
+    for line in patch.splitlines():
+        if line.startswith((
+            "deleted file mode ",
+            "old mode ",
+            "new mode ",
+            "rename from ",
+            "rename to ",
+            "copy from ",
+            "copy to ",
+            "GIT binary patch",
+            "Binary files ",
+        )):
+            return True
+        if line.startswith("new file mode ") and line != "new file mode 100644":
+            return True
+    return False
+
+
 def _patch_changed_paths(patch: str, source: Path) -> list[str] | None:
     """Ask Git's patch parser for the actual paths, without applying the patch."""
     result = _fixed_command(
@@ -651,6 +671,12 @@ def run_local_model_edit(
         return {
             "status": "rejected",
             "reason": "changed_path_outside_allowlist",
+            "applied": False,
+        }
+    if _patch_has_unsupported_operations(patch):
+        return {
+            "status": "rejected",
+            "reason": "unsupported_patch_operation",
             "applied": False,
         }
     patch_paths = _patch_changed_paths(patch, source)
