@@ -11,6 +11,11 @@ class MailboxEnvelopeContractTests(unittest.TestCase):
         body = "EMBERLANE_TASK_JSON\n" + json.dumps(payload)
         self.assertEqual(_task_from_comment(body), payload)
 
+    def test_current_parser_tolerates_whitespace_on_first_line(self):
+        payload = {"kind": "run_tests", "payload": {"test_file": "test_mailbox.py"}}
+        body = "  EMBERLANE_TASK_JSON  \n" + json.dumps(payload)
+        self.assertEqual(_task_from_comment(body), payload)
+
     def test_session_prefix_before_marker_is_not_a_task(self):
         body = '1 | SESSION NOTE\n\nEMBERLANE_TASK_JSON\n{"kind":"run_tests","payload":{}}'
         self.assertIsNone(_task_from_comment(body))
