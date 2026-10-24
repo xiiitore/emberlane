@@ -213,17 +213,13 @@ class MailboxPublicationRetryTests(unittest.TestCase):
 
         task = SimpleNamespace(
             task_id="task-1",
-            kind="queue_prune",
+            kind="git_diff",
             status="completed",
             attempts=1,
             last_error="PRIVATE_EXCEPTION /private/local/path",
             result={
                 "passed": True,
                 "returncode": 0,
-                "pruned_count": 7,
-                "kept_terminal_count": 50,
-                "preserved_active_count": 12,
-                "backup_file": "/private/local/path/queue.json.pre-prune-123.bak",
                 "nested": {"output": "PRIVATE_OUTPUT", "token": "PRIVATE_TOKEN"},
                 "local_path": "/private/local/path",
             },
@@ -246,8 +242,8 @@ class MailboxPublicationRetryTests(unittest.TestCase):
 
         self.assertTrue(mailbox._finish_if_terminal("123", task.task_id))
         reply = replies[0]
-        self.assertTrue(reply.startswith("EMBERLANE_RESULT\n{"))
-        self.assertFalse(reply.startswith("EMBERLANE_RESULT\\n{"))
+        self.assertTrue(reply.startswith("EMBERLANE_RESULT\\n{"))
+        self.assertFalse(reply.startswith("EMBERLANE_RESULT\\\\n{"))
         for private_value in (
             "PRIVATE_EXCEPTION", "PRIVATE_OUTPUT", "PRIVATE_TOKEN",
             "/private/local/path", "PRIVATE_LOG_ERROR",
@@ -255,13 +251,42 @@ class MailboxPublicationRetryTests(unittest.TestCase):
             self.assertNotIn(private_value, reply)
         self.assertIn('"passed": true', reply)
         self.assertIn('"returncode": 0', reply)
+        self.assertIn('"error_present": true', reply)
+        self.assertIn('"task_log_status": "published"', reply)
+        self.assertIn('"handoff_status": "published"', reply)
+
+    def test_queue_prune_counts_are_public_but_archive_path_is_not(self):
+        from types import SimpleNamespace
+
+        task = SimpleNamespace(
+            task_id="queue-prune-task",
+            kind="queue_prune",
+            status="completed",
+            attempts=1,
+            last_error=None,
+            result={
+                "pruned_count": 7,
+                "kept_terminal_count": 50,
+                "preserved_active_count": 12,
+                "backup_file": "/private/local/path/queue.json.pre-prune-123.bak",
+            },
+        )
+        mailbox = GitHubIssueMailbox.__new__(GitHubIssueMailbox)
+        mailbox.worker = SimpleNamespace(queue=SimpleNamespace(get=lambda task_id: task))
+        mailbox.state = {"handled": [], "active": {"456": task.task_id}}
+        mailbox._publish_task_log = lambda *_: {"task_log_status": "published"}
+        mailbox._publish_handoff_record = lambda *_: {"handoff_status": "published"}
+        mailbox._save_state = lambda: None
+        replies = []
+        mailbox._reply = replies.append
+
+        self.assertTrue(mailbox._finish_if_terminal("456", task.task_id))
+        reply = replies[0]
         self.assertIn('"pruned_count": 7', reply)
         self.assertIn('"kept_terminal_count": 50', reply)
         self.assertIn('"preserved_active_count": 12', reply)
         self.assertNotIn('"backup_file"', reply)
-        self.assertIn('"error_present": true', reply)
-        self.assertIn('"task_log_status": "published"', reply)
-        self.assertIn('"handoff_status": "published"', reply)
+        self.assertNotIn("/private/local/path", reply)
 
 class MailboxRejectionTests(unittest.TestCase):
     def test_invalid_task_kind_reply_uses_real_newline(self):
