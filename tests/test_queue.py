@@ -1,4 +1,7 @@
+import errno
 import json
+import os
+import threading
 import subprocess
 import sys
 import tempfile
@@ -37,6 +40,94 @@ class TaskQueueTests(unittest.TestCase):
         result = restored.run_one({"echo": lambda payload: None})
         self.assertEqual(result.status, "completed")
         self.assertEqual(result.attempts, 2)
+
+    def test_recovered_running_task_at_attempt_limit_fails_closed(self):
+        queue = TaskQueue(self.state, max_attempts=1)
+        task = queue.submit("side_effect", {"value": "may-have-run"})
+        raw = json.loads(self.state.read_text(encoding="utf-8"))
+        raw[0]["status"] = "running"
+        raw[0]["attempts"] = 1
+        self.state.write_text(json.dumps(raw), encoding="utf-8")
+
+        restored = TaskQueue(self.state, max_attempts=1)
+        recovered = restored.get(task.task_id)
+        self.assertEqual(recovered.status, "failed")
+        self.assertIn("retry limit is exhausted", recovered.last_error)
+        self.assertIn("manual recovery required", recovered.last_error)
+
+        called = []
+        self.assertIsNone(restored.run_one({"side_effect": lambda payload: called.append(payload)}))
+        self.assertEqual(called, [])
+
+    def test_permanent_os_lock_error_is_not_retried_as_contention(self):
+        from emberlane import queue as queue_module
+
+        if queue_module.fcntl is None:
+            self.skipTest("POSIX flock-specific test")
+        with patch(
+            "emberlane.queue.fcntl.flock",
+            side_effect=PermissionError(errno.EPERM, "permission denied"),
+        ) as flock:
+            with self.assertRaises(PermissionError):
+                TaskQueue(self.state)
+        flock.assert_called_once()
+
+    def test_lock_descriptor_closes_if_unlock_raises(self):
+        from emberlane import queue as queue_module
+
+        if queue_module.fcntl is None:
+            self.skipTest("POSIX flock-specific test")
+        queue = TaskQueue(self.state)
+        with (
+            patch(
+                "emberlane.queue.fcntl.flock",
+                side_effect=[None, OSError(errno.EIO, "unlock failed")],
+            ),
+            patch("emberlane.queue.os.close", wraps=os.close) as close,
+        ):
+            with self.assertRaisesRegex(OSError, "unlock failed"):
+                queue.list_tasks()
+        close.assert_called_once()
+
+    def test_lock_wait_is_bounded_for_a_second_queue_instance(self):
+        queue = TaskQueue(self.state)
+        other = TaskQueue(self.state)
+        other.lock_timeout_seconds = 0.1
+        queue.submit("parent", {})
+
+        def handler(payload):
+            other.submit("child", {})
+            return {"ok": True}
+
+        result = queue.run_one({"parent": handler})
+        self.assertEqual(result.status, "pending")
+        self.assertIn("timed out acquiring queue lock", result.last_error)
+        self.assertEqual(len(queue.list_tasks()), 1)
+
+    def test_in_process_lock_wait_is_bounded(self):
+        queue = TaskQueue(self.state)
+        queue.lock_timeout_seconds = 0.05
+        acquired = threading.Event()
+        release = threading.Event()
+
+        def hold_lock():
+            queue._thread_lock.acquire()
+            try:
+                acquired.set()
+                release.wait(timeout=2)
+            finally:
+                queue._thread_lock.release()
+
+        holder = threading.Thread(target=hold_lock)
+        holder.start()
+        self.assertTrue(acquired.wait(timeout=1))
+        try:
+            with self.assertRaisesRegex(TimeoutError, "in-process queue lock"):
+                queue.list_tasks()
+        finally:
+            release.set()
+            holder.join(timeout=2)
+        self.assertFalse(holder.is_alive())
 
     def test_idempotent_submit_returns_existing_task(self):
         queue = TaskQueue(self.state)
@@ -273,6 +364,7 @@ class TaskQueueTests(unittest.TestCase):
         cancelled = queue.submit("cancelled", {})
         pending = queue.submit("pending", {})
         deferred = queue.submit("deferred", {})
+        stored_tasks = {task.task_id: task for task in queue.list_tasks()}
         for task, status, stamp in (
             (completed, "completed", 10.0),
             (failed, "failed", 20.0),
@@ -280,8 +372,9 @@ class TaskQueueTests(unittest.TestCase):
             (pending, "pending", 40.0),
             (deferred, "deferred", 50.0),
         ):
-            task.status = status
-            task.updated_at = stamp
+            stored = queue._tasks[task.task_id]
+            stored.status = status
+            stored.updated_at = stamp
         queue._save()
 
         result = queue.prune_terminal(keep_terminal=1)
@@ -309,8 +402,8 @@ class TaskQueueTests(unittest.TestCase):
     def test_prune_terminal_archive_is_private(self):
         queue = TaskQueue(self.state)
         old = queue.submit("done", {"content": "potentially sensitive payload"})
-        old.status = "completed"
-        old.updated_at = 1.0
+        queue._tasks[old.task_id].status = "completed"
+        queue._tasks[old.task_id].updated_at = 1.0
         queue._save()
 
         result = queue.prune_terminal(keep_terminal=0)
@@ -321,9 +414,10 @@ class TaskQueueTests(unittest.TestCase):
     def test_prune_terminal_refuses_to_prune_if_archive_verification_fails(self):
         queue = TaskQueue(self.state)
         old = queue.submit("done", {})
-        old.status = "completed"
-        old.updated_at = 1.0
         queue.submit("pending", {})
+        old = queue.get(old.task_id)
+        queue._tasks[old.task_id].status = "completed"
+        queue._tasks[old.task_id].updated_at = 1.0
         queue._save()
         original_state = self.state.read_bytes()
         from emberlane.queue import _write_private_archive as write_private_archive
@@ -356,12 +450,230 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(result.status, "failed")
         self.assertIn("no handler", result.last_error)
 
+    def test_public_task_objects_are_detached_snapshots(self):
+        queue = TaskQueue(self.state)
+        payload = {"nested": {"value": 1}}
+        created = queue.submit("echo", payload, idempotency_key="snapshot-key")
+        payload["nested"]["value"] = 9
+        self.assertEqual(queue.get(created.task_id).payload, {"nested": {"value": 1}})
+        payload["nested"]["value"] = 1
+        created.status = "failed"
+        created.payload["nested"]["value"] = 2
+
+        fetched = queue.get(created.task_id)
+        self.assertEqual(fetched.status, "pending")
+        self.assertEqual(fetched.payload, payload)
+        fetched.status = "completed"
+        fetched.payload["nested"]["value"] = 3
+
+        listed = queue.list_tasks()
+        listed[0].status = "failed"
+        listed[0].payload["nested"]["value"] = 4
+        restored = TaskQueue(self.state)
+        final = restored.get(created.task_id)
+        self.assertEqual(final.status, "pending")
+        self.assertEqual(final.payload, payload)
+
+        duplicate = queue.submit("echo", payload, idempotency_key="snapshot-key")
+        duplicate.status = "failed"
+        duplicate.payload["nested"]["value"] = 5
+        again = queue.submit("echo", payload, idempotency_key="snapshot-key")
+        again.status = "completed"
+        self.assertEqual(again.task_id, created.task_id)
+        self.assertEqual(queue.get(again.task_id).status, "pending")
+        self.assertEqual(queue.get(again.task_id).payload, payload)
+
+    def test_run_task_returns_detached_snapshot(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("echo", {"nested": {"value": 1}})
+        returned = queue.run_task(created.task_id, {"echo": lambda payload: {"ok": True}})
+        returned.status = "failed"
+        returned.payload["nested"]["value"] = 9
+        returned.result["ok"] = False
+
+        stored = queue.get(created.task_id)
+        self.assertEqual(stored.status, "completed")
+        self.assertEqual(stored.payload, {"nested": {"value": 1}})
+        self.assertEqual(stored.result, {"ok": True})
+        restored = TaskQueue(self.state).get(created.task_id)
+        self.assertEqual(restored.status, "completed")
+        self.assertEqual(restored.result, {"ok": True})
+
+    def test_handler_rejects_non_finite_json_results(self):
+        queue = TaskQueue(self.state)
+        for index, invalid_result in enumerate((float("nan"), float("inf"), float("-inf"))):
+            with self.subTest(value=repr(invalid_result)):
+                created = queue.submit(f"bad-result-{index}", {})
+                result = queue.run_task(
+                    created.task_id,
+                    {f"bad-result-{index}": lambda payload, value=invalid_result: value},
+                )
+                self.assertEqual(result.status, "pending")
+                self.assertIsNone(result.result)
+                self.assertIn("ValueError", result.last_error)
+                serialized = self.state.read_text(encoding="utf-8")
+                self.assertNotIn("NaN", serialized)
+                self.assertNotIn("Infinity", serialized)
+                restored = TaskQueue(self.state).get(created.task_id)
+                self.assertEqual(restored.status, "pending")
+                self.assertIsNone(restored.result)
+
+    def test_handler_cannot_mutate_persisted_task_payload(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("mutating", {"nested": {"value": 1}})
+
+        def mutate(payload):
+            payload["nested"]["value"] = 99
+            return {"ok": True}
+
+        result = queue.run_task(created.task_id, {"mutating": mutate})
+        self.assertEqual(result.status, "completed")
+        expected = {"nested": {"value": 1}}
+        self.assertEqual(queue.get(created.task_id).payload, expected)
+        self.assertEqual(TaskQueue(self.state).get(created.task_id).payload, expected)
+
+    def test_resume_deferred_rolls_back_when_save_fails(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("wait", {})
+        result = queue.run_task(
+            created.task_id,
+            {"wait": lambda payload: {"status": "deferred"}},
+        )
+        self.assertEqual(result.status, "deferred")
+        persisted_before = self.state.read_bytes()
+
+        with patch.object(queue, "_save", side_effect=OSError("disk write failed")):
+            with self.assertRaisesRegex(OSError, "disk write failed"):
+                queue.resume_deferred(created.task_id)
+
+        internal = queue._tasks[created.task_id]
+        self.assertEqual(internal.status, "deferred")
+        self.assertEqual(internal.result, {"status": "deferred"})
+        self.assertEqual(self.state.read_bytes(), persisted_before)
+        self.assertEqual(TaskQueue(self.state).get(created.task_id).status, "deferred")
+
+    def test_run_task_rolls_back_memory_if_initial_save_fails(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("effect", {"value": 1})
+        persisted_before = self.state.read_bytes()
+        called = []
+
+        with patch.object(queue, "_save", side_effect=OSError("initial save failed")):
+            with self.assertRaisesRegex(OSError, "initial save failed"):
+                queue.run_task(created.task_id, {"effect": lambda payload: called.append(payload)})
+
+        internal = queue._tasks[created.task_id]
+        self.assertEqual(internal.status, "pending")
+        self.assertEqual(internal.attempts, 0)
+        self.assertEqual(called, [])
+        self.assertEqual(self.state.read_bytes(), persisted_before)
+
+    def test_run_task_final_save_failure_keeps_persisted_running_snapshot(self):
+        queue = TaskQueue(self.state)
+        created = queue.submit("effect", {"value": 1})
+        original_save = queue._save
+        save_calls = []
+        effects = []
+
+        def fail_second_save():
+            save_calls.append(len(save_calls) + 1)
+            if len(save_calls) == 1:
+                original_save()
+            else:
+                raise OSError("final save failed")
+
+        def handler(payload):
+            effects.append(payload["value"])
+            return {"ok": True}
+
+        with patch.object(queue, "_save", side_effect=fail_second_save):
+            with self.assertRaisesRegex(OSError, "final save failed"):
+                queue.run_task(created.task_id, {"effect": handler})
+
+        self.assertEqual(effects, [1])
+        self.assertEqual(len(save_calls), 2)
+        internal = queue._tasks[created.task_id]
+        self.assertEqual(internal.status, "running")
+        self.assertEqual(internal.attempts, 1)
+        disk_state = json.loads(self.state.read_text(encoding="utf-8"))[0]
+        self.assertEqual(disk_state["status"], "running")
+        self.assertEqual(disk_state["attempts"], 1)
+
+        # Restart recovery retries the persisted running task: external effects are at-least-once.
+        restored = TaskQueue(self.state)
+        recovered = restored.get(created.task_id)
+        self.assertEqual(recovered.status, "pending")
+        self.assertEqual(recovered.attempts, 1)
+        self.assertIn("may be retried", recovered.last_error)
+
     def test_rejects_bad_arguments(self):
         queue = TaskQueue(self.state)
         with self.assertRaises(ValueError):
             queue.submit("", {})
         with self.assertRaises(ValueError):
             queue.submit("ok", [])
+
+    def test_rejects_non_json_payload_before_queue_mutation(self):
+        queue = TaskQueue(self.state)
+        existing = queue.submit("ok", {"value": 1})
+        original_bytes = self.state.read_bytes()
+        original_ids = set(queue._tasks)
+
+        for payload in ({"bad": object()}, {"not_finite": float("nan")}):
+            with self.subTest(payload_type=type(next(iter(payload.values()))).__name__):
+                with self.assertRaisesRegex(ValueError, "JSON-compatible"):
+                    queue.submit("ok", payload)
+                self.assertEqual(set(queue._tasks), original_ids)
+                self.assertEqual(self.state.read_bytes(), original_bytes)
+
+        self.assertEqual(queue.get(existing.task_id).payload, {"value": 1})
+
+    def test_submit_rolls_back_memory_when_save_fails(self):
+        queue = TaskQueue(self.state)
+        existing = queue.submit("ok", {"value": 1})
+        original_bytes = self.state.read_bytes()
+        original_ids = set(queue._tasks)
+
+        with patch.object(queue, "_save", side_effect=OSError("injected save failure")):
+            with self.assertRaisesRegex(OSError, "injected save failure"):
+                queue.submit("ok", {"value": 2})
+
+        self.assertEqual(set(queue._tasks), original_ids)
+        self.assertEqual(self.state.read_bytes(), original_bytes)
+        self.assertEqual(queue.get(existing.task_id).payload, {"value": 1})
+
+
+    def test_nested_submit_from_handler_is_reentrant_and_persists_both_tasks(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        child_code = (
+            "import sys\n"
+            "from emberlane import TaskQueue\n"
+            "queue = TaskQueue(sys.argv[1])\n"
+            "parent = queue.submit('parent', {})\n"
+            "def handler(payload):\n"
+            "    child = queue.submit('child', {'value': 7})\n"
+            "    return {'ok': True, 'child_id': child.task_id}\n"
+            "result = queue.run_one({'parent': handler})\n"
+            "assert result.status == 'completed', result\n"
+            "restored = TaskQueue(sys.argv[1])\n"
+            "assert restored.get(parent.task_id).status == 'completed'\n"
+            "child_id = result.result['child_id']\n"
+            "assert restored.get(child_id).status == 'pending'\n"
+            "print('PASS', flush=True)\n"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-c", child_code, str(self.state)],
+            cwd=repo_root,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=5,
+            check=False,
+            shell=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("PASS", completed.stdout)
 
 
 if __name__ == "__main__":

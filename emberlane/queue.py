@@ -1,9 +1,20 @@
 """Minimal file-backed task queue with atomic state persistence."""
 from __future__ import annotations
 
+import copy
+import errno
 import json
 import os
 import tempfile
+import threading
+from contextlib import contextmanager
+from typing import Iterator
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - exercised on Windows
+    fcntl = None
+    import msvcrt
 import time
 import uuid
 from dataclasses import asdict, dataclass
@@ -102,18 +113,101 @@ class Task:
 
 
 class TaskQueue:
-    """A small single-process queue. Not intended for concurrent writers."""
+    """File-backed queue serialized across processes with an OS lock.
+
+    The lock covers each complete queue operation, including handler execution.
+    This intentionally favors correctness over concurrent submissions during a
+    long-running handler. Handler side effects remain at-least-once after a crash.
+    """
 
     def __init__(self, state_path: str | Path, max_attempts: int = 3):
         if max_attempts < 1:
             raise ValueError("max_attempts must be >= 1")
         self.state_path = Path(state_path)
         self.max_attempts = max_attempts
+        self.lock_timeout_seconds = 15.0
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         self._tasks: dict[str, Task] = {}
-        self._load()
+        # Nested queue calls from a handler (for example GoalPlanner.advance ->
+        # queue.submit) must reuse the outer lock and its in-memory snapshot.
+        self._thread_lock = threading.RLock()
+        self._lock_depth = 0
+        with self._locked_refresh():
+            pass
+
+    @contextmanager
+    def _locked_refresh(self) -> Iterator[None]:
+        """Refresh under bounded thread/OS locks; reuse both for nested calls.
+
+        The lock file is never replaced or removed: queue.json itself is atomically
+        replaced by _save(), so locking queue.json would not serialize processes
+        that opened different inodes. Locks are advisory and require a filesystem
+        that implements POSIX flock or Windows byte-range locking correctly.
+
+        Reentrant calls from the same thread must not open a second descriptor or
+        reload state while a handler is executing.
+        """
+        if not self._thread_lock.acquire(timeout=self.lock_timeout_seconds):
+            raise TimeoutError("timed out acquiring in-process queue lock")
+        try:
+            if self._lock_depth:
+                self._lock_depth += 1
+                try:
+                    yield
+                finally:
+                    self._lock_depth -= 1
+                return
+
+            lock_path = self.state_path.with_name(self.state_path.name + ".lock")
+            fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+            locked = False
+            try:
+                if fcntl is None:  # pragma: no cover - exercised on Windows
+                    if os.fstat(fd).st_size == 0:
+                        os.write(fd, b"\\0")
+                        os.fsync(fd)
+                deadline = time.monotonic() + self.lock_timeout_seconds
+                while True:
+                    try:
+                        if fcntl is not None:
+                            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        else:  # pragma: no cover - exercised on Windows
+                            os.lseek(fd, 0, os.SEEK_SET)
+                            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                        locked = True
+                        break
+                    except OSError as exc:
+                        contention_errnos = {
+                            errno.EACCES,
+                            errno.EAGAIN,
+                            errno.EDEADLK,
+                        }
+                        if not isinstance(exc, BlockingIOError) and exc.errno not in contention_errnos:
+                            raise
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError(
+                                f"timed out acquiring queue lock: {lock_path.name}"
+                            ) from exc
+                        time.sleep(0.025)
+                self._lock_depth = 1
+                self._load()
+                yield
+            finally:
+                self._lock_depth = 0
+                try:
+                    if locked:
+                        if fcntl is not None:
+                            fcntl.flock(fd, fcntl.LOCK_UN)
+                        else:  # pragma: no cover - exercised on Windows
+                            os.lseek(fd, 0, os.SEEK_SET)
+                            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                finally:
+                    os.close(fd)
+        finally:
+            self._thread_lock.release()
 
     def _load(self) -> None:
+        self._tasks = {}
         if not self.state_path.exists():
             return
         raw = json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -134,10 +228,17 @@ class TaskQueue:
         now = time.time()
         for task in self._tasks.values():
             if task.status == "running":
-                task.status = "pending"
-                task.last_error = (
-                    "Recovered after interrupted run; handler may be retried."
-                )
+                if task.attempts >= self.max_attempts:
+                    task.status = "failed"
+                    task.last_error = (
+                        "Recovered after interrupted run, but retry limit is exhausted; "
+                        "manual recovery required because the side effect may have occurred."
+                    )
+                else:
+                    task.status = "pending"
+                    task.last_error = (
+                        "Recovered after interrupted run; handler may be retried."
+                    )
                 task.updated_at = now
                 recovered = True
         if recovered:
@@ -148,7 +249,7 @@ class TaskQueue:
         fd, temporary = tempfile.mkstemp(prefix=".queue-", dir=self.state_path.parent)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as stream:
-                json.dump(data, stream, ensure_ascii=False, sort_keys=True)
+                json.dump(data, stream, ensure_ascii=False, sort_keys=True, allow_nan=False)
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(temporary, self.state_path)
@@ -170,45 +271,72 @@ class TaskQueue:
             raise ValueError("kind must be a non-empty string")
         if not isinstance(payload, dict):
             raise ValueError("payload must be a dictionary")
+        try:
+            json.dumps(payload, ensure_ascii=False, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("payload must be JSON-compatible") from exc
         if idempotency_key is not None:
             if not isinstance(idempotency_key, str) or not idempotency_key:
                 raise ValueError("idempotency_key must be a non-empty string")
-            for existing in self._tasks.values():
-                if existing.idempotency_key == idempotency_key:
-                    if existing.kind != kind or existing.payload != payload:
-                        raise ValueError("idempotency key already used for a different task")
-                    return existing
-        now = time.time()
-        task = Task(
-            str(uuid.uuid4()), kind, payload,
-            created_at=now, updated_at=now,
-            idempotency_key=idempotency_key,
-        )
-        self._tasks[task.task_id] = task
-        self._save()
-        return task
+        with self._locked_refresh():
+            if idempotency_key is not None:
+                for existing in self._tasks.values():
+                    if existing.idempotency_key == idempotency_key:
+                        if existing.kind != kind or existing.payload != payload:
+                            raise ValueError("idempotency key already used for a different task")
+                        return copy.deepcopy(existing)
+            now = time.time()
+            task = Task(
+                str(uuid.uuid4()), kind, copy.deepcopy(payload),
+                created_at=now, updated_at=now,
+                idempotency_key=idempotency_key,
+            )
+            original_tasks = self._tasks.copy()
+            self._tasks[task.task_id] = task
+            try:
+                self._save()
+            except BaseException:
+                self._tasks = original_tasks
+                raise
+            return copy.deepcopy(task)
 
     def get(self, task_id: str) -> Task | None:
-        return self._tasks.get(task_id)
+        with self._locked_refresh():
+            task = self._tasks.get(task_id)
+            return copy.deepcopy(task) if task is not None else None
 
     def list_tasks(self) -> list[Task]:
-        return list(self._tasks.values())
+        with self._locked_refresh():
+            return copy.deepcopy(list(self._tasks.values()))
 
     def resume_deferred(self, task_id: str) -> Task:
         """Explicitly requeue a deferred task after its external dependency recovers."""
+        with self._locked_refresh():
+            return copy.deepcopy(self._resume_deferred_locked(task_id))
+
+    def _resume_deferred_locked(self, task_id: str) -> Task:
         task = self._tasks.get(task_id)
         if task is None:
             raise KeyError(f"unknown task id: {task_id}")
         if task.status != "deferred":
             raise ValueError(f"task is not deferred: {task_id}")
+        original_task = copy.deepcopy(task)
         task.status = "pending"
         task.last_error = None
         task.result = None
         task.updated_at = time.time()
-        self._save()
+        try:
+            self._save()
+        except BaseException:
+            self._tasks[task_id] = original_task
+            raise
         return task
 
     def prune_terminal(self, keep_terminal: int = 50) -> dict[str, Any]:
+        with self._locked_refresh():
+            return self._prune_terminal_locked(keep_terminal)
+
+    def _prune_terminal_locked(self, keep_terminal: int = 50) -> dict[str, Any]:
         """Archive the current queue, then remove only old terminal tasks.
 
         Pending, running and deferred tasks are always preserved. A local backup
@@ -267,10 +395,11 @@ class TaskQueue:
         }
 
     def run_one(self, handlers: dict[str, Callable[[dict[str, Any]], Any]]) -> Task | None:
-        task = next((t for t in self._tasks.values() if t.status == "pending"), None)
-        if task is None:
-            return None
-        return self._run_task(task, handlers)
+        with self._locked_refresh():
+            task = next((t for t in self._tasks.values() if t.status == "pending"), None)
+            if task is None:
+                return None
+            return copy.deepcopy(self._run_task(task, handlers))
 
     def run_task(
         self,
@@ -278,10 +407,11 @@ class TaskQueue:
         handlers: dict[str, Callable[[dict[str, Any]], Any]],
     ) -> Task | None:
         """Run only the requested pending task; never substitute another queue item."""
-        task = self._tasks.get(task_id)
-        if task is None or task.status != "pending":
-            return None
-        return self._run_task(task, handlers)
+        with self._locked_refresh():
+            task = self._tasks.get(task_id)
+            if task is None or task.status != "pending":
+                return None
+            return copy.deepcopy(self._run_task(task, handlers))
 
     def _run_task(
         self,
@@ -290,18 +420,32 @@ class TaskQueue:
     ) -> Task:
         handler = handlers.get(task.kind)
         if handler is None:
+            original_task = copy.deepcopy(task)
             task.status = "failed"
             task.last_error = f"no handler registered for kind: {task.kind}"
             task.updated_at = time.time()
-            self._save()
+            try:
+                self._save()
+            except BaseException:
+                self._tasks[task.task_id] = original_task
+                raise
             return task
+        original_task = copy.deepcopy(task)
         task.status = "running"
         task.attempts += 1
         task.updated_at = time.time()
-        self._save()
+        try:
+            self._save()
+        except BaseException:
+            self._tasks[task.task_id] = original_task
+            raise
+        # If the final save fails, retain this persisted running snapshot in memory.
+        # The handler may already have caused an external effect, so restart recovery
+        # remains at-least-once rather than pretending the effect can be rolled back.
+        running_snapshot = copy.deepcopy(task)
         try:
             # Persist only JSON-compatible results so task state remains portable.
-            task.result = json.loads(json.dumps(handler(task.payload), ensure_ascii=False))
+            task.result = json.loads(json.dumps(handler(copy.deepcopy(task.payload)), ensure_ascii=False, allow_nan=False))
         except Exception as exc:
             if _is_external_wait_exception(exc):
                 task.result = {
@@ -332,5 +476,9 @@ class TaskQueue:
                 task.last_error = None
                 task.status = "completed"
         task.updated_at = time.time()
-        self._save()
+        try:
+            self._save()
+        except BaseException:
+            self._tasks[task.task_id] = running_snapshot
+            raise
         return task
