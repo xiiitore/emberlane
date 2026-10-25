@@ -10765,3 +10765,39 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task ab16ecb5-a916-4db6-a826-bb5fddd3bdb0
+
+[Full task output](worker-logs/ab16ecb5-a916-4db6-a826-bb5fddd3bdb0.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T15:56:48.724885+00:00",
+  "source_comment_id": "6399665653",
+  "task_id": "ab16ecb5-a916-4db6-a826-bb5fddd3bdb0",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ab16ecb5-a916-4db6-a826-bb5fddd3bdb0.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/ab16ecb5-a916-4db6-a826-bb5fddd3bdb0.md",
+    "dropbox_sha256": "f375e66e5f9351d590ea7211e71c831ff9813acaf6dcfe628d70ebdd1abcf60a",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/ab16ecb5-a916-4db6-a826-bb5fddd3bdb0.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
