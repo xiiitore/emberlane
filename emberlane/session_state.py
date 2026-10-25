@@ -229,6 +229,10 @@ def refresh_session_state(root: str | Path, *, publish: bool = True) -> dict[str
         return {"status": "publish_unverified", "path": str(state_path), "sha256": digest}
 
     published_path.write_text(digest + "\n", encoding="ascii")
+    verified_path.write_text(
+        json.dumps({"sha256": digest, "time": time.time()}, sort_keys=True),
+        encoding="utf-8",
+    )
     return {
         "status": "published",
         "path": str(state_path),
