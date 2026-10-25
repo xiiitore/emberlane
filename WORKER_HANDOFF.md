@@ -10998,3 +10998,40 @@ Ran 4 tests in 0.054s
 OK
 
 ~~~
+
+
+### Worker task 5faf8378-7c28-4033-aadc-086d7f8063ad
+
+[Full task output](worker-logs/5faf8378-7c28-4033-aadc-086d7f8063ad.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T16:07:55.525596+00:00",
+  "source_comment_id": "6399692826",
+  "task_id": "5faf8378-7c28-4033-aadc-086d7f8063ad",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/5faf8378-7c28-4033-aadc-086d7f8063ad.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/5faf8378-7c28-4033-aadc-086d7f8063ad.md",
+    "dropbox_sha256": "5336a5b000bf59877dd76195c375b58cbca71251c1e28fbd3840555035213097",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "bytes_written": 34477,
+    "path": "emberlane/mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/5faf8378-7c28-4033-aadc-086d7f8063ad.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
