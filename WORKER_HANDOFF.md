@@ -12306,3 +12306,40 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 492e1db2-68c2-4a29-b7ad-51f5c77a787d
+
+[Full task output](worker-logs/492e1db2-68c2-4a29-b7ad-51f5c77a787d.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T19:02:57.626578+00:00",
+  "source_comment_id": "6401832765",
+  "task_id": "492e1db2-68c2-4a29-b7ad-51f5c77a787d",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/492e1db2-68c2-4a29-b7ad-51f5c77a787d.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/492e1db2-68c2-4a29-b7ad-51f5c77a787d.md",
+    "dropbox_sha256": "d006fd2274cb0c53649d1789fb6bd4e85e86e6dc258f6059e26d0efe10565e6b",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "bytes_written": 25491,
+    "path": "tests/test_worker.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/492e1db2-68c2-4a29-b7ad-51f5c77a787d.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
