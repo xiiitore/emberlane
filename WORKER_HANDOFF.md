@@ -12954,3 +12954,39 @@ tests/test_agy_probe.py
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task c3ddbbe7-dc4a-4c1d-a866-6c57b01e6b65
+
+[Full task output](worker-logs/c3ddbbe7-dc4a-4c1d-a866-6c57b01e6b65.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T19:46:29.730680+00:00",
+  "source_comment_id": "6402291863",
+  "task_id": "c3ddbbe7-dc4a-4c1d-a866-6c57b01e6b65",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/c3ddbbe7-dc4a-4c1d-a866-6c57b01e6b65.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/c3ddbbe7-dc4a-4c1d-a866-6c57b01e6b65.md",
+    "dropbox_sha256": "10b15286ca6235eb40b857b9f7abbb350ed4376cb9931f5fc3b2b8bdffd0aff9",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/local_model_backend.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/c3ddbbe7-dc4a-4c1d-a866-6c57b01e6b65.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
