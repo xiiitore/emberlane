@@ -14027,3 +14027,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task c74282bb-f52c-49e3-b2b4-a741da0c6574
+
+[Full task output](worker-logs/c74282bb-f52c-49e3-b2b4-a741da0c6574.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T21:43:28.662781+00:00",
+  "source_comment_id": "6403575915",
+  "task_id": "c74282bb-f52c-49e3-b2b4-a741da0c6574",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/c74282bb-f52c-49e3-b2b4-a741da0c6574.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/c74282bb-f52c-49e3-b2b4-a741da0c6574.md",
+    "dropbox_sha256": "3a24845485aa8b90ad098061bc9277c21fedf6c6c6fec7649065422786f2e5da",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "scripts/emberlane-autonomous-loop.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/c74282bb-f52c-49e3-b2b4-a741da0c6574.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
