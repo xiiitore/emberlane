@@ -24,7 +24,18 @@ ROOT = Path(__file__).resolve().parent
 STATE_DIR = ROOT / ".emberlane"
 LOG_PATH = STATE_DIR / "worker-loop.log"
 LOCK_PATH = STATE_DIR / "worker-loop.lock"
+STOP_MARKER = ".emberlane/STOP"
+PAUSE_MARKER = ".emberlane/PAUSED"
 stop_requested = False
+
+
+def control_state(root: Path = ROOT) -> str | None:
+    """Return the control marker state; STOP takes precedence over PAUSED."""
+    if (root / STOP_MARKER).exists():
+        return "stopped"
+    if (root / PAUSE_MARKER).exists():
+        return "paused"
+    return None
 
 
 def refresh_continuity_state() -> None:
@@ -70,6 +81,20 @@ def main() -> int:
         log("started", repo=REPO, issue=ISSUE, author=AUTHOR, poll_seconds=POLL_SECONDS)
         refresh_continuity_state()
         while not stop_requested:
+            state = control_state(ROOT)
+            if state == "stopped":
+                log("stopped", reason=STOP_MARKER)
+                break
+            if state == "paused":
+                log("paused", reason=PAUSE_MARKER)
+                # Stay responsive to stop markers and signals without busy-spinning.
+                deadline = time.monotonic() + POLL_SECONDS
+                while not stop_requested and time.monotonic() < deadline:
+                    if control_state(ROOT) != "paused":
+                        break
+                    time.sleep(min(0.5, max(0.0, deadline - time.monotonic())))
+                continue
+
             started = time.monotonic()
             try:
                 result = subprocess.run(
@@ -108,7 +133,8 @@ def main() -> int:
             while not stop_requested and time.monotonic() < deadline:
                 time.sleep(min(0.5, deadline - time.monotonic()))
 
-        log("stopped")
+        if control_state(ROOT) != "stopped":
+            log("stopped")
     return 0
 
 
