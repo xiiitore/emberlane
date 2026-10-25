@@ -12990,3 +12990,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task cbff0bca-3490-400e-9e5b-b8502b7a7961
+
+[Full task output](worker-logs/cbff0bca-3490-400e-9e5b-b8502b7a7961.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T19:47:57.515496+00:00",
+  "source_comment_id": "6402292298",
+  "task_id": "cbff0bca-3490-400e-9e5b-b8502b7a7961",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/cbff0bca-3490-400e-9e5b-b8502b7a7961.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/cbff0bca-3490-400e-9e5b-b8502b7a7961.md",
+    "dropbox_sha256": "f5472baa4d27c331d8c3a0022e359f511c965c50bbd1f409569b1cc93825de7f",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "tests/test_agy_probe.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/cbff0bca-3490-400e-9e5b-b8502b7a7961.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
