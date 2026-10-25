@@ -12856,3 +12856,65 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 111b5fba-171d-4509-8e59-e6fedbd9b230
+
+[Full task output](worker-logs/111b5fba-171d-4509-8e59-e6fedbd9b230.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T19:43:35.802331+00:00",
+  "source_comment_id": "6402225883",
+  "task_id": "111b5fba-171d-4509-8e59-e6fedbd9b230",
+  "kind": "git_diff",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/111b5fba-171d-4509-8e59-e6fedbd9b230.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/111b5fba-171d-4509-8e59-e6fedbd9b230.md",
+    "dropbox_sha256": "6007dda6ab3b4b1e23f5542835433b3612e136f4afe8af3599cfa4c8f3d2ac52",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 296,
+    "full_log_path": "worker-logs/111b5fba-171d-4509-8e59-e6fedbd9b230.md"
+  }
+}
+```
+
+#### Output: `result.files.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.stat.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.staged_files.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.staged_stat.output`
+
+~~~text
+
+~~~
+
+#### Output: `result.untracked_files.output`
+
+~~~text
+tests/test_agy_probe.py
+
+~~~
