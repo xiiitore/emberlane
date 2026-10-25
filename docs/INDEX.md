@@ -9,6 +9,7 @@ This index separates current implementation instructions from design contracts a
 - [README](../README.md) — installation, existing CLI examples, worker boundaries and GitHub issue mailbox.
 - [Termux readiness runbook](TERMUX_READINESS_RUNBOOK.md) — read-only prerequisite checks and a staged local validation sequence.
 - [Operations runbook](OPERATIONS_RUNBOOK.md) — start/end-of-session checks and recovery procedures for quota waits, model failures, queue corruption and unsafe task results.
+- [Session continuity automation](SESSION_CONTINUITY.md) — generated state snapshots, verified Dropbox publishing, and new-session recovery.
 
 ## Architecture and behavior
 
