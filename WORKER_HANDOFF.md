@@ -13436,3 +13436,39 @@ OK (skipped=1)
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task d46f185d-1d3b-4563-9243-33198e0e168f
+
+[Full task output](worker-logs/d46f185d-1d3b-4563-9243-33198e0e168f.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T20:09:55.136853+00:00",
+  "source_comment_id": "6402390010",
+  "task_id": "d46f185d-1d3b-4563-9243-33198e0e168f",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/d46f185d-1d3b-4563-9243-33198e0e168f.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/d46f185d-1d3b-4563-9243-33198e0e168f.md",
+    "dropbox_sha256": "03e968c4fc1e60147be153b98270995e689a9c7b4b795cf6ebb6311ba2215cad",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "worker-logs/b5fa3824-b607-4815-9721-679e2c5b2c04.md"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/d46f185d-1d3b-4563-9243-33198e0e168f.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
