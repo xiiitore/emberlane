@@ -11491,3 +11491,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/8bc91564-8908-4e75-ae4b-34973e4fcb39.md).
+
+
+### Worker task ae14fe9d-5089-44f2-880e-ddbde5f710b1
+
+[Full task output](worker-logs/ae14fe9d-5089-44f2-880e-ddbde5f710b1.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T16:32:53.034865+00:00",
+  "source_comment_id": "6399857270",
+  "task_id": "ae14fe9d-5089-44f2-880e-ddbde5f710b1",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ae14fe9d-5089-44f2-880e-ddbde5f710b1.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/ae14fe9d-5089-44f2-880e-ddbde5f710b1.md",
+    "dropbox_sha256": "d20c5de0bd884a1217ebe48c5418af87e64c8a7d6f7364b13bc73c5633a4599a",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/ae14fe9d-5089-44f2-880e-ddbde5f710b1.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
