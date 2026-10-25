@@ -13352,3 +13352,51 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task a7bfbe70-d68f-4c41-ba41-550cd4839aab
+
+[Full task output](worker-logs/a7bfbe70-d68f-4c41-ba41-550cd4839aab.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T20:07:04.795674+00:00",
+  "source_comment_id": "6402352385",
+  "task_id": "a7bfbe70-d68f-4c41-ba41-550cd4839aab",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/a7bfbe70-d68f-4c41-ba41-550cd4839aab.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/a7bfbe70-d68f-4c41-ba41-550cd4839aab.md",
+    "dropbox_sha256": "6fab9fddbc68cd23ba96b91f8c92f6e2773ae7e415e6b3707bbb08270b95bd43",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "returncode": 0,
+    "passed": true,
+    "output": "test_probe_agy (test_agy_probe.AgyProbeTests.test_probe_agy) ... skipped 'set EMBERLANE_RUN_AGY_PROBE=1 to run the environment-specific agy probe'\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK (skipped=1)\n",
+    "output_publication": "inline_and_full_log"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 300,
+    "full_log_path": "worker-logs/a7bfbe70-d68f-4c41-ba41-550cd4839aab.md"
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+test_probe_agy (test_agy_probe.AgyProbeTests.test_probe_agy) ... skipped 'set EMBERLANE_RUN_AGY_PROBE=1 to run the environment-specific agy probe'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK (skipped=1)
+
+~~~
