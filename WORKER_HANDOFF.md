@@ -12234,3 +12234,39 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 1f310f94-e344-4465-8db6-90032bcf8154
+
+[Full task output](worker-logs/1f310f94-e344-4465-8db6-90032bcf8154.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T18:58:52.052111+00:00",
+  "source_comment_id": "6401796542",
+  "task_id": "1f310f94-e344-4465-8db6-90032bcf8154",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/1f310f94-e344-4465-8db6-90032bcf8154.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/1f310f94-e344-4465-8db6-90032bcf8154.md",
+    "dropbox_sha256": "64a264fca26f20411f1d80b82b949509e2ce9ba4adf2392bc410ba2596582320",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/worker.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/1f310f94-e344-4465-8db6-90032bcf8154.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
