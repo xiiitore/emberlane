@@ -11786,3 +11786,37 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 0e2041cf-0515-40e8-83d2-679b85f75cda
+
+[Full task output](worker-logs/0e2041cf-0515-40e8-83d2-679b85f75cda.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T18:36:40.062395+00:00",
+  "source_comment_id": "6401551796",
+  "task_id": "0e2041cf-0515-40e8-83d2-679b85f75cda",
+  "kind": "list_files",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/0e2041cf-0515-40e8-83d2-679b85f75cda.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/0e2041cf-0515-40e8-83d2-679b85f75cda.md",
+    "dropbox_sha256": "6c4785a1c070950e08de8840fa190a59003d7d0f006cef563b1cc6697d6d87b0",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {},
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/0e2041cf-0515-40e8-83d2-679b85f75cda.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
