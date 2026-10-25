@@ -11904,3 +11904,40 @@ Loading model...
 Failed to load the model
 
 ~~~
+
+
+### Worker task 0513618c-b507-4d95-a969-092c392c20f3
+
+[Full task output](worker-logs/0513618c-b507-4d95-a969-092c392c20f3.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T18:44:46.471138+00:00",
+  "source_comment_id": "6401618432",
+  "task_id": "0513618c-b507-4d95-a969-092c392c20f3",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "already_present",
+    "task_log_path": "worker-logs/0513618c-b507-4d95-a969-092c392c20f3.md",
+    "local_task_log_path": "/data/data/com.termux/files/home/emberlane/emberlane-connected/worker-logs/0513618c-b507-4d95-a969-092c392c20f3.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/0513618c-b507-4d95-a969-092c392c20f3.md",
+    "dropbox_sha256": "b1f01e6eb6ebe37b9b87b2e5c725ea67882795437841998e08b178e6c70126e0",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "scripts/emberlane-autonomous-loop.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/0513618c-b507-4d95-a969-092c392c20f3.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
