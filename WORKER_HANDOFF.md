@@ -10172,3 +10172,39 @@ Failed to load the model
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 220d922d-e159-42d5-bda3-626c702ac108
+
+[Full task output](worker-logs/220d922d-e159-42d5-bda3-626c702ac108.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T15:17:04.292937+00:00",
+  "source_comment_id": "6399381532",
+  "task_id": "220d922d-e159-42d5-bda3-626c702ac108",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/220d922d-e159-42d5-bda3-626c702ac108.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/220d922d-e159-42d5-bda3-626c702ac108.md",
+    "dropbox_sha256": "1042e3ae76d3afb6ddcd19fdfaa0da980bc683ad050e7e9f080ee0bf8c2e55f1",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "tests/test_autonomous_loop.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/220d922d-e159-42d5-bda3-626c702ac108.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
