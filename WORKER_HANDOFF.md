@@ -10356,3 +10356,40 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task ff8051c2-625b-47d7-9bc2-0d011c352059
+
+[Full task output](worker-logs/ff8051c2-625b-47d7-9bc2-0d011c352059.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T15:36:33.225114+00:00",
+  "source_comment_id": "6399598125",
+  "task_id": "ff8051c2-625b-47d7-9bc2-0d011c352059",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ff8051c2-625b-47d7-9bc2-0d011c352059.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/ff8051c2-625b-47d7-9bc2-0d011c352059.md",
+    "dropbox_sha256": "edede689ab351777d54a7af9c5b8f3f4d0238f2fdd89477976adb25088f6a9c2",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/worker.py",
+    "bytes_written": 34235
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/ff8051c2-625b-47d7-9bc2-0d011c352059.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
