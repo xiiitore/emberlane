@@ -13132,3 +13132,39 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 6df432d9-8cab-4b00-adb6-c6416c23e9f8
+
+[Full task output](worker-logs/6df432d9-8cab-4b00-adb6-c6416c23e9f8.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T19:55:20.087071+00:00",
+  "source_comment_id": "6402326648",
+  "task_id": "6df432d9-8cab-4b00-adb6-c6416c23e9f8",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/6df432d9-8cab-4b00-adb6-c6416c23e9f8.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/6df432d9-8cab-4b00-adb6-c6416c23e9f8.md",
+    "dropbox_sha256": "abeaf4dcef28543a124428406abe50abf239b061e6515d26f84b94da10446f40",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "worker-logs/a951943f-1e3a-4629-9e33-f5c46dbd1e49.md"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/6df432d9-8cab-4b00-adb6-c6416c23e9f8.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
