@@ -11820,3 +11820,45 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task b7c44b7e-ed6b-4355-884d-24867be23751
+
+[Full task output](worker-logs/b7c44b7e-ed6b-4355-884d-24867be23751.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T18:38:02.913996+00:00",
+  "source_comment_id": "6401569158",
+  "task_id": "b7c44b7e-ed6b-4355-884d-24867be23751",
+  "kind": "local_model_proposal",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/b7c44b7e-ed6b-4355-884d-24867be23751.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/b7c44b7e-ed6b-4355-884d-24867be23751.md",
+    "dropbox_sha256": "b05ff50360e28f439deeeb88cc3cef73d06b3e2d5853bef82d18942778f05282",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "returncode": 1
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 88,
+    "full_log_path": "worker-logs/b7c44b7e-ed6b-4355-884d-24867be23751.md"
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+
+Loading model... 
+Failed to load the model
+
+~~~
