@@ -11035,3 +11035,41 @@ OK
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 1bb1bfc8-a377-41b8-aa7e-2bd2ac26ff54
+
+[Full task output](worker-logs/1bb1bfc8-a377-41b8-aa7e-2bd2ac26ff54.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T16:10:54.791628+00:00",
+  "source_comment_id": "6399696127",
+  "task_id": "1bb1bfc8-a377-41b8-aa7e-2bd2ac26ff54",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "already_present",
+    "task_log_path": "worker-logs/1bb1bfc8-a377-41b8-aa7e-2bd2ac26ff54.md",
+    "local_task_log_path": "/data/data/com.termux/files/home/emberlane/emberlane-connected/worker-logs/1bb1bfc8-a377-41b8-aa7e-2bd2ac26ff54.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/1bb1bfc8-a377-41b8-aa7e-2bd2ac26ff54.md",
+    "dropbox_sha256": "8b71203e36bfd8acde22facb82a7663f6a57ba7067d1485cbef3205e02fa9cc1",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "bytes_written": 15505,
+    "path": "tests/test_mailbox.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/1bb1bfc8-a377-41b8-aa7e-2bd2ac26ff54.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
