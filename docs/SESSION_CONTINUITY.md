@@ -11,7 +11,7 @@ The supervised worker_loop.py calls emberlane.session_state.refresh_session_stat
 The generator:
 
 1. Reads only .emberlane/queue.json and .emberlane/mailbox-state.json metadata.
-2. Produces EMBERLANE_CURRENT_STATE.md in the repository root.
+2. Produces .emberlane/EMBERLANE_CURRENT_STATE.md, which remains excluded from Git by the existing ignore rule.
 3. Omits task payloads, arbitrary output, secrets, and nested source contents. It includes only a small allowlist of scalar result fields.
 4. Publishes the snapshot through the existing Dropbox output transport as SESSION-CONTINUITY.md.
 5. Requires the transport's SHA-256 read-back verification before marking a snapshot as published.
