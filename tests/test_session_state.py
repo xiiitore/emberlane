@@ -31,13 +31,11 @@ class SessionStateTests(unittest.TestCase):
             json.dumps({"handled": ["1", "2"], "active": {"3": {}}, "cursor": 99}),
             encoding="utf-8",
         )
-        self.git = patch(
-            "emberlane.session_state.subprocess.run",
-            side_effect=[
-                subprocess.CompletedProcess(["git"], 0, "feat/local-coding-worker\n", ""),
-                subprocess.CompletedProcess(["git"], 0, "abcdef123456\n", ""),
-            ],
-        )
+        def fake_git(args, **kwargs):
+            output = "feat/local-coding-worker\n" if args[1] == "branch" else "abcdef123456\n"
+            return subprocess.CompletedProcess(args, 0, output, "")
+
+        self.git = patch("emberlane.session_state.subprocess.run", side_effect=fake_git)
         self.git.start()
         self.addCleanup(self.git.stop)
 
