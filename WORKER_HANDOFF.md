@@ -13315,3 +13315,40 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 3f3ad7d7-d81f-4cea-bce3-7e3f87378beb
+
+[Full task output](worker-logs/3f3ad7d7-d81f-4cea-bce3-7e3f87378beb.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T20:05:12.853106+00:00",
+  "source_comment_id": "6402347268",
+  "task_id": "3f3ad7d7-d81f-4cea-bce3-7e3f87378beb",
+  "kind": "write_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/3f3ad7d7-d81f-4cea-bce3-7e3f87378beb.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/3f3ad7d7-d81f-4cea-bce3-7e3f87378beb.md",
+    "dropbox_sha256": "a32439cf44251bb667b1e29f1608a673ba24b855e9fcd45c45e6f608417b6879",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "tests/test_agy_probe.py",
+    "bytes_written": 2368
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/3f3ad7d7-d81f-4cea-bce3-7e3f87378beb.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
