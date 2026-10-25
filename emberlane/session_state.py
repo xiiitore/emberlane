@@ -51,7 +51,7 @@ def render_state(root: str | Path) -> str:
     lines = [
         "# Emberlane Current State", "",
         "> Generated from local queue and mailbox metadata. Task payloads and arbitrary output are intentionally excluded.", "",
-        f"- Snapshot generated (UTC): {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
+        "- Snapshot is content-addressed; inspect queue/task timestamps below for freshness.",
         f"- Branch: {_git_value(project, 'branch', '--show-current')}",
         f"- HEAD: {_git_value(project, 'rev-parse', '--short=12', 'HEAD')}",
         f"- Queue records: {len(valid)}",
