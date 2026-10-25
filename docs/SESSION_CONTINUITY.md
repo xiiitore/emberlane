@@ -15,7 +15,7 @@ The generator:
 3. Omits task payloads, arbitrary output, secrets, and nested source contents. It includes only a small allowlist of scalar result fields.
 4. Publishes the snapshot through the existing Dropbox output transport as SESSION-CONTINUITY.md.
 5. Requires the transport's SHA-256 read-back verification before marking a snapshot as published.
-6. Skips uploads when the content hash is unchanged. A failed publication is retried after a bounded cooldown; a changed snapshot is eligible immediately.
+6. Skips uploads when the content hash is unchanged and a remote read-back was verified within the last hour. It periodically republishes unchanged content to detect missing/stale remote state. A failed publication is retried after a bounded cooldown; changed content is eligible immediately.
 
 The Dropbox destination is controlled by the existing DROPBOX_ROOT configuration. No credentials are written into the state file or logs.
 
@@ -36,7 +36,7 @@ A successful worker task or a local state file alone does not prove that Dropbox
 2. Read only the specific task logs referenced by the snapshot or its open blockers.
 3. Confirm current source revision and relevant test output before making claims.
 4. Continue from the highest-priority unresolved task; do not re-fetch the entire Issue #6 comment history.
-5. If the snapshot is missing or stale, inspect .emberlane/session-state-last-attempt.json, .emberlane/session-state.sha256, and the worker-loop events. Do not infer remote success from local files.
+5. If the snapshot is missing or stale, inspect .emberlane/session-state-last-attempt.json, .emberlane/session-state-last-verified.json, .emberlane/session-state.sha256, and the worker-loop events. Do not infer remote success from local files.
 
 ## Limitations
 
