@@ -10468,3 +10468,40 @@ No stdout/stderr output field was retained for inline publication.
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task 71cf5e28-1bc5-4144-a12b-a31108cdcd88
+
+[Full task output](worker-logs/71cf5e28-1bc5-4144-a12b-a31108cdcd88.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T15:42:11.327540+00:00",
+  "source_comment_id": "6399602406",
+  "task_id": "71cf5e28-1bc5-4144-a12b-a31108cdcd88",
+  "kind": "replace_text",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/71cf5e28-1bc5-4144-a12b-a31108cdcd88.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/71cf5e28-1bc5-4144-a12b-a31108cdcd88.md",
+    "dropbox_sha256": "cd64aacb3b756fa8749f2536a1eecc83f4b8fb35e3d540f6d817ed80469bf539",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "bytes_written": 23569,
+    "path": "tests/test_worker.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/71cf5e28-1bc5-4144-a12b-a31108cdcd88.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
