@@ -11862,3 +11862,45 @@ Loading model...
 Failed to load the model
 
 ~~~
+
+
+### Worker task 8628d8fc-1418-4d72-bcb5-936dca10adc4
+
+[Full task output](worker-logs/8628d8fc-1418-4d72-bcb5-936dca10adc4.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T18:41:32.026440+00:00",
+  "source_comment_id": "6401592859",
+  "task_id": "8628d8fc-1418-4d72-bcb5-936dca10adc4",
+  "kind": "local_model_proposal",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/8628d8fc-1418-4d72-bcb5-936dca10adc4.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/8628d8fc-1418-4d72-bcb5-936dca10adc4.md",
+    "dropbox_sha256": "2819004794e15a3a550f7fbfd7c3ced06265cb1977750e0a7170681629a52cf7",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "returncode": 1
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 88,
+    "full_log_path": "worker-logs/8628d8fc-1418-4d72-bcb5-936dca10adc4.md"
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+
+Loading model... 
+Failed to load the model
+
+~~~
