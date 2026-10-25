@@ -75,6 +75,13 @@ class SessionStateTests(unittest.TestCase):
         self.assertEqual(result["status"], "publish_failed")
         self.assertFalse((self.root / ".emberlane" / "session-state.sha256").exists())
 
+    def test_corrupt_queue_is_reported_unknown_not_empty(self):
+        (self.root / ".emberlane" / "queue.json").write_text("{broken", encoding="utf-8")
+        state = session_state.render_state(self.root)
+        self.assertIn("Queue source read: UNKNOWN", state)
+        self.assertIn("Queue records: UNKNOWN", state)
+        self.assertIn("queue file missing or invalid", state)
+
     def test_local_only_mode_does_not_call_dropbox(self):
         with patch("emberlane.session_state.upload_task_log") as upload:
             result = session_state.refresh_session_state(self.root, publish=False)
