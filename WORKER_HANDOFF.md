@@ -10945,3 +10945,56 @@ No stdout/stderr output field was retained for inline publication.
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/6c2cfea0-daae-40b5-aa9d-7150aead39ff.md).
+
+
+### Worker task 459dcd4b-b469-408f-a435-ea536fcd23bd
+
+[Full task output](worker-logs/459dcd4b-b469-408f-a435-ea536fcd23bd.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T16:06:26.952929+00:00",
+  "source_comment_id": "6399678729",
+  "task_id": "459dcd4b-b469-408f-a435-ea536fcd23bd",
+  "kind": "run_tests",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/459dcd4b-b469-408f-a435-ea536fcd23bd.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/459dcd4b-b469-408f-a435-ea536fcd23bd.md",
+    "dropbox_sha256": "10339f1544b43ede6798ac8fcb1c824c2f85d733032859bc13a37828dc5ad191",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "passed": true,
+    "returncode": 0,
+    "output": "test_experimental_id_does_not_call_meta_planner (test_autonomous_loop.AutonomousMetaAdapterTests.test_experimental_id_does_not_call_meta_planner) ... 2026-10-25T16:06:20Z NON_META_RESULT id=EXP-QUEUE-01 status=KILL; meta planner not called\nok\ntest_real_meta_id_is_recorded (test_autonomous_loop.AutonomousMetaAdapterTests.test_real_meta_id_is_recorded) ... ok\ntest_stale_meta_result_does_not_mutate_active_task (test_autonomous_loop.AutonomousMetaAdapterTests.test_stale_meta_result_does_not_mutate_active_task) ... 2026-10-25T16:06:20Z META_RESULT_SKIPPED stale or mismatched result; planner state unchanged\nok\ntest_unknown_meta_namespace_is_rejected (test_autonomous_loop.AutonomousMetaAdapterTests.test_unknown_meta_namespace_is_rejected) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.054s\n\nOK\n",
+    "output_publication": "inline_and_full_log"
+  },
+  "output_publication": {
+    "mode": "inline_and_full_log",
+    "inline_bytes": 891,
+    "full_log_path": "worker-logs/459dcd4b-b469-408f-a435-ea536fcd23bd.md"
+  }
+}
+```
+
+#### Output: `result.output`
+
+~~~text
+test_experimental_id_does_not_call_meta_planner (test_autonomous_loop.AutonomousMetaAdapterTests.test_experimental_id_does_not_call_meta_planner) ... 2026-10-25T16:06:20Z NON_META_RESULT id=EXP-QUEUE-01 status=KILL; meta planner not called
+ok
+test_real_meta_id_is_recorded (test_autonomous_loop.AutonomousMetaAdapterTests.test_real_meta_id_is_recorded) ... ok
+test_stale_meta_result_does_not_mutate_active_task (test_autonomous_loop.AutonomousMetaAdapterTests.test_stale_meta_result_does_not_mutate_active_task) ... 2026-10-25T16:06:20Z META_RESULT_SKIPPED stale or mismatched result; planner state unchanged
+ok
+test_unknown_meta_namespace_is_rejected (test_autonomous_loop.AutonomousMetaAdapterTests.test_unknown_meta_namespace_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.054s
+
+OK
+
+~~~
