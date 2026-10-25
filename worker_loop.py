@@ -27,6 +27,17 @@ LOCK_PATH = STATE_DIR / "worker-loop.lock"
 stop_requested = False
 
 
+def refresh_continuity_state() -> None:
+    try:
+        from emberlane.session_state import refresh_session_state
+        result = refresh_session_state(ROOT)
+        if result.get("status") not in {"unchanged", "retry_deferred"}:
+            log("session_state", **result)
+    except Exception as exc:
+        # State publishing must never stop the task mailbox loop.
+        log("session_state_error", error_type=type(exc).__name__)
+
+
 def log(event: str, **details: object) -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     line = json.dumps(
@@ -57,6 +68,7 @@ def main() -> int:
             return 2
 
         log("started", repo=REPO, issue=ISSUE, author=AUTHOR, poll_seconds=POLL_SECONDS)
+        refresh_continuity_state()
         while not stop_requested:
             started = time.monotonic()
             try:
@@ -85,6 +97,7 @@ def main() -> int:
                     stdout=None if parsed is not None else stdout[-2000:],
                     stderr=stderr[-2000:] or None,
                 )
+                refresh_continuity_state()
             except subprocess.TimeoutExpired:
                 log("poll_timeout", timeout_seconds=COMMAND_TIMEOUT_SECONDS)
             except Exception as exc:
