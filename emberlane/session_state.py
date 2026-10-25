@@ -15,6 +15,7 @@ from .dropbox_output import DropboxOutputError, upload_task_log
 STATE_NAME = ".emberlane/EMBERLANE_CURRENT_STATE.md"
 PUBLISH_ID = "SESSION-CONTINUITY"
 RETRY_SECONDS = 300
+VERIFY_INTERVAL_SECONDS = 3600
 SAFE_RESULT_FIELDS = (
     "returncode", "exit_code", "passed", "failed", "count",
     "bytes_written", "files_changed", "replacements", "ok",
@@ -180,6 +181,7 @@ def refresh_session_state(root: str | Path, *, publish: bool = True) -> dict[str
 
     digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
     published_path = state_dir / "session-state.sha256"
+    verified_path = state_dir / "session-state-last-verified.json"
     attempt_path = state_dir / "session-state-last-attempt.json"
     try:
         previous = published_path.read_text(encoding="ascii").strip()
@@ -188,7 +190,15 @@ def refresh_session_state(root: str | Path, *, publish: bool = True) -> dict[str
 
     if not publish:
         return {"status": "local_only", "path": str(state_path), "sha256": digest}
-    if previous == digest:
+    last_verified = _read_json(verified_path, {})
+    last_verified = last_verified if isinstance(last_verified, dict) else {}
+    verified_at = last_verified.get("time")
+    if (
+        previous == digest
+        and last_verified.get("sha256") == digest
+        and isinstance(verified_at, (int, float))
+        and time.time() - verified_at < VERIFY_INTERVAL_SECONDS
+    ):
         return {"status": "unchanged", "path": str(state_path), "sha256": digest}
 
     last = _read_json(attempt_path, {})
