@@ -10136,3 +10136,39 @@ Loading model...
 Failed to load the model
 
 ~~~
+
+
+### Worker task 2853b05e-ea50-4606-bfd5-1d80432f5e6c
+
+[Full task output](worker-logs/2853b05e-ea50-4606-bfd5-1d80432f5e6c.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T15:14:43.070261+00:00",
+  "source_comment_id": "6399357437",
+  "task_id": "2853b05e-ea50-4606-bfd5-1d80432f5e6c",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/2853b05e-ea50-4606-bfd5-1d80432f5e6c.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/2853b05e-ea50-4606-bfd5-1d80432f5e6c.md",
+    "dropbox_sha256": "bedfd47cddb9f33e5378c78e69eae43ce2f14e6ba5f7a8c22547e35211b1b5c8",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "scripts/emberlane-autonomous-loop.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/2853b05e-ea50-4606-bfd5-1d80432f5e6c.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
