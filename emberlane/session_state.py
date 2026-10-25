@@ -12,7 +12,7 @@ from typing import Any
 
 from .dropbox_output import DropboxOutputError, upload_task_log
 
-STATE_NAME = "EMBERLANE_CURRENT_STATE.md"
+STATE_NAME = ".emberlane/EMBERLANE_CURRENT_STATE.md"
 PUBLISH_ID = "SESSION-CONTINUITY"
 RETRY_SECONDS = 300
 SAFE_RESULT_FIELDS = (
