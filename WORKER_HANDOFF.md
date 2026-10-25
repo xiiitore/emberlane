@@ -9806,3 +9806,40 @@ OK
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/3ea579cb-a1c6-4862-92f3-70eb139a3ef2.md).
+
+
+### Worker task 8cf093d4-591b-4b80-84b7-9e5a86fca90b
+
+[Full task output](worker-logs/8cf093d4-591b-4b80-84b7-9e5a86fca90b.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-25T14:43:10.962068+00:00",
+  "source_comment_id": "6399022438",
+  "task_id": "8cf093d4-591b-4b80-84b7-9e5a86fca90b",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/8cf093d4-591b-4b80-84b7-9e5a86fca90b.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/8cf093d4-591b-4b80-84b7-9e5a86fca90b.md",
+    "dropbox_sha256": "27e2759b5b33bd3a96f72bf1610d79e2ffb06389ee14a9eea46ea47790b30244",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0",
+    "platform": "Android-14-aarch64-64bit-ELF"
+  },
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/8cf093d4-591b-4b80-84b7-9e5a86fca90b.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/8cf093d4-591b-4b80-84b7-9e5a86fca90b.md).
