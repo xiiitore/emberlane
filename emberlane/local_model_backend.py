@@ -41,6 +41,17 @@ _SECRET_RE = re.compile(
     r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
     r"(?:api[_-]?key|token|password|secret)\s*[:=]\s*\S+)"
 )
+# Source-context screening must be narrower than goal/output screening: ordinary
+# code often declares variables named token/api_key/secret. Block recognizable
+# credential formats and long credential-like assignment values, not every
+# assignment to a credential-related variable name.
+_CONTEXT_SECRET_RE = re.compile(
+    r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
+    r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|"
+    r"(?:api[_-]?key|access[_-]?token|refresh[_-]?token|auth[_-]?token|"
+    r"token|password|secret|credential)\s*[:=]\s*['\"]?"
+    r"[A-Za-z0-9/+=._-]{32,})"
+)
 _SKIP_COMPONENTS = {
     ".git", ".emberlane", "worker-logs", ".venv", "venv", "env",
     "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox",
@@ -291,7 +302,7 @@ def run_local_model_proposal(
                 return {"status": "input_limit", "proposal": None,
                         "output": f"Allowed file exceeds {MAX_CONTEXT_FILE_BYTES} bytes: {name}"}
             text = workspace.read_text(name)
-            if "\x00" in text or _SECRET_RE.search(text):
+            if "\x00" in text or _CONTEXT_SECRET_RE.search(text):
                 return {"status": "rejected", "reason": "credential_like_or_binary_context",
                         "proposal": None, "changed_paths": []}
             total_context += len(text.encode("utf-8"))
