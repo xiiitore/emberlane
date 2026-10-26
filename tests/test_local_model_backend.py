@@ -318,7 +318,7 @@ class LocalModelProposalTests(unittest.TestCase):
         with patch("emberlane.local_model_backend.subprocess.Popen", FakeProcess) as popen:
             result = self.run_with_fake()
         self.assertEqual(result["status"], "proposal")
-        self.assertEqual(result["changed_paths"], ["src/allowed.py"])
+        self.assertEqual(result["proposal"]["changed_paths"], ["src/allowed.py"])
         popen.assert_called_once()
 
     def test_rejects_model_output_outside_allowlist(self):
