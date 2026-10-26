@@ -308,6 +308,19 @@ class LocalModelProposalTests(unittest.TestCase):
         self.assertEqual(result["reason"], "credential_like_or_binary_context")
         popen.assert_not_called()
 
+    def test_allows_ordinary_credential_named_variables_in_source(self):
+        source = (
+            'token = "development-token"\\n'
+            'api_key = "EXAMPLE_KEY"\\n'
+            'secret = None\\n'
+        )
+        (self.root / "src" / "allowed.py").write_text(source, encoding="utf-8")
+        with patch("emberlane.local_model_backend.subprocess.Popen", FakeProcess) as popen:
+            result = self.run_with_fake()
+        self.assertEqual(result["status"], "proposed")
+        self.assertEqual(result["changed_paths"], ["src/allowed.py"])
+        popen.assert_called_once()
+
     def test_rejects_model_output_outside_allowlist(self):
         class OutsidePathProcess(FakeProcess):
             output_bytes = json.dumps({
