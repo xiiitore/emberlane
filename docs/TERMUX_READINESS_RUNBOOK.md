@@ -18,11 +18,11 @@ Optional explicit configuration for this shell:
 
 ```sh
 export EMBERLANE_MODEL_PATH="/absolute/path/to/the-existing-model.gguf"
-export LLAMA_CLI_BIN="llama-cli"
+export EMBERLANE_LLAMA_CLI="llama-cli"
 bash scripts/termux-preflight.sh
 ```
 
-Use the actual existing model path; the example path is a placeholder. Do not put credentials or tokens in these variables. Exit status 0 means basic checks passed, 1 means warnings remain, and 2 means a blocker was found. The script is read-only and reports Git status without printing file contents.
+Use the actual existing model path; the example path is a placeholder. Do not put credentials or tokens in these variables. `EMBERLANE_LLAMA_CLI` is the canonical executable setting used by the local model backend. The older `LLAMA_CLI_BIN` remains a fallback for existing shell profiles. Exit status 0 means basic checks passed, 1 means warnings remain, and 2 means a blocker was found. The script is read-only and reports Git status without printing file contents.
 
 ## 3. Verify the repository code separately
 
