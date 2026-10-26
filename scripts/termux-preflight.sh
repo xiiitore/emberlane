@@ -4,7 +4,9 @@ set -u
 
 ROOT="${EMBERLANE_ROOT:-$PWD}"
 MODEL_PATH="${EMBERLANE_MODEL_PATH:-}"
-LLAMA_BIN="${LLAMA_CLI_BIN:-llama-cli}"
+# Keep preflight aligned with local_model_backend.py. The legacy variable remains
+# a fallback so existing shell profiles continue to work.
+LLAMA_BIN="${EMBERLANE_LLAMA_CLI:-${LLAMA_CLI_BIN:-llama-cli}}"
 FAIL=0
 WARN=0
 
@@ -14,6 +16,7 @@ fail() { printf 'BLOCK %s\n' "$*"; FAIL=$((FAIL + 1)); }
 
 printf '%s\n' '=== Emberlane Termux preflight (read-only) ==='
 printf 'root: %s\n' "$ROOT"
+printf 'model_cli_config: %s\n' "$LLAMA_BIN"
 
 if [ ! -d "$ROOT" ]; then
   fail "workspace directory does not exist"
@@ -63,7 +66,7 @@ if command -v "$LLAMA_BIN" >/dev/null 2>&1; then
     warn "llama-cli exists but --version failed; shared libraries or runtime may be missing"
   fi
 else
-  warn "llama-cli not found via LLAMA_CLI_BIN='$LLAMA_BIN'"
+  warn "llama-cli not found via configured executable '$LLAMA_BIN'"
 fi
 
 if [ -n "$MODEL_PATH" ]; then
