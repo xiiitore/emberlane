@@ -14208,3 +14208,39 @@ Full sanitized output was not copied inline because it exceeds the 3000-byte han
 
 
 No stdout/stderr output field was retained for inline publication.
+
+
+### Worker task c896cd47-c10a-4f87-a586-1308924a9350
+
+[Full task output](worker-logs/c896cd47-c10a-4f87-a586-1308924a9350.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-26T08:06:52.166397+00:00",
+  "source_comment_id": "6411158503",
+  "task_id": "c896cd47-c10a-4f87-a586-1308924a9350",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/c896cd47-c10a-4f87-a586-1308924a9350.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/c896cd47-c10a-4f87-a586-1308924a9350.md",
+    "dropbox_sha256": "5c2e27b493a35b1c18028b7bd1e3500cdb76e397672db662a38699be292236b1",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/local_model_backend.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/c896cd47-c10a-4f87-a586-1308924a9350.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
