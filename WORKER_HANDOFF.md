@@ -14535,3 +14535,39 @@ No stdout/stderr output field was retained for inline publication.
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/7fafe791-d8dd-4811-b973-ee65f9c3c9f6.md).
+
+
+### Worker task a44d1604-0ac9-409e-ad61-ddcef15602fb
+
+[Full task output](worker-logs/a44d1604-0ac9-409e-ad61-ddcef15602fb.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-26T14:27:17.343832+00:00",
+  "source_comment_id": "6418395187",
+  "task_id": "a44d1604-0ac9-409e-ad61-ddcef15602fb",
+  "kind": "read_file",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/a44d1604-0ac9-409e-ad61-ddcef15602fb.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/a44d1604-0ac9-409e-ad61-ddcef15602fb.md",
+    "dropbox_sha256": "8c0554303171426f911792ea343090088543c4fcf85d5c66ba80af427a1e3eb3",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "path": "emberlane/repair.py"
+  },
+  "output_publication": {
+    "mode": "no_output_field_retained",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/a44d1604-0ac9-409e-ad61-ddcef15602fb.md"
+  }
+}
+```
+
+
+No stdout/stderr output field was retained for inline publication.
