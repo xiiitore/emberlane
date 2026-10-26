@@ -14426,3 +14426,40 @@ No stdout/stderr output field was retained for inline publication.
 
 
 Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/ae78029a-388b-4b15-a851-b5bb28dc700a.md).
+
+
+### Worker task ae290268-ac3a-46d7-8217-e49dbd3f3a4f
+
+[Full task output](worker-logs/ae290268-ac3a-46d7-8217-e49dbd3f3a4f.md)
+
+```json
+{
+  "timestamp_utc": "2026-10-26T14:16:34.157152+00:00",
+  "source_comment_id": "6418186801",
+  "task_id": "ae290268-ac3a-46d7-8217-e49dbd3f3a4f",
+  "kind": "diagnostics",
+  "status": "completed",
+  "attempts": 1,
+  "error_present": false,
+  "task_log": {
+    "task_log_status": "published",
+    "task_log_path": "worker-logs/ae290268-ac3a-46d7-8217-e49dbd3f3a4f.md",
+    "dropbox_status": "published",
+    "dropbox_path": "/worker-logs/ae290268-ac3a-46d7-8217-e49dbd3f3a4f.md",
+    "dropbox_sha256": "e791dfe3d92b57583c893da2a50db718ff8adb1007a233bff4cdb5b93dcb2235",
+    "dropbox_readback_verified": "true"
+  },
+  "summary": {
+    "platform": "Android-14-aarch64-64bit-ELF",
+    "python_version": "3.13.13 (main, Apr 10 2026, 13:09:22) [Clang 21.0.0 (https://android.googlesource.com/toolchain/llvm-project 5e96669f0"
+  },
+  "output_publication": {
+    "mode": "full_log_only",
+    "inline_bytes": 0,
+    "full_log_path": "worker-logs/ae290268-ac3a-46d7-8217-e49dbd3f3a4f.md"
+  }
+}
+```
+
+
+Full sanitized output was not copied inline because it exceeds the 3000-byte handoff limit. The complete retained output is in [Full task output](worker-logs/ae290268-ac3a-46d7-8217-e49dbd3f3a4f.md).
