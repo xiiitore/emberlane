@@ -105,6 +105,43 @@ class TaskQueueTests(unittest.TestCase):
         self.assertEqual(completed.status, "completed")
         self.assertEqual(completed.attempts, 2)
 
+    def test_deterministic_workspace_errors_fail_without_retries(self):
+        class WorkspaceError(ValueError):
+            pass
+
+        queue = TaskQueue(self.state, max_attempts=3)
+        missing_path = queue.submit("read_file", {"path": "tests/test_repair.py"})
+        calls = []
+
+        def missing_file(payload):
+            calls.append(payload["path"])
+            raise WorkspaceError("not a regular file")
+
+        first = queue.run_one({"read_file": missing_file})
+        self.assertEqual(first.task_id, missing_path.task_id)
+        self.assertEqual(first.status, "failed")
+        self.assertEqual(first.attempts, 1)
+        self.assertEqual(first.last_error, "WorkspaceError: not a regular file")
+        self.assertIsNone(queue.run_one({"read_file": missing_file}))
+        self.assertEqual(calls, ["tests/test_repair.py"])
+
+    def test_missing_file_error_fails_without_retries(self):
+        queue = TaskQueue(self.state, max_attempts=3)
+        task = queue.submit("read_file", {"path": "missing.txt"})
+        calls = []
+
+        def missing_file(payload):
+            calls.append(payload["path"])
+            raise FileNotFoundError(payload["path"])
+
+        result = queue.run_one({"read_file": missing_file})
+        self.assertEqual(result.task_id, task.task_id)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.attempts, 1)
+        self.assertIn("FileNotFoundError", result.last_error)
+        self.assertIsNone(queue.run_one({"read_file": missing_file}))
+        self.assertEqual(calls, ["missing.txt"])
+
     def test_local_model_failure_statuses_do_not_complete_tasks(self):
         queue = TaskQueue(self.state)
         failure_statuses = (
