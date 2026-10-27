@@ -1,0 +1,66 @@
+name: Emberlane AI Coordinator
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  coordinate:
+    if: github.event.issue.number == 6 && github.event.comment.user.login != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Gemini Coordinator
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+        run: |
+          python - << 'PYEOF'
+          import os, json, urllib.request, subprocess
+
+          gemini_key = os.environ.get("GEMINI_API_KEY")
+          comment_body = os.environ.get("COMMENT_BODY", "")
+          comment_author = os.environ.get("COMMENT_AUTHOR", "")
+
+          if not gemini_key:
+              print("Nedostaje GEMINI_API_KEY secret.")
+              exit(1)
+
+          prompt = f"""Ti si autonomni AI Koordinator za Emberlane na Issue #6.
+          Korisnik ili radnik ({comment_author}) je poslao:
+          {comment_body}
+
+          Analiziraj poruku. Ako je potrebno izdati novi zadatak radniku u Termuxu, formuliraj ga u obaveznom formatu:
+          <!-- emberlane:task -->
+          {{
+            "kind": "local_model_proposal",
+            "payload": {{
+              "goal": "kratak i precizan cilj izmjene ili testa",
+              "allowed_paths": ["tests/test_autonomous_loop.py"]
+            }}
+          }}
+          Ako zadatak nije potreban, napiši kratak sažetak bez task markera.
+          """
+
+          url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={gemini_key}"
+          req_data = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}}
+          req = urllib.request.Request(url, data=json.dumps(req_data).encode(), headers={"Content-Type": "application/json"})
+          try:
+              with urllib.request.urlopen(req, timeout=60) as resp:
+                  data = json.loads(resp.read().decode())
+              reply = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+          except Exception as e:
+              reply = f"AI Koordinator greška: {e}"
+
+          # Objava komentara natrag na Issue #6 preko GitHub CLI-ja
+          subprocess.run(["gh", "issue", "comment", "6", "--body", reply], check=True)
+          PYEOF
