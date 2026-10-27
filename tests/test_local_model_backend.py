@@ -315,11 +315,17 @@ class LocalModelProposalTests(unittest.TestCase):
             'secret = None\\n'
         )
         (self.root / "src" / "allowed.py").write_text(source, encoding="utf-8")
-        with patch("emberlane.local_model_backend.subprocess.Popen", side_effect=FakeProcess) as popen:
-            result = self.run_with_fake()
+        processes = []
+
+        def fake(*args, **kwargs):
+            process = FakeProcess(*args, **kwargs)
+            processes.append(process)
+            return process
+
+        result = self.run_with_fake(fake)
         self.assertEqual(result["status"], "proposal")
         self.assertEqual(result["proposal"]["changed_paths"], ["src/allowed.py"])
-        popen.assert_called_once()
+        self.assertEqual(len(processes), 1)
 
     def test_rejects_model_output_outside_allowlist(self):
         class OutsidePathProcess(FakeProcess):
