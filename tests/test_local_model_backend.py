@@ -315,7 +315,7 @@ class LocalModelProposalTests(unittest.TestCase):
             'secret = None\\n'
         )
         (self.root / "src" / "allowed.py").write_text(source, encoding="utf-8")
-        with patch("emberlane.local_model_backend.subprocess.Popen", FakeProcess) as popen:
+        with patch("emberlane.local_model_backend.subprocess.Popen", side_effect=FakeProcess) as popen:
             result = self.run_with_fake()
         self.assertEqual(result["status"], "proposal")
         self.assertEqual(result["proposal"]["changed_paths"], ["src/allowed.py"])
