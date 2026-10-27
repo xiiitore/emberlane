@@ -47,6 +47,18 @@ def _is_external_wait_exception(exc: Exception) -> bool:
         "http 429",
     ))
 
+def _is_permanent_task_exception(exc: Exception) -> bool:
+    """Recognize deterministic local path/workspace failures that retries cannot fix."""
+    # WorkspaceError intentionally remains name-based to avoid coupling the queue
+    # module to the workspace implementation. Missing/non-directory paths are
+    # also deterministic for a fixed task payload.
+    return type(exc).__name__ in {
+        "WorkspaceError",
+        "FileNotFoundError",
+        "IsADirectoryError",
+        "NotADirectoryError",
+    }
+
 
 def _result_has_failure(value: Any) -> bool:
     """Recognize explicit failure evidence in a JSON-compatible handler result."""
@@ -279,7 +291,10 @@ class TaskQueue:
             else:
                 task.result = None
                 task.last_error = f"{type(exc).__name__}: {exc}"
-                task.status = "pending" if task.attempts < self.max_attempts else "failed"
+                if _is_permanent_task_exception(exc):
+                    task.status = "failed"
+                else:
+                    task.status = "pending" if task.attempts < self.max_attempts else "failed"
         else:
             result_status = (
                 task.result.get("status", "").strip().lower()
