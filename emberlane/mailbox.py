@@ -439,7 +439,7 @@ class GitHubIssueMailbox:
             if task is not None and task.status == "pending":
                 if not execute_tasks:
                     return {"status": "pending", "comment_id": comment_id, "task_id": task_id}
-                self.worker.run_one()
+                self.worker.run_task(task_id)
             if self._finish_if_terminal(comment_id, task_id):
                 return {"status": "finished", "comment_id": comment_id, "task_id": task_id}
 
@@ -483,7 +483,7 @@ class GitHubIssueMailbox:
             self._save_state()
             if not execute_tasks:
                 return {"status": "pending", "comment_id": comment_id, "task_id": task.task_id}
-            self.worker.run_one()
+            self.worker.run_task(task.task_id)
             if self._finish_if_terminal(comment_id, task.task_id):
                 return {"status": "finished", "comment_id": comment_id, "task_id": task.task_id}
             return {"status": "pending", "comment_id": comment_id, "task_id": task.task_id}

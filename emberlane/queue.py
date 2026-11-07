@@ -270,6 +270,24 @@ class TaskQueue:
         task = next((t for t in self._tasks.values() if t.status == "pending"), None)
         if task is None:
             return None
+        return self._run_task(task, handlers)
+
+    def run_task(
+        self,
+        task_id: str,
+        handlers: dict[str, Callable[[dict[str, Any]], Any]],
+    ) -> Task | None:
+        """Run only the requested pending task; never substitute another queue item."""
+        task = self._tasks.get(task_id)
+        if task is None or task.status != "pending":
+            return None
+        return self._run_task(task, handlers)
+
+    def _run_task(
+        self,
+        task: Task,
+        handlers: dict[str, Callable[[dict[str, Any]], Any]],
+    ) -> Task:
         handler = handlers.get(task.kind)
         if handler is None:
             task.status = "failed"
